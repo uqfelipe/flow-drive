@@ -345,12 +345,31 @@ function MediaAudio({ url, isPtt, fromMe, messageId, durationHint }: { url: stri
           )}>
             {downloadError ? "Erro" : isPlaying || currentTime > 0 ? fmtTime(currentTime) : fmtTime(duration)}
           </span>
-          {isPtt && (
-            <Mic className={cn(
-              "h-3.5 w-3.5",
-              fromMe ? "text-primary-foreground/70" : "text-primary"
-            )} />
-          )}
+          <div className="flex items-center gap-1">
+            {playableUrl && (
+              <button
+                onClick={() => {
+                  const next = playbackRate === 1 ? 1.5 : playbackRate === 1.5 ? 2 : 1;
+                  setPlaybackRate(next);
+                  if (audioRef.current) audioRef.current.playbackRate = next;
+                }}
+                className={cn(
+                  "text-[10px] font-bold px-1.5 py-0.5 rounded-full transition-colors",
+                  playbackRate !== 1
+                    ? fromMe ? "bg-primary-foreground/30 text-primary-foreground" : "bg-primary/20 text-primary"
+                    : fromMe ? "bg-primary-foreground/10 text-primary-foreground/50" : "bg-muted-foreground/10 text-muted-foreground/50"
+                )}
+              >
+                {playbackRate}x
+              </button>
+            )}
+            {isPtt && (
+              <Mic className={cn(
+                "h-3.5 w-3.5",
+                fromMe ? "text-primary-foreground/70" : "text-primary"
+              )} />
+            )}
+          </div>
         </div>
       </div>
 
