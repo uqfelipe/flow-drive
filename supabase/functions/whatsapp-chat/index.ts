@@ -69,6 +69,15 @@ Deno.serve(async (req) => {
       return json(data);
     }
 
+    if (action === "get-profile-pic") {
+      if (!phone) return json({ error: "phone required" }, 400);
+      const data = await apiCall(inst.server_url, inst.instance_token, "/chat/details", {
+        number: phone,
+        preview: false,
+      });
+      return json({ image: data?.image || data?.imagePreview || "" });
+    }
+
     if (action === "send-text") {
       if (!phone || !text) return json({ error: "phone and text required" }, 400);
       const data = await apiCall(inst.server_url, inst.instance_token, "/send/text", {
