@@ -3,16 +3,10 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Plus, Search, Filter, CalendarCheck, MessageSquare } from "lucide-react";
 import { useState } from "react";
-
-const mockRentals = [
-  { id: "1", customer: "João Silva", vehicle: "Toyota Corolla 2024", pickup: "15/03/2026", return: "30/03/2026", value: "R$ 2.700", rentalStatus: "active", paymentStatus: "paid", origin: "manual" },
-  { id: "2", customer: "Maria Santos", vehicle: "Honda Civic 2023", pickup: "10/03/2026", return: "25/03/2026", value: "R$ 3.000", rentalStatus: "active", paymentStatus: "overdue", origin: "chatbot" },
-  { id: "3", customer: "Carlos Lima", vehicle: "Hyundai HB20 2024", pickup: "01/04/2026", return: "08/04/2026", value: "R$ 840", rentalStatus: "pending", paymentStatus: "pending", origin: "chatbot" },
-  { id: "4", customer: "Ana Costa", vehicle: "VW T-Cross 2024", pickup: "05/03/2026", return: "05/04/2026", value: "R$ 4.800", rentalStatus: "active", paymentStatus: "paid", origin: "manual" },
-  { id: "5", customer: "Pedro Oliveira", vehicle: "Nissan Kicks 2023", pickup: "01/02/2026", return: "15/02/2026", value: "R$ 3.150", rentalStatus: "completed", paymentStatus: "paid", origin: "chatbot" },
-];
+import { useRentals } from "@/hooks/use-rentals";
 
 const rentalStatusMap: Record<string, { label: string; className: string }> = {
   pending: { label: "Pendente", className: "bg-warning/10 text-warning border-warning/20" },
@@ -30,9 +24,16 @@ const paymentStatusMap: Record<string, { label: string; className: string }> = {
 
 export default function Rentals() {
   const [search, setSearch] = useState("");
-  const filtered = mockRentals.filter(
-    (r) => r.customer.toLowerCase().includes(search.toLowerCase()) || r.vehicle.toLowerCase().includes(search.toLowerCase())
-  );
+  const { data: rentals, isLoading } = useRentals();
+
+  const filtered = (rentals ?? []).filter((r) => {
+    const q = search.toLowerCase();
+    return (r.customers?.name ?? "").toLowerCase().includes(q) ||
+      (r.vehicles ? `${r.vehicles.brand} ${r.vehicles.model}` : "").toLowerCase().includes(q);
+  });
+
+  const fmt = (v: number) => `R$ ${v.toLocaleString("pt-BR", { minimumFractionDigits: 0 })}`;
+  const fmtDate = (d: string) => new Date(d + "T12:00:00").toLocaleDateString("pt-BR");
 
   return (
     <AdminLayout title="Reservas" subtitle="Gerencie locações e reservas">
@@ -48,40 +49,45 @@ export default function Rentals() {
           </div>
         </div>
 
-        <div className="grid gap-3">
-          {filtered.map((rental) => (
-            <Card key={rental.id} className="bg-card border-border hover:border-primary/20 transition-colors cursor-pointer">
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-4">
-                    <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                      {rental.origin === "chatbot" ? <MessageSquare className="h-4 w-4 text-primary" /> : <CalendarCheck className="h-4 w-4 text-primary" />}
+        {isLoading ? (
+          <div className="grid gap-3">{[1, 2, 3].map((i) => (<Card key={i}><CardContent className="p-4"><Skeleton className="h-12 w-full" /></CardContent></Card>))}</div>
+        ) : (
+          <div className="grid gap-3">
+            {filtered.map((rental) => {
+              const vehicleName = rental.vehicles ? `${rental.vehicles.brand} ${rental.vehicles.model} ${rental.vehicles.year}` : "—";
+              const rs = rentalStatusMap[rental.rental_status] ?? rentalStatusMap.pending;
+              const ps = paymentStatusMap[rental.payment_status] ?? paymentStatusMap.pending;
+              return (
+                <Card key={rental.id} className="bg-card border-border hover:border-primary/20 transition-colors cursor-pointer">
+                  <CardContent className="p-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-4">
+                        <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                          {rental.origin === "chatbot" ? <MessageSquare className="h-4 w-4 text-primary" /> : <CalendarCheck className="h-4 w-4 text-primary" />}
+                        </div>
+                        <div>
+                          <p className="font-medium text-sm">{rental.customers?.name ?? "—"}</p>
+                          <p className="text-[11px] text-muted-foreground">{vehicleName}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-6">
+                        <div className="text-right hidden sm:block">
+                          <p className="text-[11px] text-muted-foreground">Retirada: {fmtDate(rental.pickup_date)}</p>
+                          <p className="text-[11px] text-muted-foreground">Devolução: {fmtDate(rental.return_date)}</p>
+                        </div>
+                        <p className="font-display font-semibold text-sm min-w-[80px] text-right">{fmt(Number(rental.total_value))}</p>
+                        <div className="flex gap-2">
+                          <Badge variant="outline" className={`text-[10px] ${rs.className}`}>{rs.label}</Badge>
+                          <Badge variant="outline" className={`text-[10px] ${ps.className}`}>{ps.label}</Badge>
+                        </div>
+                      </div>
                     </div>
-                    <div>
-                      <p className="font-medium text-sm">{rental.customer}</p>
-                      <p className="text-[11px] text-muted-foreground">{rental.vehicle}</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-6">
-                    <div className="text-right hidden sm:block">
-                      <p className="text-[11px] text-muted-foreground">Retirada: {rental.pickup}</p>
-                      <p className="text-[11px] text-muted-foreground">Devolução: {rental.return}</p>
-                    </div>
-                    <p className="font-display font-semibold text-sm min-w-[80px] text-right">{rental.value}</p>
-                    <div className="flex gap-2">
-                      <Badge variant="outline" className={`text-[10px] ${rentalStatusMap[rental.rentalStatus].className}`}>
-                        {rentalStatusMap[rental.rentalStatus].label}
-                      </Badge>
-                      <Badge variant="outline" className={`text-[10px] ${paymentStatusMap[rental.paymentStatus].className}`}>
-                        {paymentStatusMap[rental.paymentStatus].label}
-                      </Badge>
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+        )}
       </div>
     </AdminLayout>
   );
