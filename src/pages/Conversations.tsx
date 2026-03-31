@@ -756,7 +756,7 @@ export default function Conversations() {
 
       case "video":
         if (fileUrl) {
-          return <MediaVideo url={fileUrl} caption={msgText} fromMe={msg.fromMe} />;
+          return <MediaVideo url={fileUrl} caption={msgText} fromMe={msg.fromMe} thumbnail={extracted.thumbnail} messageId={msg.id?.split?.("_")?.pop?.()} />;
         }
         return (
           <div className={cn("flex items-center gap-1.5 text-[11px] font-medium", msg.fromMe ? "text-primary-foreground/70" : "text-muted-foreground")}>
