@@ -124,7 +124,7 @@ function extractContent(msg: WhatsAppMessage): ExtractedContent {
 
   // Video
   if (msgType.includes("video") || c?.mimetype?.startsWith("video")) {
-    return { text: resolveText(), type: "video", fileUrl: resolveFileUrl(), mimetype: resolveMimetype() };
+    return { text: resolveText(), type: "video", fileUrl: resolveFileUrl(), mimetype: resolveMimetype(), thumbnail: resolveThumbnail() };
   }
 
   // Audio / PTT (voice note)
@@ -267,15 +267,74 @@ function MediaImage({ url, caption, fromMe, onClickImage, thumbnail, messageId }
   );
 }
 
-function MediaVideo({ url, caption, fromMe }: { url: string; caption?: string; fromMe: boolean }) {
+function MediaVideo({ url, caption, fromMe, thumbnail, messageId }: { url: string; caption?: string; fromMe: boolean; thumbnail?: string; messageId?: string }) {
+  const [playableUrl, setPlayableUrl] = useState<string>(() => {
+    if (messageId && mediaUrlCache.has(messageId)) return mediaUrlCache.get(messageId)!;
+    if (url && !url.includes(".enc")) return url;
+    return "";
+  });
+  const [isDownloading, setIsDownloading] = useState(false);
+
+  const isEncrypted = url && url.includes(".enc") && !playableUrl;
+
+  const handlePlay = async () => {
+    if (playableUrl || !messageId) return;
+    setIsDownloading(true);
+    try {
+      const { data } = await supabase.functions.invoke("whatsapp-chat", {
+        body: { action: "download-media", phone: messageId },
+      });
+      if (data?.fileURL) {
+        mediaUrlCache.set(messageId, data.fileURL);
+        setPlayableUrl(data.fileURL);
+      }
+    } catch (e) {
+      console.error("Failed to download video:", e);
+    } finally {
+      setIsDownloading(false);
+    }
+  };
+
+  // Video already playable
+  if (playableUrl) {
+    return (
+      <div className="space-y-1">
+        <video
+          src={playableUrl}
+          controls
+          autoPlay={isDownloading === false && !!messageId && mediaUrlCache.has(messageId)}
+          preload="metadata"
+          className="rounded-xl max-w-[300px] w-full h-auto"
+        />
+        {caption && <p className="whitespace-pre-wrap text-[13px]">{caption}</p>}
+      </div>
+    );
+  }
+
+  // Encrypted / needs download — show thumbnail with play button
   return (
     <div className="space-y-1">
-      <video
-        src={url}
-        controls
-        preload="metadata"
-        className="rounded-xl max-w-[300px] w-full h-auto"
-      />
+      <div
+        onClick={handlePlay}
+        className="relative rounded-xl max-w-[300px] w-full cursor-pointer group"
+      >
+        {thumbnail ? (
+          <img src={thumbnail} alt="Vídeo" className="rounded-xl w-full h-auto" />
+        ) : (
+          <div className="rounded-xl w-full h-[180px] bg-muted/30 flex items-center justify-center">
+            <Video className="h-10 w-10 text-muted-foreground" />
+          </div>
+        )}
+        <div className="absolute inset-0 flex items-center justify-center bg-black/30 rounded-xl group-hover:bg-black/40 transition-colors">
+          {isDownloading ? (
+            <Loader2 className="h-10 w-10 animate-spin text-white" />
+          ) : (
+            <div className="h-14 w-14 rounded-full bg-white/90 flex items-center justify-center">
+              <Play className="h-7 w-7 fill-black text-black ml-1" />
+            </div>
+          )}
+        </div>
+      </div>
       {caption && <p className="whitespace-pre-wrap text-[13px]">{caption}</p>}
     </div>
   );
@@ -697,7 +756,7 @@ export default function Conversations() {
 
       case "video":
         if (fileUrl) {
-          return <MediaVideo url={fileUrl} caption={msgText} fromMe={msg.fromMe} />;
+          return <MediaVideo url={fileUrl} caption={msgText} fromMe={msg.fromMe} thumbnail={extracted.thumbnail} messageId={msg.id?.split?.("_")?.pop?.()} />;
         }
         return (
           <div className={cn("flex items-center gap-1.5 text-[11px] font-medium", msg.fromMe ? "text-primary-foreground/70" : "text-muted-foreground")}>
