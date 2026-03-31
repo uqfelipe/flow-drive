@@ -50,9 +50,29 @@ export function useChatMessages(phone: string | null) {
     queryFn: async () => {
       if (!phone) return [];
       const data = await chatAction("fetch-messages", { phone });
-      return (data?.messages ?? []).sort(
-        (a: WhatsAppMessage, b: WhatsAppMessage) => a.timestamp - b.timestamp
-      );
+      const raw = data?.messages ?? [];
+      // Normalize API fields to our WhatsAppMessage interface
+      const normalized: WhatsAppMessage[] = raw.map((msg: any) => {
+        // Timestamp: API returns ms (13 digits) — convert to seconds
+        let ts = msg.messageTimestamp ?? msg.timestamp ?? 0;
+        if (ts > 9999999999999) ts = Math.floor(ts / 1000); // microseconds edge case
+        else if (ts > 9999999999) ts = Math.floor(ts / 1000); // milliseconds
+        // else already in seconds
+
+        return {
+          id: msg.id ?? msg.messageid ?? "",
+          chatid: msg.chatid ?? "",
+          content: msg.content,
+          fromMe: msg.fromMe ?? false,
+          timestamp: ts,
+          type: (msg.messageType ?? msg.type ?? "").toLowerCase(),
+          status: (msg.status ?? "").toLowerCase(),
+          fileURL: msg.fileURL ?? msg.fileUrl ?? "",
+          // Keep top-level text for extractContent fallback
+          text: msg.text ?? "",
+        } as WhatsAppMessage & { text?: string };
+      });
+      return normalized.sort((a, b) => a.timestamp - b.timestamp);
     },
     enabled: !!phone,
     refetchInterval: 5000,

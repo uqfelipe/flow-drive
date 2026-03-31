@@ -54,7 +54,7 @@ function formatTime(ts?: number) {
 
 function formatMsgTime(ts?: number) {
   if (!ts) return "";
-  const d = new Date(ts * 1000);
+  const d = smartTimestamp(ts);
   return d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
 }
 
