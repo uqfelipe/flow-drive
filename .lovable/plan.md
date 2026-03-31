@@ -1,43 +1,49 @@
 
 
-# Fix: Envio e recebimento de mensagens no chat
+# Fix: Exibir respostas da Meta AI (WhatsApp) no chat
 
-## Problemas identificados
+## Problema
 
-Analisando as respostas da API uazapi nos network requests, encontrei 3 problemas principais:
+Mensagens da IA do WhatsApp (Meta AI) chegam com `messageType: "UnknownMessageType"` e `text: ""`. O texto real está codificado em base64 dentro de:
+```
+content.message.protocolMessage.editedMessage.richResponseMessage.unifiedResponse.data
+```
 
-### 1. Timestamps em milissegundos tratados como segundos
-A API retorna `messageTimestamp` em **milissegundos** (ex: `1774985654288` — 13 digitos). Mas `formatMsgTime` e `formatTime` fazem `new Date(ts * 1000)`, multiplicando por 1000 novamente, resultando em datas absurdas.
+Decodificando o base64, temos JSON como:
+```json
+{
+  "sections": [{
+    "view_model": {
+      "primitive": {
+        "text": "92992125755",
+        "__typename": "GenAIMarkdownTextUXPrimitive"
+      }
+    }
+  }]
+}
+```
 
-### 2. Campo `type` vs `messageType`
-O hook espera `msg.type` mas a API retorna `messageType` (ex: `"ExtendedTextMessage"`, `"Conversation"`). O `extractContent` nunca encontra o tipo correto.
+Atualmente `extractContent` não consegue extrair nada e mostra `[mídia]`.
 
-### 3. Status capitalizado
-A API retorna `"Sent"`, `"Delivered"`, `"Read"` mas o código compara com lowercase `"read"`, `"delivered"`. Os checks duplos (✓✓ azuis) nunca aparecem.
+## Alteração
 
-## Alterações
+### `src/pages/Conversations.tsx` — `extractContent`
 
-### `src/hooks/use-chat.ts`
-- Na query `useChatMessages`, mapear os campos da API para a interface correta:
-  - `messageTimestamp` → `timestamp` (converter ms para segundos: `/ 1000`)
-  - `messageType` → `type`
-  - `status` → lowercase
-  - Usar `msg.text` (top-level) como fallback para conteúdo
+Adicionar lógica para detectar e decodificar respostas Meta AI:
 
-### `src/pages/Conversations.tsx`
-- `formatTime`: o campo `wa_lastMsgTimestamp` da lista de chats também vem em ms — ajustar para detectar automaticamente (se > 10 digitos, já é ms, não multiplicar por 1000)
-- `extractContent`: também checar `(msg as any).text` no top-level como a API retorna
+1. Verificar se `content.message?.protocolMessage?.editedMessage?.richResponseMessage?.unifiedResponse?.data` existe
+2. Decodificar o base64 com `atob()`
+3. Parsear o JSON e extrair o texto de `sections[].view_model.primitive.text`
+4. Concatenar todos os sections e retornar como mensagem de texto
+5. Adicionar um indicador visual (ex: emoji 🤖) para diferenciar respostas de IA
+
+### `src/hooks/use-chat.ts` — normalização
+
+Na normalização de mensagens, quando `messageType === "UnknownMessageType"` e `text` está vazio, tentar extrair o texto do base64 antes de passar para o componente, populando o campo `text` no top-level.
 
 ## Detalhes técnicos
 
-Exemplo de resposta real da API:
-```text
-messageTimestamp: 1774985654288  (milissegundos)
-messageType: "ExtendedTextMessage"
-status: "Sent"
-text: "oooiii"  (campo top-level)
-content: { text: "oooiii", contextInfo: {} }
-```
-
-A normalização será feita no hook para manter o componente limpo.
+- `atob()` disponível nativamente no browser
+- Fallback seguro: se decodificação falhar, mostrar `[mensagem não suportada]` em vez de `[mídia]`
+- Manter compatibilidade com mensagens normais — a lógica só executa para `UnknownMessageType` com conteúdo de protocolo
 
