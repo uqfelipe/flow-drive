@@ -7,7 +7,7 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import {
   Search, Send, MessageSquare, ArrowLeft, Phone, Image, FileText,
-  Smile, Check, CheckCheck, Mic, Paperclip, MoreVertical, Video
+  Smile, Check, CheckCheck, Mic, Paperclip, MoreVertical, Video, X
 } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 import { useWhatsAppChats, useChatMessages, useSendMessage, type WhatsAppChat, type WhatsAppMessage } from "@/hooks/use-chat";
