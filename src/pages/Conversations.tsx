@@ -246,10 +246,10 @@ export default function Conversations() {
                     <button
                       key={chat.wa_chatid}
                       className={cn(
-                        "w-full flex items-center gap-3 px-3 py-3 text-left rounded-xl transition-all duration-200",
+                        "w-full flex items-center gap-3 px-3 py-3 text-left rounded-xl transition-all duration-200 border-l-[3px]",
                         isActive
-                          ? "bg-primary/12 shadow-sm shadow-primary/10"
-                          : "hover:bg-accent/40 active:scale-[0.99]",
+                          ? "bg-primary/12 shadow-sm shadow-primary/10 border-primary"
+                          : "hover:bg-accent/40 active:scale-[0.99] border-transparent",
                         hasUnread && !isActive && "bg-accent/20"
                       )}
                       onClick={() => setSelectedChat(chat)}
