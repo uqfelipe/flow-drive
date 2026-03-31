@@ -563,6 +563,11 @@ export default function Conversations() {
             >
               <X className="h-5 w-5" />
             </button>
+            {lightboxLoading && (
+              <div className="absolute inset-0 flex items-center justify-center rounded-2xl bg-black/30">
+                <div className="h-8 w-8 animate-spin rounded-full border-2 border-white border-t-transparent" />
+              </div>
+            )}
             <img
               src={lightboxImg}
               alt="Foto de perfil"
