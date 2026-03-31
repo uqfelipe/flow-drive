@@ -1,71 +1,83 @@
 
 
-# Correcao do sistema de marcar conversa como lida
+# Redesign do Flow Builder no estilo Typebot
 
-## Problema identificado
+## Visao geral
 
-Dois bugs trabalham juntos para impedir o funcionamento correto:
+Transformar o flow builder atual (nodes compactos com icone+label) em um editor visual no estilo Typebot, onde cada node e um "grupo/card" que contem **multiplos blocos empilhados** dentro dele, com visual limpo, fundo branco/claro, bordas suaves e handles laterais (direita).
 
-**Bug 1 - Comparacao de timestamps com unidades diferentes:** Em `useWhatsAppChats` (use-chat.ts, linha 72), o codigo compara `readAtMs` (milissegundos, vindo de `new Date().getTime()`) com `wa_lastMsgTimestamp` que pode vir da API em **segundos** (ex: `1711900000`). Como `readAtMs` (~1.7 trilhao) e sempre maior que um timestamp em segundos (~1.7 bilhao), isso mascara o problema em alguns casos. Porem, quando o timestamp da API vem em **milissegundos**, a comparacao falha: `read_at` pode ser menor que `wa_lastMsgTimestamp`, e o unread count nao e zerado.
+## Principais diferencas visuais (referencia vs atual)
 
-**Bug 2 - useEffect pula mark-read quando ultima mensagem e propria:** Em `Conversations.tsx` (linha 619), se a ultima mensagem do chat e `fromMe`, o effect retorna sem chamar `markAsRead`. Embora a primeira execucao (com `messages` undefined) chame markAsRead, o `onSettled` invalida a query de chats, que refaz a comparacao com o bug 1.
+| Aspecto | Atual | Typebot (desejado) |
+|---------|-------|---------------------|
+| Nodes | Compactos, icone+label, 180-220px | Cards grandes com titulo no topo e blocos internos empilhados |
+| Palette | Categorias colapsaveis com drag | Grid 2 colunas por categoria (Bubbles, Inputs, Logic, Integrations) |
+| Handles | Topo/base, circulares pequenos | Lado direito, azuis, por bloco interno |
+| Background | Dots escuros | Grid claro ou dots claros |
+| Cores | Gradiente por categoria | Branco/cinza claro, icones coloridos por tipo |
+| Node interno | Um bloco = um node | Um "grupo" contem varios blocos (messages, inputs, collects) |
 
-## Correcoes
+## Reorganizacao de categorias (estilo Typebot)
 
-### Arquivo 1: `src/hooks/use-chat.ts`
-
-**Normalizar timestamp para milissegundos na comparacao:**
-- Antes de comparar `readAtMs >= lastMsgTs`, converter `lastMsgTs` para ms se estiver em segundos
-- Logica: se `lastMsgTs < 10000000000` (10 digitos), multiplicar por 1000
-
-```typescript
-const lastMsgTs = c.wa_lastMsgTimestamp ?? 0;
-const lastMsgMs = lastMsgTs < 10000000000 ? lastMsgTs * 1000 : lastMsgTs;
-if (readAtMs >= lastMsgMs) {
-  return { ...c, wa_unreadCount: 0 };
-}
-```
-
-### Arquivo 2: `src/pages/Conversations.tsx`
-
-**Chamar markAsRead sempre ao selecionar uma conversa, independente de quem enviou a ultima mensagem:**
-
-- Remover o `if (lastMessage.fromMe) return;`
-- Simplificar o useEffect: ao mudar `selectedPhone`, marcar como lida imediatamente
-- Manter dedup para evitar chamadas repetidas desnecessarias (usando ref com o phone)
-- Adicionar chamada ao clicar na conversa tambem (antes de esperar mensagens carregarem)
-
-```typescript
-useEffect(() => {
-  if (!selectedPhone) {
-    lastHandledIncomingRef.current = null;
-    return;
-  }
-
-  // Marca como lida assim que selecionar OU quando chegar mensagem nova
-  const key = messages?.length
-    ? `${selectedPhone}:${messages[messages.length - 1].id}`
-    : `${selectedPhone}:empty`;
-
-  if (lastHandledIncomingRef.current === key) return;
-  lastHandledIncomingRef.current = key;
-  markAsRead.mutate(selectedPhone);
-}, [selectedPhone, messages]);
-```
-
-## Resultado
-
-- Clicou na conversa → `markAsRead` dispara imediatamente
-- Optimistic update zera o badge na hora
-- DB persiste `read_at` com timestamp atual
-- Refetch valida: comparacao normalizada garante que `read_at >= lastMsgTs`
-- Reload: busca `chat_read_status` do DB, compara corretamente → conversa permanece lida
-- Nova mensagem depois: `wa_lastMsgTimestamp` sera maior que `read_at` → volta a mostrar nao lida
+- **Bubbles**: Text, Image, Video, Embed (corresponde a `message`)
+- **Inputs**: Text, Number, Email, Website, Date, Phone, Button, Payment, Rating, File (corresponde a `input`)
+- **Logic**: Set variable, Condition, Redirect, Code, Typebot (corresponde a `logic`)
+- **Integrations**: corresponde a `database` + `automation` + `ai`
 
 ## Arquivos alterados
 
-| Arquivo | Alteracao |
-|---------|-----------|
-| `src/hooks/use-chat.ts` | Normalizar timestamp para ms na comparacao de read status |
-| `src/pages/Conversations.tsx` | Remover skip do `fromMe`, marcar como lida sempre ao selecionar |
+### 1. `src/components/flow-builder/nodeTypes.ts`
+- Reorganizar categorias para Bubbles, Inputs, Logic, Integrations
+- Atualizar `FlowNodeCategory` em `types/index.ts`
+- Adicionar novos tipos genericos (Text input, Number input, Email input, etc.)
+- Manter tipos existentes do sistema de locadora como sub-opcoes
+
+### 2. `src/types/index.ts`
+- Atualizar `FlowNodeCategory` para incluir `'bubble' | 'input' | 'logic' | 'integration'`
+- Adicionar interface `FlowGroupData` para nodes que contem multiplos blocos internos
+
+### 3. `src/components/flow-builder/FlowNode.tsx` (rewrite completo)
+- Node estilo card: fundo branco/card, bordas cinza claro, rounded-lg
+- Header com titulo editavel e icone de play
+- Lista de blocos internos empilhados (cada um com icone, texto e handle source na direita)
+- Handle target na esquerda do card
+- Blocos com icones coloridos (laranja para bubbles/collect, azul para handles)
+- Suporte a "Collect [Variable]" com badge colorido (laranja)
+
+### 4. `src/components/flow-builder/NodePalette.tsx` (rewrite)
+- Layout grid 2 colunas por categoria
+- Categorias: Bubbles, Inputs, Logic, Integrations
+- Icone de cadeado no topo (lock icon decorativo)
+- Itens como botoes com icone + label, sem grip handle
+- Visual limpo, fundo branco
+
+### 5. `src/pages/FlowBuilder.tsx`
+- Remover toolbar superior (simplificar)
+- Background mais claro (grid ou dots claros)
+- Edge style: cinza/azul suave, curvo (bezier), sem animacao
+- Remover MiniMap (Typebot nao tem)
+- Manter Controls simples
+
+### 6. `src/components/flow-builder/NodeConfigPanel.tsx`
+- Adaptar para editar blocos internos do grupo
+- Permitir adicionar/remover blocos dentro de um grupo
+
+### 7. `tailwind.config.ts`
+- Ajustar cores dos nodes para paleta mais suave (laranja, azul, verde)
+
+## Fluxo do usuario
+
+1. Arrasta um tipo de bloco da palette para o canvas
+2. Cria um "grupo" automaticamente com aquele bloco dentro
+3. Pode adicionar mais blocos ao grupo clicando "+" dentro do card
+4. Conecta grupos arrastando dos handles azuis na direita de cada bloco
+5. Cada grupo tem titulo editavel no header
+
+## Resultado esperado
+
+- Visual identico ao Typebot: cards brancos com blocos empilhados
+- Palette com grid 2 colunas organizado por Bubbles/Inputs/Logic/Integrations
+- Handles azuis na lateral direita dos blocos
+- Edges curvos e suaves
+- Background limpo com grid sutil
 
