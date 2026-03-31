@@ -49,6 +49,29 @@ export function useWhatsAppChats() {
   });
 }
 
+export interface PresenceData {
+  isOnline?: boolean;
+  isTyping?: boolean;
+  lastSeen?: number;
+}
+
+export function usePresence(phone: string | null) {
+  return useQuery<PresenceData>({
+    queryKey: ["whatsapp-presence", phone],
+    queryFn: async () => {
+      if (!phone) return { isOnline: false, isTyping: false };
+      const data = await chatAction("check-presence", { phone });
+      return {
+        isOnline: data?.isOnline ?? false,
+        isTyping: data?.isTyping ?? data?.composing ?? false,
+        lastSeen: data?.lastSeen ?? 0,
+      };
+    },
+    enabled: !!phone,
+    refetchInterval: 3000,
+  });
+}
+
 export function useChatMessages(phone: string | null) {
   return useQuery<WhatsAppMessage[]>({
     queryKey: ["whatsapp-messages", phone],
