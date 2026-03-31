@@ -130,6 +130,7 @@ export default function Conversations() {
   const [imageUrl, setImageUrl] = useState("");
   const [imageCaption, setImageCaption] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const lastHandledIncomingRef = useRef<string | null>(null);
 
   const openLightbox = async (phone: string, fallbackImg?: string) => {
     setLightboxImg(fallbackImg || null);
@@ -151,22 +152,37 @@ export default function Conversations() {
     setLightboxLoading(false);
   };
 
-  useRealtimeMessages(); // Subscribe to instant message updates via Supabase Realtime
   const { data: chats, isLoading: chatsLoading } = useWhatsAppChats();
   const selectedPhone = selectedChat ? phoneFromChatId(selectedChat.wa_chatid) : null;
+  useRealtimeMessages(selectedPhone);
   const { data: messages, isLoading: msgsLoading } = useChatMessages(selectedPhone);
   const { data: presence } = usePresence(selectedPhone);
   const sendMutation = useSendMessage();
   const sendImageMutation = useSendImage();
   const markAsRead = useMarkAsRead();
+  const lastMessageId = messages?.[messages.length - 1]?.id;
 
-  // Mark chat as read when selected
   useEffect(() => {
-    if (selectedPhone) {
-      markAsRead.mutate(selectedPhone);
+    if (!selectedPhone) {
+      lastHandledIncomingRef.current = null;
+      return;
     }
+
+    if (!messages?.length) {
+      markAsRead.mutate(selectedPhone);
+      return;
+    }
+
+    const lastMessage = messages[messages.length - 1];
+    if (lastMessage.fromMe) return;
+
+    const incomingKey = `${selectedPhone}:${lastMessage.id}`;
+    if (lastHandledIncomingRef.current === incomingKey) return;
+
+    lastHandledIncomingRef.current = incomingKey;
+    markAsRead.mutate(selectedPhone);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedPhone]);
+  }, [selectedPhone, messages]);
 
   const filtered = (chats ?? [])
     .filter((c) => {
@@ -183,8 +199,12 @@ export default function Conversations() {
     });
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+    if (!selectedPhone) return;
+    const frame = requestAnimationFrame(() => {
+      messagesEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [selectedPhone, lastMessageId]);
 
   const handleSend = () => {
     if (!text.trim() || !selectedPhone) return;
