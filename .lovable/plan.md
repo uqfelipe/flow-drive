@@ -1,23 +1,40 @@
 
-# Indicador de chat ativo + ocultar notificações
 
-## O que será feito
+# Marcar chat como lido ao abrir
 
-1. **Indicador visual do chat aberto** — Adicionar uma barra lateral colorida (primary) à esquerda do chat selecionado, estilo WhatsApp Web.
+## Problema
+Quando você abre um chat, o badge de notificações some (já implementado com `!isActive`), mas ao trocar de chat e voltar, os números reaparecem porque o `wa_unreadCount` vem da API e nunca é zerado.
 
-2. **Ocultar badge de notificações no chat aberto** — Quando o chat estiver selecionado (`isActive`), esconder o badge de contagem de mensagens não lidas. Na linha 311, adicionar `!isActive` à condição para não mostrar o badge.
+## Solução
+
+1. **Adicionar action `mark-read` na Edge Function** (`supabase/functions/whatsapp-chat/index.ts`) — Chamar a API da uazapi `/chat/readChat` para marcar as mensagens como lidas no WhatsApp quando o usuário abrir o chat.
+
+2. **Criar hook `useMarkAsRead`** (`src/hooks/use-chat.ts`) — Mutation que chama `mark-read` e depois invalida a lista de chats para atualizar o `wa_unreadCount` para 0.
+
+3. **Chamar ao selecionar chat** (`src/pages/Conversations.tsx`) — Quando o `selectedChat` mudar, chamar `markAsRead` automaticamente com o telefone do chat selecionado. Isso zera o contador na API e no frontend.
 
 ## Alterações
 
-**`src/pages/Conversations.tsx`**:
-
-- **Linha 248-254** — Adicionar `border-l-3 border-primary` ao chat ativo e melhorar o destaque visual:
-```tsx
-isActive
-  ? "bg-primary/12 shadow-sm shadow-primary/10 border-l-[3px] border-primary"
-  : "hover:bg-accent/40 active:scale-[0.99] border-l-[3px] border-transparent",
+**`supabase/functions/whatsapp-chat/index.ts`** — Novo bloco antes do `return json({ error: "Invalid action" })`:
+```typescript
+if (action === "mark-read") {
+  if (!phone) return json({ error: "phone required" }, 400);
+  const chatid = phone.includes("@") ? phone : `${phone}@s.whatsapp.net`;
+  await apiCall(inst.server_url, inst.instance_token, "/chat/readChat", { chatid });
+  return json({ success: true });
+}
 ```
 
-- **Linha 311** — Mudar condição do badge de `{hasUnread && (` para `{hasUnread && !isActive && (` para esconder notificações quando o chat está aberto.
+**`src/hooks/use-chat.ts`** — Novo hook:
+```typescript
+export function useMarkAsRead() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (phone: string) => chatAction("mark-read", { phone }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["whatsapp-chats"] }),
+  });
+}
+```
 
-Duas edições simples, sem mudanças em outros arquivos.
+**`src/pages/Conversations.tsx`** — Chamar `markAsRead` dentro de um `useEffect` quando `selectedChat` mudar, para marcar automaticamente como lido.
+
