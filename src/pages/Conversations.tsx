@@ -31,9 +31,15 @@ function phoneFromChatId(chatid: string) {
   return chatid?.replace("@s.whatsapp.net", "") ?? "";
 }
 
+function smartTimestamp(ts: number): Date {
+  // Auto-detect: >10 digits = ms, otherwise seconds
+  if (ts > 9999999999) return new Date(ts);
+  return new Date(ts * 1000);
+}
+
 function formatTime(ts?: number) {
   if (!ts) return "";
-  const d = new Date(ts * 1000);
+  const d = smartTimestamp(ts);
   const now = new Date();
   if (d.toDateString() === now.toDateString()) {
     return d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
