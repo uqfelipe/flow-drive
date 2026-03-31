@@ -45,7 +45,7 @@ export function useWhatsAppChats() {
         return !chatId.startsWith("13135550002");
       });
     },
-    refetchInterval: 10000,
+    refetchInterval: 5000,
   });
 }
 
