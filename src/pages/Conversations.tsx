@@ -198,8 +198,8 @@ export default function Conversations() {
       <div className="flex h-[calc(100vh-80px)] overflow-hidden rounded-xl border border-border shadow-lg mx-1 mb-1">
         {/* ─── Left panel ─── */}
         <div className={cn(
-          "w-full md:w-[360px] md:min-w-[360px] flex flex-col bg-card/80 backdrop-blur-sm",
-          selectedChat && "hidden md:flex"
+          "w-full md:w-[360px] md:min-w-[360px] flex-col bg-card/80 backdrop-blur-sm",
+          selectedChat ? "hidden md:flex" : "flex"
         )}>
           {/* Header */}
           <div className="px-4 py-3 bg-gradient-to-r from-primary/10 via-primary/5 to-transparent border-b border-border/50">
@@ -337,8 +337,8 @@ export default function Conversations() {
 
         {/* ─── Right panel ─── */}
         <div className={cn(
-          "flex-1 flex flex-col bg-background",
-          !selectedChat && "hidden md:flex"
+          "flex-1 flex-col bg-background",
+          !selectedChat ? "hidden md:flex" : "flex"
         )}>
           {!selectedChat ? (
             /* Empty state */
