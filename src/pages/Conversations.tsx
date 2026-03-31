@@ -16,7 +16,7 @@ import { Calendar } from "@/components/ui/calendar";
 import {
   Search, Send, MessageSquare, ArrowLeft, CalendarIcon, Image, FileText, ChevronDown,
   Smile, Check, CheckCheck, Mic, Paperclip, MoreVertical, Video, X,
-  MapPin, User, Download, Play, Pause, File, ExternalLink, Loader2
+  MapPin, User, Download, Play, Pause, File, ExternalLink, Loader2, Trash2, Square
 } from "lucide-react";
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { useWhatsAppChats, useChatMessages, useSendMessage, useSendImage, useSendMedia, usePresence, useRealtimeMessages, useMarkAsRead, type WhatsAppChat, type WhatsAppMessage } from "@/hooks/use-chat";
