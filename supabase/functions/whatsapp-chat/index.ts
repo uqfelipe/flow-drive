@@ -20,12 +20,12 @@ async function getInstance() {
   );
   const { data, error } = await supabase
     .from("whatsapp_instances")
-    .select("server_url, instance_token")
+    .select("server_url, instance_token, instance_name")
     .eq("user_id", "admin")
     .limit(1)
     .single();
   if (error || !data) throw new Error("Instância WhatsApp não encontrada");
-  return data as { server_url: string; instance_token: string };
+  return data as { server_url: string; instance_token: string; instance_name: string };
 }
 
 async function apiCall(serverUrl: string, token: string, path: string, body: unknown) {
@@ -45,7 +45,7 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
   try {
-    const { action, phone, text, imageUrl, chatLid, type, fileUrl, docName } = await req.json();
+    const { action, phone, text, imageUrl, chatLid, type, fileUrl, docName, messageId: msgId, remoteJid, fromMe } = await req.json();
     const inst = await getInstance();
 
     if (action === "list-chats") {
@@ -171,6 +171,22 @@ Deno.serve(async (req) => {
       }
 
       return json({ success: true });
+    }
+
+    if (action === "delete-message") {
+      if (!msgId || !remoteJid) return json({ error: "messageId and remoteJid required" }, 400);
+      const deleteUrl = `${inst.server_url}/chat/deleteMessageForEveryone/${inst.instance_name}`;
+      const res = await fetch(deleteUrl, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json", token: inst.instance_token },
+        body: JSON.stringify({ id: msgId, remoteJid, fromMe: fromMe ?? true }),
+      });
+      if (!res.ok) {
+        const errText = await res.text();
+        throw new Error(`Delete error ${res.status}: ${errText}`);
+      }
+      const data = await res.json();
+      return json(data);
     }
 
     return json({ error: "Invalid action" }, 400);

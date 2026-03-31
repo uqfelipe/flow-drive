@@ -323,3 +323,29 @@ export function useSendMedia() {
     },
   });
 }
+
+export function useDeleteMessage() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ messageId, remoteJid, fromMe, phone }: { messageId: string; remoteJid: string; fromMe: boolean; phone: string }) => {
+      return chatAction("delete-message", { messageId, remoteJid, fromMe: fromMe ? "true" : "false" });
+    },
+    onMutate: async ({ phone, messageId }) => {
+      await qc.cancelQueries({ queryKey: ["whatsapp-messages", phone] });
+      const previous = qc.getQueryData<WhatsAppMessage[]>(["whatsapp-messages", phone]);
+      qc.setQueryData<WhatsAppMessage[]>(["whatsapp-messages", phone], (old) =>
+        (old || []).filter((m) => m.id !== messageId)
+      );
+      return { previous };
+    },
+    onError: (_, vars, context) => {
+      if (context?.previous) {
+        qc.setQueryData(["whatsapp-messages", vars.phone], context.previous);
+      }
+    },
+    onSettled: (_, __, vars) => {
+      qc.invalidateQueries({ queryKey: ["whatsapp-messages", vars.phone] });
+      qc.invalidateQueries({ queryKey: ["whatsapp-chats"] });
+    },
+  });
+}
