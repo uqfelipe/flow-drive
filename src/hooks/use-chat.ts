@@ -80,9 +80,9 @@ export function useWhatsAppChats() {
 
 /**
  * Subscribe to Supabase Realtime on message_signals table.
- * When webhook inserts/updates a signal, instantly refetch messages and chats.
+ * When webhook inserts/updates a signal, refetch active queries immediately.
  */
-export function useRealtimeMessages() {
+export function useRealtimeMessages(activePhone?: string | null) {
   const qc = useQueryClient();
 
   useEffect(() => {
@@ -92,15 +92,18 @@ export function useRealtimeMessages() {
         "postgres_changes",
         { event: "*", schema: "public", table: "message_signals" },
         (payload: any) => {
-          // Instantly refetch messages for the affected chat
-          const chatId = payload.new?.chat_id ?? "";
-          if (chatId) {
-            // Extract phone from chatId (e.g. "553398417049@s.whatsapp.net" -> "553398417049")
-            const phone = chatId.replace(/@.*$/, "");
-            qc.invalidateQueries({ queryKey: ["whatsapp-messages", phone] });
+          const chatId = payload.new?.chat_id ?? payload.old?.chat_id ?? "";
+          const phone = chatId.replace(/@.*$/, "");
+
+          if (phone) {
+            void qc.refetchQueries({ queryKey: ["whatsapp-messages", phone], type: "active" });
           }
-          // Also refresh chat list
-          qc.invalidateQueries({ queryKey: ["whatsapp-chats"] });
+
+          void qc.refetchQueries({ queryKey: ["whatsapp-chats"], type: "active" });
+
+          if (activePhone && phone === activePhone) {
+            void qc.refetchQueries({ queryKey: ["whatsapp-messages", activePhone], type: "active" });
+          }
         }
       )
       .subscribe();
@@ -108,7 +111,7 @@ export function useRealtimeMessages() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [qc]);
+  }, [activePhone, qc]);
 }
 
 export interface PresenceData {
