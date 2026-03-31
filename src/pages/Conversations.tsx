@@ -27,6 +27,24 @@ function chatName(chat: WhatsAppChat) {
   return chat.wa_contactName || chat.wa_name || chat.name || chat.wa_chatid?.replace("@s.whatsapp.net", "") || "—";
 }
 
+function chatPreview(msg: any): string {
+  if (!msg) return "";
+  if (typeof msg === "string") return msg;
+  if (typeof msg !== "object") return String(msg);
+  const text = msg.text ?? msg.caption ?? msg.body ?? msg.conversation ?? "";
+  if (text) return text;
+  if (msg.mimetype?.startsWith("image") || msg.imageMessage) return "📷 Imagem";
+  if (msg.mimetype?.startsWith("video") || msg.videoMessage) return "🎥 Vídeo";
+  if (msg.mimetype?.startsWith("audio") || msg.audioMessage) return "🎵 Áudio";
+  if (msg.documentMessage || msg.fileName) return `📄 ${msg.fileName || "Documento"}`;
+  if (msg.stickerMessage) return "🏷️ Sticker";
+  if (msg.contactMessage) return "👤 Contato";
+  if (msg.locationMessage) return "📍 Localização";
+  const str = JSON.stringify(msg);
+  if (str.length > 2 && str.length < 100) return str;
+  return "[mídia]";
+}
+
 function phoneFromChatId(chatid: string) {
   return chatid?.replace("@s.whatsapp.net", "") ?? "";
 }
