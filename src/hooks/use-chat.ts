@@ -70,3 +70,15 @@ export function useSendMessage() {
     },
   });
 }
+
+export function useSendImage() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ phone, imageUrl, text }: { phone: string; imageUrl: string; text?: string }) => {
+      return chatAction("send-image", { phone, imageUrl, text: text || "" });
+    },
+    onSuccess: (_, vars) => {
+      qc.invalidateQueries({ queryKey: ["whatsapp-messages", vars.phone] });
+    },
+  });
+}
