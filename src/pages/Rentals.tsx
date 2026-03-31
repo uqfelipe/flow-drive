@@ -100,8 +100,22 @@ export default function Rentals() {
                   <CardContent className="p-4">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-4">
-                        <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                          {rental.origin === "chatbot" ? <MessageSquare className="h-4 w-4 text-primary" /> : <CalendarCheck className="h-4 w-4 text-primary" />}
+                        <div className="flex items-center gap-2">
+                          <Avatar className="h-10 w-10 border border-border">
+                            {rental.customers?.photo ? (
+                              <AvatarImage src={rental.customers.photo} alt={rental.customers?.name ?? ""} />
+                            ) : null}
+                            <AvatarFallback className="text-xs bg-primary/10 text-primary">
+                              {(rental.customers?.name ?? "?").split(" ").map(w => w[0]).slice(0, 2).join("").toUpperCase()}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div className="h-10 w-14 rounded-lg bg-muted overflow-hidden flex items-center justify-center border border-border">
+                            {rental.vehicles?.images?.[0] ? (
+                              <img src={rental.vehicles.images[0]} alt={vehicleName} className="h-full w-full object-cover" />
+                            ) : (
+                              <Car className="h-4 w-4 text-muted-foreground" />
+                            )}
+                          </div>
                         </div>
                         <div>
                           <p className="font-medium text-sm">{rental.customers?.name ?? "—"}</p>
