@@ -239,6 +239,7 @@ function MediaAudio({ url, isPtt, fromMe, messageId, durationHint }: { url: stri
   });
   const [isDownloading, setIsDownloading] = useState(false);
   const [downloadError, setDownloadError] = useState(false);
+  const [userRequestedPlay, setUserRequestedPlay] = useState(false);
 
   const fmtTime = (s: number) => {
     const m = Math.floor(s / 60);
@@ -272,6 +273,7 @@ function MediaAudio({ url, isPtt, fromMe, messageId, durationHint }: { url: stri
 
   const togglePlay = async () => {
     if (!playableUrl) {
+      setUserRequestedPlay(true);
       await downloadMedia();
       return;
     }
@@ -280,17 +282,17 @@ function MediaAudio({ url, isPtt, fromMe, messageId, durationHint }: { url: stri
     if (isPlaying) { a.pause(); } else { a.play(); }
   };
 
-  // Auto-play after download
+  // Auto-play only after user-initiated download
   useEffect(() => {
-    if (playableUrl && audioRef.current && !isPlaying && isDownloading === false) {
-      // Small delay to let audio element load the src
+    if (playableUrl && audioRef.current && userRequestedPlay && !isDownloading) {
       const timer = setTimeout(() => {
         audioRef.current?.play().catch(() => {});
+        setUserRequestedPlay(false);
       }, 200);
       return () => clearTimeout(timer);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [playableUrl]);
+  }, [playableUrl, userRequestedPlay, isDownloading]);
 
   // Waveform bars pattern
   const bars = [3, 6, 4, 8, 5, 9, 3, 7, 4, 6, 8, 3, 5, 7, 4, 9, 6, 3, 7, 5, 8, 4, 6, 3, 7, 5, 9, 4];
