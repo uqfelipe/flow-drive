@@ -151,6 +151,7 @@ export type Database = {
           name: string
           notes: string | null
           phone: string
+          photo: string | null
           status: string
           updated_at: string
         }
@@ -161,6 +162,7 @@ export type Database = {
           name: string
           notes?: string | null
           phone: string
+          photo?: string | null
           status?: string
           updated_at?: string
         }
@@ -171,6 +173,7 @@ export type Database = {
           name?: string
           notes?: string | null
           phone?: string
+          photo?: string | null
           status?: string
           updated_at?: string
         }

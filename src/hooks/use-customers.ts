@@ -7,6 +7,7 @@ export interface CustomerRow {
   phone: string;
   cpf: string;
   notes: string | null;
+  photo: string | null;
   status: string;
   created_at: string;
   updated_at: string;
@@ -29,7 +30,7 @@ export function useCustomers() {
 export function useCreateCustomer() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (customer: { name: string; phone: string; cpf: string; status?: string }) => {
+    mutationFn: async (customer: { name: string; phone: string; cpf: string; status?: string; photo?: string | null }) => {
       const { data, error } = await supabase.from("customers").insert(customer).select().single();
       if (error) throw error;
       return data;
@@ -41,7 +42,7 @@ export function useCreateCustomer() {
 export function useUpdateCustomer() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ id, ...updates }: { id: string; name?: string; phone?: string; cpf?: string; status?: string; notes?: string | null }) => {
+    mutationFn: async ({ id, ...updates }: { id: string; name?: string; phone?: string; cpf?: string; status?: string; notes?: string | null; photo?: string | null }) => {
       const { data, error } = await supabase.from("customers").update(updates).eq("id", id).select().single();
       if (error) throw error;
       return data;

@@ -71,8 +71,12 @@ export default function Customers() {
               <Card key={customer.id} className="bg-card border-border hover:border-primary/20 transition-colors cursor-pointer" onClick={() => handleEdit(customer)}>
                 <CardContent className="p-4 flex items-center justify-between">
                   <div className="flex items-center gap-4">
-                    <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-medium text-sm">
-                      {customer.name.split(" ").map((n) => n[0]).join("").slice(0, 2)}
+                    <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-medium text-sm overflow-hidden">
+                      {customer.photo ? (
+                        <img src={customer.photo} alt={customer.name} className="h-full w-full object-cover" />
+                      ) : (
+                        customer.name.split(" ").map((n) => n[0]).join("").slice(0, 2)
+                      )}
                     </div>
                     <div>
                       <p className="font-medium text-sm">{customer.name}</p>

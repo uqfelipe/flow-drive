@@ -6,7 +6,19 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useCreateCustomer, useUpdateCustomer, type CustomerRow } from "@/hooks/use-customers";
 import { useToast } from "@/hooks/use-toast";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
+import { Upload, X, ImageIcon } from "lucide-react";
+
+const IMGBB_API_KEY = "218e4f96aa83bbfd4e78abb8d60bad52";
+
+async function uploadToImgbb(file: File): Promise<string> {
+  const form = new FormData();
+  form.append("image", file);
+  const res = await fetch(`https://api.imgbb.com/1/upload?key=${IMGBB_API_KEY}`, { method: "POST", body: form });
+  const json = await res.json();
+  if (!json.success) throw new Error("Falha no upload");
+  return json.data.url;
+}
 
 interface Props {
   open: boolean;
@@ -19,12 +31,15 @@ export function CustomerFormDialog({ open, onOpenChange, customer }: Props) {
   const createMutation = useCreateCustomer();
   const updateMutation = useUpdateCustomer();
   const isEdit = !!customer;
+  const fileRef = useRef<HTMLInputElement>(null);
 
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [cpf, setCpf] = useState("");
   const [status, setStatus] = useState("active");
   const [notes, setNotes] = useState("");
+  const [photo, setPhoto] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
 
   useEffect(() => {
     if (open && customer) {
@@ -33,10 +48,48 @@ export function CustomerFormDialog({ open, onOpenChange, customer }: Props) {
       setCpf(customer.cpf);
       setStatus(customer.status);
       setNotes(customer.notes || "");
+      setPhoto(customer.photo || null);
     } else if (open) {
-      setName(""); setPhone(""); setCpf(""); setStatus("active"); setNotes("");
+      setName(""); setPhone(""); setCpf(""); setStatus("active"); setNotes(""); setPhoto(null);
     }
   }, [open, customer]);
+
+  // Ctrl+V paste support
+  useEffect(() => {
+    if (!open) return;
+    const handlePaste = async (e: ClipboardEvent) => {
+      const items = e.clipboardData?.items;
+      if (!items) return;
+      for (const item of Array.from(items)) {
+        if (item.type.startsWith("image/")) {
+          const file = item.getAsFile();
+          if (!file) continue;
+          setUploading(true);
+          try {
+            const url = await uploadToImgbb(file);
+            setPhoto(url);
+            toast({ title: "Foto colada com sucesso!" });
+          } catch { toast({ title: "Erro ao colar foto", variant: "destructive" }); }
+          setUploading(false);
+        }
+      }
+    };
+    document.addEventListener("paste", handlePaste);
+    return () => document.removeEventListener("paste", handlePaste);
+  }, [open, toast]);
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    try {
+      const url = await uploadToImgbb(file);
+      setPhoto(url);
+      toast({ title: "Foto enviada!" });
+    } catch { toast({ title: "Erro no upload", variant: "destructive" }); }
+    setUploading(false);
+    if (fileRef.current) fileRef.current.value = "";
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -46,10 +99,10 @@ export function CustomerFormDialog({ open, onOpenChange, customer }: Props) {
     }
     try {
       if (isEdit) {
-        await updateMutation.mutateAsync({ id: customer!.id, name, phone, cpf, status, notes: notes || null });
+        await updateMutation.mutateAsync({ id: customer!.id, name, phone, cpf, status, notes: notes || null, photo });
         toast({ title: "Cliente atualizado com sucesso!" });
       } else {
-        await createMutation.mutateAsync({ name, phone, cpf, status });
+        await createMutation.mutateAsync({ name, phone, cpf, status, photo });
         toast({ title: "Cliente criado com sucesso!" });
       }
       onOpenChange(false);
@@ -67,6 +120,31 @@ export function CustomerFormDialog({ open, onOpenChange, customer }: Props) {
           <DialogTitle>{isEdit ? "Editar Cliente" : "Novo Cliente"}</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Photo */}
+          <div className="flex items-center gap-4">
+            <div className="relative h-16 w-16 rounded-full bg-muted flex items-center justify-center overflow-hidden border border-border shrink-0">
+              {photo ? (
+                <img src={photo} alt="Foto" className="h-full w-full object-cover" />
+              ) : (
+                <ImageIcon className="h-6 w-6 text-muted-foreground" />
+              )}
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <div className="flex gap-2">
+                <Button type="button" size="sm" variant="outline" disabled={uploading} onClick={() => fileRef.current?.click()}>
+                  <Upload className="h-3.5 w-3.5 mr-1" />{uploading ? "Enviando..." : "Upload"}
+                </Button>
+                {photo && (
+                  <Button type="button" size="sm" variant="ghost" onClick={() => setPhoto(null)}>
+                    <X className="h-3.5 w-3.5 mr-1" />Remover
+                  </Button>
+                )}
+              </div>
+              <p className="text-[11px] text-muted-foreground">Ou cole com Ctrl+V</p>
+            </div>
+            <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
+          </div>
+
           <div className="space-y-2">
             <Label>Nome *</Label>
             <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Nome completo" />
