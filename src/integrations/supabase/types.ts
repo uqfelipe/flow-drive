@@ -179,6 +179,24 @@ export type Database = {
         }
         Relationships: []
       }
+      message_signals: {
+        Row: {
+          chat_id: string
+          id: string
+          updated_at: string
+        }
+        Insert: {
+          chat_id: string
+          id?: string
+          updated_at?: string
+        }
+        Update: {
+          chat_id?: string
+          id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       notifications: {
         Row: {
           created_at: string

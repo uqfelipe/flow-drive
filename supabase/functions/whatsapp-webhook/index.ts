@@ -49,10 +49,20 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Log message events (existing behavior)
+    // Handle message events — upsert signal for Realtime
     if (eventType === "messages" || eventType === "message") {
       const msgType = body.message?.messageType ?? body.message?.type ?? "unknown";
-      console.log(`Webhook received for user: ${userId}/${eventType}/${msgType} body: ${JSON.stringify(body)}`);
+      const chatId = body.message?.chatid ?? body.chat?.wa_chatid ?? "";
+      console.log(`Webhook received for user: ${userId}/${eventType}/${msgType}`);
+
+      if (chatId) {
+        await adminClient
+          .from("message_signals")
+          .upsert(
+            { chat_id: chatId, updated_at: new Date().toISOString() },
+            { onConflict: "chat_id" }
+          );
+      }
     } else {
       console.log(`Webhook received for user: ${userId} event: ${eventType}`);
     }

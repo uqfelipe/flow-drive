@@ -11,7 +11,7 @@ import {
   Smile, Check, CheckCheck, Mic, Paperclip, MoreVertical, Video, X
 } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
-import { useWhatsAppChats, useChatMessages, useSendMessage, useSendImage, usePresence, type WhatsAppChat, type WhatsAppMessage } from "@/hooks/use-chat";
+import { useWhatsAppChats, useChatMessages, useSendMessage, useSendImage, usePresence, useRealtimeMessages, type WhatsAppChat, type WhatsAppMessage } from "@/hooks/use-chat";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription
 } from "@/components/ui/dialog";
@@ -151,6 +151,7 @@ export default function Conversations() {
     setLightboxLoading(false);
   };
 
+  useRealtimeMessages(); // Subscribe to instant message updates via Supabase Realtime
   const { data: chats, isLoading: chatsLoading } = useWhatsAppChats();
   const selectedPhone = selectedChat ? phoneFromChatId(selectedChat.wa_chatid) : null;
   const { data: messages, isLoading: msgsLoading } = useChatMessages(selectedPhone);
