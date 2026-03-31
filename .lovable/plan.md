@@ -1,61 +1,33 @@
 
 
-# Plano: Chat em tempo real com clientes via WhatsApp API
+# Plano: Melhorar visualização do chat WhatsApp
 
 ## O que será feito
 
-Transformar a página `/conversations` em uma interface de chat completa estilo WhatsApp, permitindo visualizar histórico de mensagens e enviar mensagens de texto para clientes usando a API uazapi.
+Redesign visual completo da página `/conversations` para uma experiência mais moderna e imersiva, inspirada no WhatsApp Web.
 
-## Arquitetura
+## Alterações em `src/pages/Conversations.tsx`
 
-```text
-Frontend (Conversations.tsx)
-  ├── Lista de conversas (painel esquerdo)
-  └── Painel de chat (painel direito)
-        ├── Histórico de mensagens ← Edge Function → uazapi POST /message/find
-        └── Enviar mensagem       ← Edge Function → uazapi POST /send/text
-```
+### Painel esquerdo (lista de conversas)
+- Header com gradiente sutil usando cor primary
+- Hover com animação mais suave nos itens da lista
+- Separador visual entre conversas com linha fina
+- Último texto com ícone de tipo (📷, 🎵) inline mais elegante
+- Status online indicator (bolinha verde) no avatar
 
-A comunicação com a uazapi passa por uma Edge Function intermediária (`whatsapp-chat`) que lê `server_url` e `instance_token` da tabela `whatsapp_instances` no Supabase, evitando expor tokens no frontend.
+### Painel direito (área de chat)
+- **Background**: padrão de fundo estilo WhatsApp (pattern SVG sutil em vez de dots)
+- **Bolhas de mensagem**: sombras mais pronunciadas, cantos arredondados com "tail" (triângulo), max-width ajustado
+- **Bolhas enviadas**: gradiente sutil de primary ao invés de cor sólida
+- **Bolhas recebidas**: fundo branco/card com borda mais suave
+- **Separadores de data**: estilo pill mais clean com backdrop-blur
+- **Header do chat**: adicionar botão de chamada e mais opções visuais
+- **Input area**: campo com bordas arredondadas maiores, botão de envio com animação de rotação ao enviar, ícone de anexo e emoji (decorativo)
+- **Timestamps**: posicionados como "cauda" da bolha, mais discretos
+- **Mensagem enviando**: efeito de opacity/loading enquanto `isPending`
 
-## Alterações
-
-### 1. Edge Function `supabase/functions/whatsapp-chat/index.ts` (novo)
-
-Ações suportadas:
-- **`fetch-messages`**: recebe `{ phone }`, converte para chatid (`phone@s.whatsapp.net`), chama `POST {server_url}/message/find` com `{ chatid, limit: 50 }` e retorna as mensagens
-- **`send-text`**: recebe `{ phone, text }`, chama `POST {server_url}/send/text` com `{ number: phone, text }` e retorna o resultado
-- **`list-chats`**: chama `POST {server_url}/chat/find` com `{ limit: 50 }` para listar conversas recentes direto da API do WhatsApp
-
-Usa `whatsapp_instances` para obter `server_url` e `instance_token`.
-
-### 2. Hook `src/hooks/use-chat.ts` (novo)
-
-- `useChatMessages(phone)`: React Query que chama a edge function `fetch-messages`, refetch a cada 5s para polling
-- `useSendMessage()`: mutation que chama `send-text` e invalida a query de mensagens
-- `useWhatsAppChats()`: React Query que chama `list-chats` para listar conversas da instância
-
-### 3. Página `src/pages/Conversations.tsx` (reescrita)
-
-Layout split-panel:
-- **Painel esquerdo** (~320px): lista de conversas vindas da API do WhatsApp (nome, último texto, timestamp), com busca
-- **Painel direito**: área de chat com:
-  - Header com nome/telefone do contato
-  - Área de mensagens com scroll (bolhas verdes = enviadas, brancas = recebidas)
-  - Input de texto + botão enviar na parte inferior
-  - Mensagens ordenadas cronologicamente, `fromMe` diferencia enviadas/recebidas
-
-### 4. Rota no App.tsx
-
-Nenhuma alteração necessária — `/conversations` já existe.
-
-## Detalhes técnicos
-
-- **API uazapi usada**:
-  - `POST /message/find` → busca mensagens por `chatid` (formato `phone@s.whatsapp.net`)
-  - `POST /send/text` → envia texto com `{ number, text }`
-  - Autenticação via header `token` com `instance_token` da tabela
-- **Polling**: mensagens atualizadas a cada 5 segundos via `refetchInterval`
-- **CORS**: Edge Function com headers padrão Supabase
-- **Sem novas tabelas**: tudo via API direta da uazapi, sem persistir mensagens localmente
+### Melhorias gerais
+- Transições suaves ao trocar de conversa (fade in nas mensagens)
+- Empty state mais visual com ilustração SVG inline
+- Responsividade melhorada com transição slide no mobile
 
