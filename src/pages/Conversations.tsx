@@ -246,10 +246,10 @@ export default function Conversations() {
                     <button
                       key={chat.wa_chatid}
                       className={cn(
-                        "w-full flex items-center gap-3 px-3 py-3 text-left rounded-xl transition-all duration-200",
+                        "w-full flex items-center gap-3 px-3 py-3 text-left rounded-xl transition-all duration-200 border-l-[3px]",
                         isActive
-                          ? "bg-primary/12 shadow-sm shadow-primary/10"
-                          : "hover:bg-accent/40 active:scale-[0.99]",
+                          ? "bg-primary/12 shadow-sm shadow-primary/10 border-primary"
+                          : "hover:bg-accent/40 active:scale-[0.99] border-transparent",
                         hasUnread && !isActive && "bg-accent/20"
                       )}
                       onClick={() => setSelectedChat(chat)}
@@ -308,7 +308,7 @@ export default function Conversations() {
                                 ? (chat.wa_lastMsg as any).text ?? (chat.wa_lastMsg as any).caption ?? ""
                                 : formatPhone(phoneFromChatId(chat.wa_chatid))}
                           </p>
-                          {hasUnread && (
+                          {hasUnread && !isActive && (
                             <span className="bg-success text-success-foreground text-[10px] font-bold rounded-full h-[18px] min-w-[18px] flex items-center justify-center px-1 shrink-0">
                               {chat.wa_unreadCount}
                             </span>
