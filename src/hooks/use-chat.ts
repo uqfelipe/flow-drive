@@ -38,15 +38,27 @@ export function useWhatsAppChats() {
   return useQuery<WhatsAppChat[]>({
     queryKey: ["whatsapp-chats"],
     queryFn: async () => {
+      // Fetch connected instance number to hide own chat
+      const { data: inst } = await supabase
+        .from("whatsapp_instances")
+        .select("instance_name")
+        .eq("user_id", "admin")
+        .limit(1)
+        .maybeSingle();
+      const ownNumber = inst?.instance_name ?? "";
+
       const data = await chatAction("list-chats");
       const chats = data?.chats ?? [];
-      // Hide Meta AI contact
       return chats.filter((c: any) => {
         const chatId = c.wa_chatid ?? "";
-        return !chatId.startsWith("13135550002");
+        // Hide Meta AI contact
+        if (chatId.startsWith("13135550002")) return false;
+        // Hide own connected number
+        if (ownNumber && chatId.startsWith(ownNumber)) return false;
+        return true;
       });
     },
-    refetchInterval: 10000, // Fallback only — Realtime handles instant updates
+    refetchInterval: 10000,
   });
 }
 
