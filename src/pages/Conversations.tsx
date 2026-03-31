@@ -18,7 +18,7 @@ import {
   Smile, Check, CheckCheck, Mic, Paperclip, MoreVertical, Video, X,
   MapPin, User, Download, Play, Pause, File, ExternalLink, Loader2
 } from "lucide-react";
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { useWhatsAppChats, useChatMessages, useSendMessage, useSendImage, useSendMedia, usePresence, useRealtimeMessages, useMarkAsRead, type WhatsAppChat, type WhatsAppMessage } from "@/hooks/use-chat";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription
