@@ -102,13 +102,13 @@ function formatPhone(phone: string) {
 
 function shouldShowDateSeparator(msgs: WhatsAppMessage[], idx: number) {
   if (idx === 0) return true;
-  const curr = new Date(msgs[idx].timestamp * 1000).toDateString();
-  const prev = new Date(msgs[idx - 1].timestamp * 1000).toDateString();
+  const curr = smartTimestamp(msgs[idx].timestamp).toDateString();
+  const prev = smartTimestamp(msgs[idx - 1].timestamp).toDateString();
   return curr !== prev;
 }
 
 function formatDateSeparator(ts: number) {
-  const d = new Date(ts * 1000);
+  const d = smartTimestamp(ts);
   const now = new Date();
   if (d.toDateString() === now.toDateString()) return "Hoje";
   const yesterday = new Date(now);
