@@ -39,7 +39,7 @@ export function useFlow(id: string | null) {
         .eq("id", id!)
         .maybeSingle();
       if (error) throw error;
-      return data as FlowRow | null;
+      return data as unknown as FlowRow | null;
     },
   });
 }
