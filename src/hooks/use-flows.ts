@@ -23,7 +23,7 @@ export function useFlows() {
         .select("*")
         .order("created_at", { ascending: false });
       if (error) throw error;
-      return data as FlowRow[];
+      return data as unknown as FlowRow[];
     },
   });
 }
