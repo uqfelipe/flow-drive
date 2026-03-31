@@ -101,7 +101,18 @@ Deno.serve(async (req) => {
       return json(data);
     }
 
-    if (action === "send-text") {
+    if (action === "download-media") {
+      if (!phone) return json({ error: "message id required (phone field)" }, 400);
+      const body: Record<string, unknown> = {
+        id: phone,
+        return_link: true,
+        generate_mp3: true,
+      };
+      const data = await apiCall(inst.server_url, inst.instance_token, "/message/download", body);
+      return json(data);
+    }
+
+
       if (!phone || !text) return json({ error: "phone and text required" }, 400);
       const data = await apiCall(inst.server_url, inst.instance_token, "/send/text", {
         number: phone,
