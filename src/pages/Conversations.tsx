@@ -308,7 +308,7 @@ export default function Conversations() {
                                 ? (chat.wa_lastMsg as any).text ?? (chat.wa_lastMsg as any).caption ?? ""
                                 : formatPhone(phoneFromChatId(chat.wa_chatid))}
                           </p>
-                          {hasUnread && (
+                          {hasUnread && !isActive && (
                             <span className="bg-success text-success-foreground text-[10px] font-bold rounded-full h-[18px] min-w-[18px] flex items-center justify-center px-1 shrink-0">
                               {chat.wa_unreadCount}
                             </span>
