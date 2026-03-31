@@ -128,6 +128,13 @@ Deno.serve(async (req) => {
       }
     }
 
+    if (action === "mark-read") {
+      if (!phone) return json({ error: "phone required" }, 400);
+      const chatid = phone.includes("@") ? phone : `${phone}@s.whatsapp.net`;
+      await apiCall(inst.server_url, inst.instance_token, "/chat/readChat", { chatid });
+      return json({ success: true });
+    }
+
     return json({ error: "Invalid action" }, 400);
   } catch (e: any) {
     console.error("whatsapp-chat error:", e);

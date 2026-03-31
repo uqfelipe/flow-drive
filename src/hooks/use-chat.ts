@@ -191,6 +191,14 @@ export function useSendMessage() {
   });
 }
 
+export function useMarkAsRead() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (phone: string) => chatAction("mark-read", { phone }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["whatsapp-chats"] }),
+  });
+}
+
 export function useSendImage() {
   const qc = useQueryClient();
   return useMutation({

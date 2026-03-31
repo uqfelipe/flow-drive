@@ -158,6 +158,15 @@ export default function Conversations() {
   const { data: presence } = usePresence(selectedPhone);
   const sendMutation = useSendMessage();
   const sendImageMutation = useSendImage();
+  const markAsRead = useMarkAsRead();
+
+  // Mark chat as read when selected
+  useEffect(() => {
+    if (selectedPhone) {
+      markAsRead.mutate(selectedPhone);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedPhone]);
 
   const filtered = (chats ?? []).filter((c) => {
     const q = search.toLowerCase();
