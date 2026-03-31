@@ -50,6 +50,8 @@ export function AppSidebar() {
   const collapsed = state === "collapsed";
   const location = useLocation();
   const isActive = (path: string) => location.pathname === path;
+  const { data: chats } = useWhatsAppChats();
+  const totalUnread = chats?.reduce((sum, c) => sum + (c.wa_unreadCount || 0), 0) || 0;
 
   return (
     <Sidebar collapsible="icon" className="border-r border-sidebar-border">
