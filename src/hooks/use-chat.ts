@@ -30,6 +30,7 @@ export interface WhatsAppMessage {
   timestamp: number;
   type: string;
   status?: string;
+  fileURL?: string;
 }
 
 export function useWhatsAppChats() {
@@ -63,6 +64,18 @@ export function useSendMessage() {
   return useMutation({
     mutationFn: async ({ phone, text }: { phone: string; text: string }) => {
       return chatAction("send-text", { phone, text });
+    },
+    onSuccess: (_, vars) => {
+      qc.invalidateQueries({ queryKey: ["whatsapp-messages", vars.phone] });
+    },
+  });
+}
+
+export function useSendImage() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ phone, imageUrl, text }: { phone: string; imageUrl: string; text?: string }) => {
+      return chatAction("send-image", { phone, imageUrl, text: text || "" });
     },
     onSuccess: (_, vars) => {
       qc.invalidateQueries({ queryKey: ["whatsapp-messages", vars.phone] });

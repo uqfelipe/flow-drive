@@ -11,7 +11,10 @@ import {
   Smile, Check, CheckCheck, Mic, Paperclip, MoreVertical, Video, X
 } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
-import { useWhatsAppChats, useChatMessages, useSendMessage, type WhatsAppChat, type WhatsAppMessage } from "@/hooks/use-chat";
+import { useWhatsAppChats, useChatMessages, useSendMessage, useSendImage, type WhatsAppChat, type WhatsAppMessage } from "@/hooks/use-chat";
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription
+} from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -49,23 +52,34 @@ function formatMsgTime(ts?: number) {
   return d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
 }
 
-function extractContent(msg: WhatsAppMessage): { text: string; type: "text" | "image" | "document" | "audio" | "video" | "sticker" | "other" } {
+function extractContent(msg: WhatsAppMessage): { text: string; type: "text" | "image" | "document" | "audio" | "video" | "sticker" | "other"; imageUrl?: string } {
   const content = msg.content;
-  if (typeof content === "string") {
-    return { text: content, type: "text" };
-  }
+  // Check for fileURL first (media messages from uazapi)
+  const fileUrl = (msg as any).fileURL || (msg as any).fileUrl;
+
   if (typeof content === "object" && content !== null) {
     const c = content as any;
+    const imgUrl = fileUrl || c.url || c.fileURL || c.fileUrl;
+
+    if (c.mimetype?.startsWith("image") || msg.type?.toLowerCase().includes("image")) {
+      return { text: c.caption || c.text || "", type: "image", imageUrl: imgUrl };
+    }
+    if (c.caption && imgUrl) return { text: c.caption, type: "image", imageUrl: imgUrl };
     if (c.text) return { text: c.text, type: "text" };
-    if (c.caption) return { text: c.caption, type: "image" };
     if (c.fileName) return { text: `📄 ${c.fileName}`, type: "document" };
-    if (c.mimetype?.startsWith("image")) return { text: "📷 Imagem", type: "image" };
-    if (c.mimetype?.startsWith("video")) return { text: "🎥 Vídeo", type: "video" };
+    if (c.mimetype?.startsWith("video")) return { text: c.caption || "🎥 Vídeo", type: "video" };
     if (c.mimetype?.startsWith("audio")) return { text: "🎵 Áudio", type: "audio" };
     if (c.title) return { text: c.title, type: "other" };
   }
+
+  if (typeof content === "string") {
+    const msgType = msg.type?.toLowerCase() ?? "";
+    if (msgType.includes("image") && fileUrl) return { text: content || "", type: "image", imageUrl: fileUrl };
+    if (content) return { text: content, type: "text" };
+  }
+
   const msgType = msg.type?.toLowerCase() ?? "";
-  if (msgType.includes("image")) return { text: "📷 Imagem", type: "image" };
+  if (msgType.includes("image")) return { text: "📷 Imagem", type: "image", imageUrl: fileUrl };
   if (msgType.includes("video")) return { text: "🎥 Vídeo", type: "video" };
   if (msgType.includes("audio") || msgType.includes("ptt")) return { text: "🎵 Áudio", type: "audio" };
   if (msgType.includes("document")) return { text: "📄 Documento", type: "document" };
@@ -108,6 +122,9 @@ export default function Conversations() {
   const [text, setText] = useState("");
   const [lightboxImg, setLightboxImg] = useState<string | null>(null);
   const [lightboxLoading, setLightboxLoading] = useState(false);
+  const [imageDialogOpen, setImageDialogOpen] = useState(false);
+  const [imageUrl, setImageUrl] = useState("");
+  const [imageCaption, setImageCaption] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const openLightbox = async (phone: string, fallbackImg?: string) => {
@@ -125,10 +142,16 @@ export default function Conversations() {
     }
   };
 
+  const openImgLightbox = (url: string) => {
+    setLightboxImg(url);
+    setLightboxLoading(false);
+  };
+
   const { data: chats, isLoading: chatsLoading } = useWhatsAppChats();
   const selectedPhone = selectedChat ? phoneFromChatId(selectedChat.wa_chatid) : null;
   const { data: messages, isLoading: msgsLoading } = useChatMessages(selectedPhone);
   const sendMutation = useSendMessage();
+  const sendImageMutation = useSendImage();
 
   const filtered = (chats ?? []).filter((c) => {
     const q = search.toLowerCase();
@@ -407,7 +430,7 @@ export default function Conversations() {
                           className="space-y-0.5"
                         >
                           {(messages ?? []).map((msg, idx) => {
-                            const { text: msgText, type: msgType } = extractContent(msg);
+                            const { text: msgText, type: msgType, imageUrl: msgImgUrl } = extractContent(msg);
                             const showDate = shouldShowDateSeparator(messages!, idx);
 
                             return (
@@ -443,20 +466,40 @@ export default function Conversations() {
                                       )} />
                                     </div>
 
-                                    {/* Media indicator */}
-                                    {msgType !== "text" && (
+                                    {/* Inline image */}
+                                    {msgType === "image" && msgImgUrl && (
+                                      <img
+                                        src={msgImgUrl}
+                                        alt="Imagem"
+                                        loading="lazy"
+                                        onClick={() => openImgLightbox(msgImgUrl)}
+                                        className="rounded-xl max-w-[280px] w-full h-auto cursor-pointer hover:opacity-90 transition-opacity mb-1"
+                                      />
+                                    )}
+
+                                    {/* Media indicator for non-image types */}
+                                    {msgType !== "text" && msgType !== "image" && (
                                       <div className={cn(
                                         "flex items-center gap-1.5 mb-1 text-[11px] font-medium",
                                         msg.fromMe ? "text-primary-foreground/70" : "text-muted-foreground"
                                       )}>
-                                        {msgType === "image" && <><Image className="h-3 w-3" /> Imagem</>}
                                         {msgType === "document" && <><FileText className="h-3 w-3" /> Documento</>}
                                         {msgType === "audio" && <><Mic className="h-3 w-3" /> Áudio</>}
                                         {msgType === "video" && <><Video className="h-3 w-3" /> Vídeo</>}
                                       </div>
                                     )}
 
-                                    <p className="whitespace-pre-wrap">{msgText}</p>
+                                    {/* Image without URL — show indicator */}
+                                    {msgType === "image" && !msgImgUrl && (
+                                      <div className={cn(
+                                        "flex items-center gap-1.5 mb-1 text-[11px] font-medium",
+                                        msg.fromMe ? "text-primary-foreground/70" : "text-muted-foreground"
+                                      )}>
+                                        <Image className="h-3 w-3" /> Imagem
+                                      </div>
+                                    )}
+
+                                    {msgText && <p className="whitespace-pre-wrap">{msgText}</p>}
 
                                     {/* Timestamp & status */}
                                     <div className={cn(
@@ -491,7 +534,12 @@ export default function Conversations() {
                   <Button variant="ghost" size="icon" className="h-10 w-10 rounded-xl shrink-0 text-muted-foreground hover:text-foreground">
                     <Smile className="h-5 w-5" />
                   </Button>
-                  <Button variant="ghost" size="icon" className="h-10 w-10 rounded-xl shrink-0 text-muted-foreground hover:text-foreground">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-10 w-10 rounded-xl shrink-0 text-muted-foreground hover:text-foreground"
+                    onClick={() => setImageDialogOpen(true)}
+                  >
                     <Paperclip className="h-5 w-5" />
                   </Button>
                   <div className="flex-1 relative">
@@ -577,6 +625,59 @@ export default function Conversations() {
         </motion.div>
       )}
     </AnimatePresence>
+
+    {/* Send image dialog */}
+    <Dialog open={imageDialogOpen} onOpenChange={setImageDialogOpen}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Enviar Imagem</DialogTitle>
+          <DialogDescription>Cole a URL da imagem que deseja enviar.</DialogDescription>
+        </DialogHeader>
+        <div className="space-y-3 py-2">
+          <Input
+            placeholder="https://exemplo.com/imagem.jpg"
+            value={imageUrl}
+            onChange={(e) => setImageUrl(e.target.value)}
+          />
+          {imageUrl && (
+            <img
+              src={imageUrl}
+              alt="Preview"
+              className="rounded-xl max-h-48 w-auto object-contain mx-auto"
+              onError={(e) => (e.currentTarget.style.display = "none")}
+            />
+          )}
+          <Input
+            placeholder="Legenda (opcional)"
+            value={imageCaption}
+            onChange={(e) => setImageCaption(e.target.value)}
+          />
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => { setImageDialogOpen(false); setImageUrl(""); setImageCaption(""); }}>
+            Cancelar
+          </Button>
+          <Button
+            disabled={!imageUrl.trim() || !selectedPhone || sendImageMutation.isPending}
+            onClick={() => {
+              if (!selectedPhone || !imageUrl.trim()) return;
+              sendImageMutation.mutate(
+                { phone: selectedPhone, imageUrl: imageUrl.trim(), text: imageCaption.trim() },
+                {
+                  onSuccess: () => {
+                    setImageDialogOpen(false);
+                    setImageUrl("");
+                    setImageCaption("");
+                  },
+                }
+              );
+            }}
+          >
+            {sendImageMutation.isPending ? "Enviando..." : "Enviar"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
     </>
   );
 }
