@@ -804,6 +804,7 @@ export default function Conversations() {
   const sendImageMutation = useSendImage();
   const sendMediaMutation = useSendMedia();
   const markAsRead = useMarkAsRead();
+  const deleteMessageMutation = useDeleteMessage();
   const lastMessageId = messages?.[messages.length - 1]?.id;
 
   useEffect(() => {
