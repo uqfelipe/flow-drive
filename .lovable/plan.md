@@ -1,109 +1,43 @@
 
 
-# Integração WhatsApp (WhatsApi/uazapi) — Single-Tenant sem Auth
+# Plano: Criar documentação técnica completa da integração WhatsApp
 
-## Resumo
-Implementar a integração completa com a API WhatsApi conforme a documentação fornecida, adaptada para funcionar sem autenticação (user_id fixo para single-tenant). Inclui nova tabela, duas Edge Functions e frontend renovado com QR Code, polling e gerenciamento de instância.
+## Objetivo
+Gerar um arquivo `WHATSAPP_IMPLEMENTATION_GUIDE.md` na raiz do projeto contendo a documentação técnica completa e detalhada da integração WhatsApp, baseada inteiramente no código real implementado.
 
----
+## Conteúdo do arquivo
 
-## 1. Banco de Dados
+O arquivo cobrirá todas as 15 seções solicitadas, extraídas do código real:
 
-### Criar tabela `whatsapp_instances` (migration)
-```sql
-CREATE TABLE public.whatsapp_instances (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id TEXT NOT NULL DEFAULT 'admin',
-  instance_name TEXT NOT NULL,
-  device_name TEXT NOT NULL DEFAULT 'LocadoraCRM',
-  server_url TEXT NOT NULL,
-  instance_token TEXT NOT NULL,
-  token TEXT NOT NULL,
-  webhook_url TEXT,
-  status TEXT NOT NULL DEFAULT 'created',
-  is_connected BOOLEAN NOT NULL DEFAULT false,
-  last_connection_at TIMESTAMPTZ,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
-);
+### Dados reais confirmados no código:
 
--- RLS permissiva (sem auth por enquanto)
-CREATE POLICY "Allow all" ON public.whatsapp_instances
-  FOR ALL TO public USING (true) WITH CHECK (true);
-```
+**Arquivos envolvidos:**
+- `supabase/functions/whatsapp-manage/index.ts` — Edge Function principal (get-or-create, qrcode, disconnect, delete)
+- `supabase/functions/whatsapp-webhook/index.ts` — Edge Function de webhook
+- `src/hooks/use-whatsapp.ts` — Hook React de gerenciamento
+- `src/pages/WhatsAppConfig.tsx` — Página frontend
+- Migration SQL `20260331172915` — Tabela `whatsapp_instances`
 
-A tabela `whatsapp_config` existente permanece (configuração geral). A nova `whatsapp_instances` armazena dados da instância real na API.
+**Tabela:** `whatsapp_instances` com 13 colunas (id, user_id, instance_name, device_name, server_url, instance_token, token, webhook_url, status, is_connected, last_connection_at, created_at, updated_at)
 
----
+**Secrets:** `WHATSAPI_API_TOKEN`, `WHATSAPI_CREATE_URL`, `WHATSAPI_PROXY_APIKEY` (não usado no código final), `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`
 
-## 2. Secrets
+**Endpoints externos:**
+- Criação: `POST {WHATSAPI_CREATE_URL}` com body `{token, name, deviceName}`
+- QR Code: `POST {server_url}/instance/connect` com header `token: {instance_token}`
+- Webhook registro: `POST {server_url}/webhook` com header `token: {instance_token}`
+- Delete: `DELETE {server_url}/instance` com header `token: {instance_token}`
 
-Solicitar ao usuário via ferramenta `add_secret`:
-- **`WHATSAPI_API_TOKEN`** — Token da conta na WhatsApi
-- **`WHATSAPI_CREATE_URL`** — URL do proxy de criação de instância
+**Rota frontend:** `/whatsapp`
 
----
+**Polling:** 15s via `setInterval` no hook, chama `get-or-create` e verifica `is_connected`
 
-## 3. Edge Function: `whatsapp-manage`
+**Problemas reais encontrados e resolvidos:**
+1. 405 por URL errada no secret `WHATSAPI_CREATE_URL`
+2. 405 por headers extras (`apikey`, `Authorization`) que o proxy rejeitava
+3. Múltiplas tentativas de fallback desnecessárias
 
-Ações via `{ action }` no body:
+## Ação
 
-| Action | Comportamento |
-|--------|--------------|
-| `get-or-create` | Busca instância por user_id. Se não existe, chama API para criar + registra webhook automaticamente |
-| `qrcode` | POST `{server_url}/instance/connect` → retorna QR base64 ou `connected: true` |
-| `disconnect` | Atualiza banco: status=disconnected, is_connected=false |
-| `delete` | DELETE na API (resiliente) + remove do banco |
-
-Sem validação JWT (single-tenant). Usa `service_role_key` para DB.
-Registro automático do webhook na API uazapi após criação com `excludeMessages`, `events`, etc.
-
----
-
-## 4. Edge Function: `whatsapp-webhook`
-
-Recebe POST da API uazapi com `user_id` na query string.
-Atualiza `whatsapp_instances`:
-- `connection`/`CONNECTED`/`connected:true` → status=connected
-- `disconnected`/`DISCONNECTED`/`connected:false` → status=disconnected
-
----
-
-## 5. Frontend: `WhatsAppConfig.tsx` reescrito
-
-Nova interface com estados visuais:
-
-- **Loading**: Skeleton enquanto busca instância
-- **QR Code**: Exibe `<img src={base64}>` para escanear (sem dangerouslySetInnerHTML)
-- **Conectado**: Card verde com info da instância
-- **Erro**: Mensagem + botão "Tentar novamente"
-
-Funcionalidades:
-- Ao montar: chama `get-or-create` via `supabase.functions.invoke("whatsapp-manage")`
-- Se não conectado: busca QR automaticamente
-- Polling a cada 15s verificando status
-- Botão "Reconectar": disconnect → get-or-create → qrcode
-- Botão "Remover Instância": delete → limpa estado
-- Card de configurações da API (URL base, token) mantido usando a tabela `whatsapp_config` existente
-
----
-
-## 6. Hook: `use-whatsapp.ts`
-
-Hook dedicado com funções:
-- `callManageFunction(action)` — wrapper para `supabase.functions.invoke`
-- Estado: `instance`, `qrCode`, `loading`, `error`
-- Polling automático com `useEffect` + `setInterval(15s)`
-
----
-
-## Arquivos modificados/criados
-
-| Arquivo | Ação |
-|---------|------|
-| Migration SQL | Criar tabela `whatsapp_instances` |
-| `supabase/functions/whatsapp-manage/index.ts` | Edge Function principal |
-| `supabase/functions/whatsapp-webhook/index.ts` | Edge Function webhook |
-| `src/hooks/use-whatsapp.ts` | Hook de gerenciamento |
-| `src/pages/WhatsAppConfig.tsx` | Reescrita completa do frontend |
+Criar um único arquivo `WHATSAPP_IMPLEMENTATION_GUIDE.md` na raiz do projeto com ~3000-4000 linhas de documentação técnica completa, incluindo exemplos reais de request/response extraídos dos network logs, SQL completo, código completo das funções, e guia de replicação passo a passo.
 
