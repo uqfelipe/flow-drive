@@ -234,30 +234,60 @@ function sanitize(inst: Record<string, unknown>) {
 }
 
 async function createInstanceViaProxy(createPayload: Record<string, string>) {
+  const queryString = new URLSearchParams(createPayload).toString();
+
   const attemptConfigs = [
     {
-      label: "POST body + apikey + bearer",
+      label: "POST json + apikey + bearer",
       method: "POST",
+      url: CREATE_URL,
       headers: buildProxyHeaders({ includeApikey: true, includeBearer: true }),
       body: JSON.stringify(createPayload),
     },
     {
-      label: "POST body + apikey",
+      label: "POST json + apikey",
       method: "POST",
+      url: CREATE_URL,
       headers: buildProxyHeaders({ includeApikey: true, includeBearer: false }),
       body: JSON.stringify(createPayload),
     },
     {
-      label: "POST body + bearer",
+      label: "POST json + bearer",
       method: "POST",
+      url: CREATE_URL,
       headers: buildProxyHeaders({ includeApikey: false, includeBearer: true }),
       body: JSON.stringify(createPayload),
     },
     {
-      label: "POST body only",
+      label: "POST json only",
       method: "POST",
+      url: CREATE_URL,
       headers: buildProxyHeaders({ includeApikey: false, includeBearer: false }),
       body: JSON.stringify(createPayload),
+    },
+    {
+      label: "GET query + apikey + bearer",
+      method: "GET",
+      url: `${CREATE_URL}${CREATE_URL.includes("?") ? "&" : "?"}${queryString}`,
+      headers: buildProxyHeaders({ includeApikey: true, includeBearer: true }),
+    },
+    {
+      label: "GET query + apikey",
+      method: "GET",
+      url: `${CREATE_URL}${CREATE_URL.includes("?") ? "&" : "?"}${queryString}`,
+      headers: buildProxyHeaders({ includeApikey: true, includeBearer: false }),
+    },
+    {
+      label: "GET query + bearer",
+      method: "GET",
+      url: `${CREATE_URL}${CREATE_URL.includes("?") ? "&" : "?"}${queryString}`,
+      headers: buildProxyHeaders({ includeApikey: false, includeBearer: true }),
+    },
+    {
+      label: "GET query only",
+      method: "GET",
+      url: `${CREATE_URL}${CREATE_URL.includes("?") ? "&" : "?"}${queryString}`,
+      headers: buildProxyHeaders({ includeApikey: false, includeBearer: false }),
     },
   ];
 
@@ -266,10 +296,10 @@ async function createInstanceViaProxy(createPayload: Record<string, string>) {
 
   for (const attempt of attemptConfigs) {
     console.log(`Create instance attempt: ${attempt.label}`);
-    const res = await fetch(CREATE_URL, {
+    const res = await fetch(attempt.url, {
       method: attempt.method,
       headers: attempt.headers,
-      body: attempt.body,
+      body: attempt.method === "GET" ? undefined : attempt.body,
     });
 
     const text = await res.text();
@@ -300,6 +330,7 @@ function buildProxyHeaders({ includeApikey, includeBearer }: { includeApikey: bo
 
   if (PROXY_APIKEY && includeApikey) {
     headers.apikey = PROXY_APIKEY;
+    headers["x-api-key"] = PROXY_APIKEY;
   }
 
   if (PROXY_APIKEY && includeBearer) {
