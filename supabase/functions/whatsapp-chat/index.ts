@@ -45,7 +45,7 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
   try {
-    const { action, phone, text, imageUrl, chatLid } = await req.json();
+    const { action, phone, text, imageUrl, chatLid, type, fileUrl, docName } = await req.json();
     const inst = await getInstance();
 
     if (action === "list-chats") {
@@ -88,6 +88,19 @@ Deno.serve(async (req) => {
       return json(data);
     }
 
+    if (action === "send-media") {
+      if (!phone || !fileUrl || !type) return json({ error: "phone, fileUrl and type required" }, 400);
+      const body: Record<string, string> = {
+        number: phone,
+        type, // image, video, audio, ptt, document, sticker
+        file: fileUrl,
+      };
+      if (text) body.text = text;
+      if (docName) body.docName = docName;
+      const data = await apiCall(inst.server_url, inst.instance_token, "/send/media", body);
+      return json(data);
+    }
+
     if (action === "send-text") {
       if (!phone || !text) return json({ error: "phone and text required" }, 400);
       const data = await apiCall(inst.server_url, inst.instance_token, "/send/text", {
@@ -101,7 +114,6 @@ Deno.serve(async (req) => {
       if (!phone) return json({ error: "phone required" }, 400);
       const chatid = phone.includes("@") ? phone : `${phone}@s.whatsapp.net`;
       try {
-        // Query presence_cache table for typing/online status
         const supabase = createClient(
           Deno.env.get("SUPABASE_URL")!,
           Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
@@ -112,7 +124,6 @@ Deno.serve(async (req) => {
           .eq("chat_id", chatid)
           .maybeSingle();
 
-        // Consider presence stale after 15 seconds
         let isTyping = false;
         let isOnline = false;
         if (row) {
@@ -132,7 +143,6 @@ Deno.serve(async (req) => {
       if (!phone) return json({ error: "phone required" }, 400);
       const chatid = phone.includes("@") ? phone : `${phone}@s.whatsapp.net`;
 
-      // 1. Persistir no banco (garantido)
       const supabaseAdmin = createClient(
         Deno.env.get("SUPABASE_URL")!,
         Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
@@ -143,7 +153,6 @@ Deno.serve(async (req) => {
           { onConflict: "chat_id" }
         );
 
-      // 2. Tentar API WhatsApp (best-effort, não bloqueia)
       try {
         await apiCall(inst.server_url, inst.instance_token, "/chat/read", { number: phone });
       } catch (_e) {
