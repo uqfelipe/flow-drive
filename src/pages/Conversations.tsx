@@ -430,7 +430,7 @@ export default function Conversations() {
                           className="space-y-0.5"
                         >
                           {(messages ?? []).map((msg, idx) => {
-                            const { text: msgText, type: msgType } = extractContent(msg);
+                            const { text: msgText, type: msgType, imageUrl: msgImgUrl } = extractContent(msg);
                             const showDate = shouldShowDateSeparator(messages!, idx);
 
                             return (
