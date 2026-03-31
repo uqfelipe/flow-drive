@@ -466,20 +466,40 @@ export default function Conversations() {
                                       )} />
                                     </div>
 
-                                    {/* Media indicator */}
-                                    {msgType !== "text" && (
+                                    {/* Inline image */}
+                                    {msgType === "image" && msgImgUrl && (
+                                      <img
+                                        src={msgImgUrl}
+                                        alt="Imagem"
+                                        loading="lazy"
+                                        onClick={() => openImgLightbox(msgImgUrl)}
+                                        className="rounded-xl max-w-[280px] w-full h-auto cursor-pointer hover:opacity-90 transition-opacity mb-1"
+                                      />
+                                    )}
+
+                                    {/* Media indicator for non-image types */}
+                                    {msgType !== "text" && msgType !== "image" && (
                                       <div className={cn(
                                         "flex items-center gap-1.5 mb-1 text-[11px] font-medium",
                                         msg.fromMe ? "text-primary-foreground/70" : "text-muted-foreground"
                                       )}>
-                                        {msgType === "image" && <><Image className="h-3 w-3" /> Imagem</>}
                                         {msgType === "document" && <><FileText className="h-3 w-3" /> Documento</>}
                                         {msgType === "audio" && <><Mic className="h-3 w-3" /> Áudio</>}
                                         {msgType === "video" && <><Video className="h-3 w-3" /> Vídeo</>}
                                       </div>
                                     )}
 
-                                    <p className="whitespace-pre-wrap">{msgText}</p>
+                                    {/* Image without URL — show indicator */}
+                                    {msgType === "image" && !msgImgUrl && (
+                                      <div className={cn(
+                                        "flex items-center gap-1.5 mb-1 text-[11px] font-medium",
+                                        msg.fromMe ? "text-primary-foreground/70" : "text-muted-foreground"
+                                      )}>
+                                        <Image className="h-3 w-3" /> Imagem
+                                      </div>
+                                    )}
+
+                                    {msgText && <p className="whitespace-pre-wrap">{msgText}</p>}
 
                                     {/* Timestamp & status */}
                                     <div className={cn(
