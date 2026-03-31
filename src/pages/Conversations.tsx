@@ -1188,6 +1188,22 @@ export default function Conversations() {
                     )}
                   </div>
                 </ScrollArea>
+
+                {/* Scroll to bottom button */}
+                <AnimatePresence>
+                  {showScrollBtn && (
+                    <motion.button
+                      initial={{ opacity: 0, scale: 0.8 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.8 }}
+                      transition={{ duration: 0.2 }}
+                      onClick={() => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })}
+                      className="absolute bottom-4 right-6 z-20 h-10 w-10 rounded-full bg-card border border-border/60 shadow-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+                    >
+                      <ChevronDown className="h-5 w-5" />
+                    </motion.button>
+                  )}
+                </AnimatePresence>
               </div>
 
               {/* ─── Input area ─── */}
