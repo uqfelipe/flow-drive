@@ -1,5 +1,6 @@
 import { AdminLayout } from "@/components/AdminLayout";
 import { Input } from "@/components/ui/input";
+import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -106,7 +107,23 @@ export default function Conversations() {
   const [selectedChat, setSelectedChat] = useState<WhatsAppChat | null>(null);
   const [text, setText] = useState("");
   const [lightboxImg, setLightboxImg] = useState<string | null>(null);
+  const [lightboxLoading, setLightboxLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const openLightbox = async (phone: string, fallbackImg?: string) => {
+    setLightboxImg(fallbackImg || null);
+    setLightboxLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("whatsapp-chat", {
+        body: { action: "get-profile-pic", phone },
+      });
+      if (!error && data?.image) {
+        setLightboxImg(data.image);
+      }
+    } catch {} finally {
+      setLightboxLoading(false);
+    }
+  };
 
   const { data: chats, isLoading: chatsLoading } = useWhatsAppChats();
   const selectedPhone = selectedChat ? phoneFromChatId(selectedChat.wa_chatid) : null;
@@ -217,7 +234,7 @@ export default function Conversations() {
                           )}
                           onClick={(e) => {
                             const src = chat.image || chat.imagePreview || chat.wa_profilePicUrl;
-                            if (src) { e.stopPropagation(); setLightboxImg(src); }
+                            if (src) { e.stopPropagation(); openLightbox(phoneFromChatId(chat.wa_chatid), src); }
                           }}
                         >
                           {(chat.image || chat.imagePreview || chat.wa_profilePicUrl) && <AvatarImage src={chat.image || chat.imagePreview || chat.wa_profilePicUrl} />}
@@ -326,7 +343,7 @@ export default function Conversations() {
                     )}
                     onClick={() => {
                       const src = selectedChat.image || selectedChat.imagePreview || selectedChat.wa_profilePicUrl;
-                      if (src) setLightboxImg(src);
+                      if (src) openLightbox(phoneFromChatId(selectedChat.wa_chatid), src);
                     }}
                   >
                     {(selectedChat.image || selectedChat.imagePreview || selectedChat.wa_profilePicUrl) && <AvatarImage src={selectedChat.image || selectedChat.imagePreview || selectedChat.wa_profilePicUrl} />}
@@ -546,6 +563,11 @@ export default function Conversations() {
             >
               <X className="h-5 w-5" />
             </button>
+            {lightboxLoading && (
+              <div className="absolute inset-0 flex items-center justify-center rounded-2xl bg-black/30">
+                <div className="h-8 w-8 animate-spin rounded-full border-2 border-white border-t-transparent" />
+              </div>
+            )}
             <img
               src={lightboxImg}
               alt="Foto de perfil"
