@@ -7,6 +7,7 @@ export interface CustomerRow {
   phone: string;
   cpf: string;
   notes: string | null;
+  photo: string | null;
   status: string;
   created_at: string;
   updated_at: string;
