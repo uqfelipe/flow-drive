@@ -1,102 +1,109 @@
 
 
-# Redesign Premium — Tema Claro + Tema Escuro (Dracula)
+# Integração WhatsApp (WhatsApi/uazapi) — Single-Tenant sem Auth
 
 ## Resumo
-Revisão completa da paleta de cores, variáveis CSS e componentes visuais para criar dois temas premium: um **tema escuro inspirado no Dracula** (roxos profundos, cyans e pinks harmoniosos) e um **tema claro refinado** (brancos quentes, cinzas suaves, acentos elegantes). Inclui melhorias no flow builder, sidebar, cards, inputs, badges e todos os elementos visuais.
+Implementar a integração completa com a API WhatsApi conforme a documentação fornecida, adaptada para funcionar sem autenticação (user_id fixo para single-tenant). Inclui nova tabela, duas Edge Functions e frontend renovado com QR Code, polling e gerenciamento de instância.
 
 ---
 
-## O que muda
+## 1. Banco de Dados
 
-### 1. Paleta de cores completa (src/index.css)
+### Criar tabela `whatsapp_instances` (migration)
+```sql
+CREATE TABLE public.whatsapp_instances (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id TEXT NOT NULL DEFAULT 'admin',
+  instance_name TEXT NOT NULL,
+  device_name TEXT NOT NULL DEFAULT 'LocadoraCRM',
+  server_url TEXT NOT NULL,
+  instance_token TEXT NOT NULL,
+  token TEXT NOT NULL,
+  webhook_url TEXT,
+  status TEXT NOT NULL DEFAULT 'created',
+  is_connected BOOLEAN NOT NULL DEFAULT false,
+  last_connection_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
 
-**Tema Escuro (Dracula-inspired):**
-- Background: tons de `#282A36` → `#1E1F29` (roxo-escuro profundo)
-- Cards: `#2D2F3D` com bordas `#383A4D`
-- Foreground: `#F8F8F2` (branco quente Dracula)
-- Primary: `#BD93F9` (roxo Dracula) em vez do azul genérico
-- Success: `#50FA7B` (verde Dracula)
-- Warning: `#FFB86C` (laranja Dracula)
-- Destructive: `#FF5555` (vermelho Dracula)
-- Accent/cyan: `#8BE9FD` para destaques secundários
-- Muted-foreground: `#6272A4` (comentário Dracula)
-- Sidebar: fundo ainda mais profundo `#191A24`, bordas sutis `#2A2C3A`
-- Node colors ajustados para harmonia Dracula
+-- RLS permissiva (sem auth por enquanto)
+CREATE POLICY "Allow all" ON public.whatsapp_instances
+  FOR ALL TO public USING (true) WITH CHECK (true);
+```
 
-**Tema Claro (Clean Premium):**
-- Background: `#F8F9FC` (branco levemente azulado)
-- Cards: `#FFFFFF` com bordas `#E8ECF1` suaves
-- Foreground: `#1A1D2E` (quase-preto azulado)
-- Primary: `#7C5CFC` (roxo elegante, mantém identidade com o dark)
-- Success/Warning/Destructive: versões mais suaves e saturadas
-- Muted: cinzas lavanda (`#F1F0F7`)
-- Sidebar: fundo `#F0EEF8` lavanda claro com identidade forte
-
-### 2. Melhorias globais de estilo (src/index.css)
-- Transições globais em todos os elementos interativos
-- Scrollbar estilizada por tema
-- React Flow: background com grid pattern melhorado, edge glow sutil
-- Sombras refinadas por tema (dark: glow sutil, light: shadow suave)
-- `::selection` com cor da marca
-
-### 3. AdminLayout (src/components/AdminLayout.tsx)
-- Adicionar toggle de tema claro/escuro no header (Sun/Moon icon)
-- Estado do tema gerenciado via localStorage + classe no root
-- Header com glassmorphism mais pronunciado (`backdrop-blur-xl`, `bg-card/80`)
-- Avatar com gradient sutil
-
-### 4. Sidebar (src/components/AppSidebar.tsx)
-- Logo com gradient background (Dracula purple → pink no dark)
-- Itens ativos com left-border accent colorido
-- Hover com background gradient sutil
-- Separadores mais elegantes entre grupos
-
-### 5. Cards do Dashboard (src/pages/Dashboard.tsx)
-- Ícones com background gradient sutil por cor
-- Cards com hover elevation (shadow lift)
-- Borda superior colorida sutil nos cards de status
-- Alertas com ícones e bordas laterais coloridas
-
-### 6. Flow Builder visual upgrade
-- **FlowNode.tsx**: Gradient top-bar colorido por categoria, sombra glow sutil no hover, backdrop blur nos nós, handles com animação de pulse
-- **NodePalette.tsx**: Fundo com pattern sutil, items com hover mais pronunciado, badge de contagem colorido
-- **NodeConfigPanel.tsx**: Header com gradient por categoria, inputs com focus ring colorido
-- **FlowBuilder.tsx**: Background dots com cor temática, minimap com cores de nó corretas, controls com estilo premium, edge default glow
-
-### 7. Demais páginas
-- Vehicles, Rentals, Financial, Customers, Conversations: mesmos patterns de card, badge e table atualizados automaticamente via variáveis CSS
-- Inputs: focus ring com cor primary, background sutil
-- Badges: bordas e backgrounds harmoniosos
-
-### 8. Tailwind config (tailwind.config.ts)
-- Adicionar box-shadow custom para glow effects
-- Adicionar gradient utilities se necessário
+A tabela `whatsapp_config` existente permanece (configuração geral). A nova `whatsapp_instances` armazena dados da instância real na API.
 
 ---
 
-## Arquivos modificados
+## 2. Secrets
 
-| Arquivo | Alteração |
-|---------|-----------|
-| `src/index.css` | Nova paleta completa (light + dark Dracula), transitions globais, scrollbar, React Flow overrides, selection |
-| `tailwind.config.ts` | Box-shadow glow, novas utilities |
-| `src/components/AdminLayout.tsx` | Toggle tema, header glassmorphism, avatar gradient |
-| `src/components/AppSidebar.tsx` | Logo gradient, active state com border-left, hover melhorado |
-| `src/components/flow-builder/FlowNode.tsx` | Gradient bar, glow shadow, handles animados |
-| `src/components/flow-builder/NodePalette.tsx` | Background sutil, hover premium |
-| `src/components/flow-builder/NodeConfigPanel.tsx` | Header gradient, styling refinado |
-| `src/pages/FlowBuilder.tsx` | Background, minimap, controls e edges atualizados |
-| `src/pages/Dashboard.tsx` | Cards com gradient icons, hover elevation, alertas melhorados |
-| `src/pages/Vehicles.tsx` | Cards com hover premium |
+Solicitar ao usuário via ferramenta `add_secret`:
+- **`WHATSAPI_API_TOKEN`** — Token da conta na WhatsApi
+- **`WHATSAPI_CREATE_URL`** — URL do proxy de criação de instância
 
 ---
 
-## Resultado esperado
-- Tema escuro sofisticado estilo Dracula com cores harmoniosas e conforto visual
-- Tema claro limpo, leve e profissional com identidade consistente
-- Toggle funcional entre temas
-- Flow builder visualmente destacado nos dois temas
-- Contraste excelente em todos os elementos
-- Transições suaves em toda a interface
+## 3. Edge Function: `whatsapp-manage`
+
+Ações via `{ action }` no body:
+
+| Action | Comportamento |
+|--------|--------------|
+| `get-or-create` | Busca instância por user_id. Se não existe, chama API para criar + registra webhook automaticamente |
+| `qrcode` | POST `{server_url}/instance/connect` → retorna QR base64 ou `connected: true` |
+| `disconnect` | Atualiza banco: status=disconnected, is_connected=false |
+| `delete` | DELETE na API (resiliente) + remove do banco |
+
+Sem validação JWT (single-tenant). Usa `service_role_key` para DB.
+Registro automático do webhook na API uazapi após criação com `excludeMessages`, `events`, etc.
+
+---
+
+## 4. Edge Function: `whatsapp-webhook`
+
+Recebe POST da API uazapi com `user_id` na query string.
+Atualiza `whatsapp_instances`:
+- `connection`/`CONNECTED`/`connected:true` → status=connected
+- `disconnected`/`DISCONNECTED`/`connected:false` → status=disconnected
+
+---
+
+## 5. Frontend: `WhatsAppConfig.tsx` reescrito
+
+Nova interface com estados visuais:
+
+- **Loading**: Skeleton enquanto busca instância
+- **QR Code**: Exibe `<img src={base64}>` para escanear (sem dangerouslySetInnerHTML)
+- **Conectado**: Card verde com info da instância
+- **Erro**: Mensagem + botão "Tentar novamente"
+
+Funcionalidades:
+- Ao montar: chama `get-or-create` via `supabase.functions.invoke("whatsapp-manage")`
+- Se não conectado: busca QR automaticamente
+- Polling a cada 15s verificando status
+- Botão "Reconectar": disconnect → get-or-create → qrcode
+- Botão "Remover Instância": delete → limpa estado
+- Card de configurações da API (URL base, token) mantido usando a tabela `whatsapp_config` existente
+
+---
+
+## 6. Hook: `use-whatsapp.ts`
+
+Hook dedicado com funções:
+- `callManageFunction(action)` — wrapper para `supabase.functions.invoke`
+- Estado: `instance`, `qrCode`, `loading`, `error`
+- Polling automático com `useEffect` + `setInterval(15s)`
+
+---
+
+## Arquivos modificados/criados
+
+| Arquivo | Ação |
+|---------|------|
+| Migration SQL | Criar tabela `whatsapp_instances` |
+| `supabase/functions/whatsapp-manage/index.ts` | Edge Function principal |
+| `supabase/functions/whatsapp-webhook/index.ts` | Edge Function webhook |
+| `src/hooks/use-whatsapp.ts` | Hook de gerenciamento |
+| `src/pages/WhatsAppConfig.tsx` | Reescrita completa do frontend |
 
