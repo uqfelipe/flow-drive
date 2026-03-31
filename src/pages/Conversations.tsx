@@ -298,44 +298,46 @@ function MediaVideo({ url, caption, fromMe, thumbnail, messageId }: { url: strin
   // Video already playable
   if (playableUrl) {
     return (
-      <div className="space-y-1">
-        <video
-          src={playableUrl}
-          controls
-          autoPlay={isDownloading === false && !!messageId && mediaUrlCache.has(messageId)}
-          preload="metadata"
-          className="rounded-xl max-w-[300px] w-full h-auto"
-        />
-        {caption && <p className="whitespace-pre-wrap text-[13px]">{caption}</p>}
+      <div className="space-y-1.5">
+        <div className="rounded-2xl overflow-hidden bg-black/80 shadow-lg max-w-[320px] w-full">
+          <video
+            src={playableUrl}
+            controls
+            controlsList="nodownload"
+            preload="metadata"
+            className="w-full h-auto"
+          />
+        </div>
+        {caption && <p className="whitespace-pre-wrap text-[13px] mt-1">{caption}</p>}
       </div>
     );
   }
 
   // Encrypted / needs download — show thumbnail with play button
   return (
-    <div className="space-y-1">
+    <div className="space-y-1.5">
       <div
         onClick={handlePlay}
-        className="relative rounded-xl max-w-[300px] w-full cursor-pointer group"
+        className="relative rounded-2xl max-w-[320px] w-full cursor-pointer group overflow-hidden shadow-lg"
       >
         {thumbnail ? (
-          <img src={thumbnail} alt="Vídeo" className="rounded-xl w-full h-auto" />
+          <img src={thumbnail} alt="Vídeo" className="w-full h-auto object-cover" />
         ) : (
-          <div className="rounded-xl w-full h-[180px] bg-muted/30 flex items-center justify-center">
-            <Video className="h-10 w-10 text-muted-foreground" />
+          <div className="w-full h-[180px] bg-black/60 flex items-center justify-center">
+            <Video className="h-12 w-12 text-white/40" />
           </div>
         )}
-        <div className="absolute inset-0 flex items-center justify-center bg-black/30 rounded-xl group-hover:bg-black/40 transition-colors">
+        <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-t from-black/50 via-black/20 to-transparent group-hover:from-black/60 group-hover:via-black/30 transition-all duration-300">
           {isDownloading ? (
-            <Loader2 className="h-10 w-10 animate-spin text-white" />
+            <Loader2 className="h-11 w-11 animate-spin text-white drop-shadow-lg" />
           ) : (
-            <div className="h-14 w-14 rounded-full bg-white/90 flex items-center justify-center">
-              <Play className="h-7 w-7 fill-black text-black ml-1" />
+            <div className="h-16 w-16 rounded-full bg-white/95 flex items-center justify-center shadow-xl group-hover:scale-110 transition-transform duration-200">
+              <Play className="h-8 w-8 fill-black text-black ml-0.5" />
             </div>
           )}
         </div>
       </div>
-      {caption && <p className="whitespace-pre-wrap text-[13px]">{caption}</p>}
+      {caption && <p className="whitespace-pre-wrap text-[13px] mt-1">{caption}</p>}
     </div>
   );
 }
