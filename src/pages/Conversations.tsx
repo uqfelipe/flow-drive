@@ -10,11 +10,15 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue
 } from "@/components/ui/select";
 import {
-  Search, Send, MessageSquare, ArrowLeft, Phone, Image, FileText, ChevronDown,
+  Popover, PopoverContent, PopoverTrigger
+} from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import {
+  Search, Send, MessageSquare, ArrowLeft, CalendarIcon, Image, FileText, ChevronDown,
   Smile, Check, CheckCheck, Mic, Paperclip, MoreVertical, Video, X,
   MapPin, User, Download, Play, Pause, File, ExternalLink, Loader2
 } from "lucide-react";
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { useWhatsAppChats, useChatMessages, useSendMessage, useSendImage, useSendMedia, usePresence, useRealtimeMessages, useMarkAsRead, type WhatsAppChat, type WhatsAppMessage } from "@/hooks/use-chat";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription
@@ -646,6 +650,7 @@ export default function Conversations() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const [showScrollBtn, setShowScrollBtn] = useState(false);
+  const [calendarOpen, setCalendarOpen] = useState(false);
   const lastHandledIncomingRef = useRef<string | null>(null);
 
   const openLightbox = async (phone: string, fallbackImg?: string) => {
@@ -1036,9 +1041,35 @@ export default function Conversations() {
                   <Button variant="ghost" size="icon" className="h-9 w-9 rounded-xl text-muted-foreground hover:text-foreground">
                     <Video className="h-4 w-4" />
                   </Button>
-                  <Button variant="ghost" size="icon" className="h-9 w-9 rounded-xl text-muted-foreground hover:text-foreground">
-                    <Phone className="h-4 w-4" />
-                  </Button>
+                  <Popover open={calendarOpen} onOpenChange={setCalendarOpen}>
+                    <PopoverTrigger asChild>
+                      <Button variant="ghost" size="icon" className="h-9 w-9 rounded-xl text-muted-foreground hover:text-foreground">
+                        <CalendarIcon className="h-4 w-4" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="end">
+                      <Calendar
+                        mode="single"
+                        onSelect={(date) => {
+                          if (!date || !messages?.length) return;
+                          setCalendarOpen(false);
+                          const startOfDay = new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime() / 1000;
+                          const endOfDay = startOfDay + 86400;
+                          const target = messages.find((m) => m.timestamp >= startOfDay && m.timestamp < endOfDay);
+                          if (target) {
+                            const el = document.getElementById(`msg-${target.id}`);
+                            if (el) {
+                              el.scrollIntoView({ behavior: "smooth", block: "center" });
+                              el.classList.add("ring-2", "ring-primary/50", "rounded-2xl");
+                              setTimeout(() => el.classList.remove("ring-2", "ring-primary/50", "rounded-2xl"), 2000);
+                            }
+                          }
+                        }}
+                        className={cn("p-3 pointer-events-auto")}
+                        initialFocus
+                      />
+                    </PopoverContent>
+                  </Popover>
                   <Button variant="ghost" size="icon" className="h-9 w-9 rounded-xl text-muted-foreground hover:text-foreground">
                     <MoreVertical className="h-4 w-4" />
                   </Button>
@@ -1089,7 +1120,7 @@ export default function Conversations() {
                             const isSticker = extracted.type === "sticker" && extracted.fileUrl;
 
                             return (
-                              <div key={msg.id}>
+                              <div key={msg.id} id={`msg-${msg.id}`}>
                                 {showDate && (
                                   <div className="flex justify-center my-5">
                                     <span className="bg-card/95 backdrop-blur-md text-muted-foreground/80 text-[10px] uppercase tracking-wider px-4 py-1.5 rounded-full border border-border/30 shadow-sm font-semibold">
