@@ -12,8 +12,8 @@ export interface RentalRow {
   payment_status: string;
   origin: string;
   created_at: string;
-  vehicles: { name: string; brand: string; model: string; year: number } | null;
-  customers: { name: string; phone: string } | null;
+  vehicles: { name: string; brand: string; model: string; year: number; images: string[] | null } | null;
+  customers: { name: string; phone: string; photo: string | null } | null;
 }
 
 export function useRentals() {
@@ -22,7 +22,7 @@ export function useRentals() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("rentals")
-        .select("*, vehicles(name, brand, model, year), customers(name, phone)")
+        .select("*, vehicles(name, brand, model, year, images), customers(name, phone, photo)")
         .order("created_at", { ascending: false });
       if (error) throw error;
       return data as RentalRow[];
