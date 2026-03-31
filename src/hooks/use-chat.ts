@@ -38,7 +38,12 @@ export function useWhatsAppChats() {
     queryKey: ["whatsapp-chats"],
     queryFn: async () => {
       const data = await chatAction("list-chats");
-      return data?.chats ?? [];
+      const chats = data?.chats ?? [];
+      // Hide Meta AI contact
+      return chats.filter((c: any) => {
+        const chatId = c.wa_chatid ?? "";
+        return !chatId.startsWith("13135550002");
+      });
     },
     refetchInterval: 10000,
   });
