@@ -60,15 +60,16 @@ function formatMsgTime(ts?: number) {
 
 function extractContent(msg: WhatsAppMessage): { text: string; type: "text" | "image" | "document" | "audio" | "video" | "sticker" | "other"; imageUrl?: string } {
   const content = msg.content;
-  // Check for fileURL first (media messages from uazapi)
   const fileUrl = (msg as any).fileURL || (msg as any).fileUrl;
+  const topText = (msg as any).text; // top-level text from API
+  const msgType = (msg.type ?? "").toLowerCase();
 
   if (typeof content === "object" && content !== null) {
     const c = content as any;
     const imgUrl = fileUrl || c.url || c.fileURL || c.fileUrl;
 
-    if (c.mimetype?.startsWith("image") || msg.type?.toLowerCase().includes("image")) {
-      return { text: c.caption || c.text || "", type: "image", imageUrl: imgUrl };
+    if (c.mimetype?.startsWith("image") || msgType.includes("image")) {
+      return { text: c.caption || c.text || topText || "", type: "image", imageUrl: imgUrl };
     }
     if (c.caption && imgUrl) return { text: c.caption, type: "image", imageUrl: imgUrl };
     if (c.text) return { text: c.text, type: "text" };
@@ -78,18 +79,15 @@ function extractContent(msg: WhatsAppMessage): { text: string; type: "text" | "i
     if (c.title) return { text: c.title, type: "other" };
   }
 
-  if (typeof content === "string") {
-    const msgType = msg.type?.toLowerCase() ?? "";
-    if (msgType.includes("image") && fileUrl) return { text: content || "", type: "image", imageUrl: fileUrl };
-    if (content) return { text: content, type: "text" };
-  }
+  // Fallback to top-level text
+  const displayText = (typeof content === "string" ? content : "") || topText || "";
 
-  const msgType = msg.type?.toLowerCase() ?? "";
-  if (msgType.includes("image")) return { text: "📷 Imagem", type: "image", imageUrl: fileUrl };
-  if (msgType.includes("video")) return { text: "🎥 Vídeo", type: "video" };
-  if (msgType.includes("audio") || msgType.includes("ptt")) return { text: "🎵 Áudio", type: "audio" };
-  if (msgType.includes("document")) return { text: "📄 Documento", type: "document" };
-  if (msgType.includes("sticker")) return { text: "🏷️ Sticker", type: "sticker" };
+  if (msgType.includes("image")) return { text: displayText || "📷 Imagem", type: "image", imageUrl: fileUrl };
+  if (msgType.includes("video")) return { text: displayText || "🎥 Vídeo", type: "video" };
+  if (msgType.includes("audio") || msgType.includes("ptt")) return { text: displayText || "🎵 Áudio", type: "audio" };
+  if (msgType.includes("document")) return { text: displayText || "📄 Documento", type: "document" };
+  if (msgType.includes("sticker")) return { text: displayText || "🏷️ Sticker", type: "sticker" };
+  if (displayText) return { text: displayText, type: "text" };
   return { text: "[mídia]", type: "other" };
 }
 
