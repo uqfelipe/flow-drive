@@ -104,8 +104,12 @@ export default function Vehicles() {
                       <Trash2 className="h-3.5 w-3.5" />
                     </Button>
                   </div>
-                  <div className="h-40 bg-muted/50 flex items-center justify-center cursor-pointer" onClick={() => openEdit(vehicle)}>
-                    <Car className="h-12 w-12 text-muted-foreground/20 group-hover:text-primary/30 transition-colors duration-300" />
+                  <div className="h-40 bg-muted/50 flex items-center justify-center cursor-pointer overflow-hidden" onClick={() => openEdit(vehicle)}>
+                    {vehicle.images && vehicle.images.length > 0 ? (
+                      <img src={vehicle.images[0]} alt={vehicle.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                    ) : (
+                      <Car className="h-12 w-12 text-muted-foreground/20 group-hover:text-primary/30 transition-colors duration-300" />
+                    )}
                   </div>
                   <div className="p-4 space-y-3">
                     <div className="flex items-start justify-between">
