@@ -195,7 +195,26 @@ export function useMarkAsRead() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (phone: string) => chatAction("mark-read", { phone }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["whatsapp-chats"] }),
+    onMutate: async (phone) => {
+      await qc.cancelQueries({ queryKey: ["whatsapp-chats"] });
+      const previous = qc.getQueryData<WhatsAppChat[]>(["whatsapp-chats"]);
+      qc.setQueryData<WhatsAppChat[]>(["whatsapp-chats"], (old) =>
+        (old || []).map((c) => {
+          const chatPhone = c.wa_chatid?.replace(/@.*$/, "");
+          if (chatPhone === phone) {
+            return { ...c, wa_unreadCount: 0 };
+          }
+          return c;
+        })
+      );
+      return { previous };
+    },
+    onError: (_, __, context) => {
+      if (context?.previous) {
+        qc.setQueryData(["whatsapp-chats"], context.previous);
+      }
+    },
+    onSettled: () => qc.invalidateQueries({ queryKey: ["whatsapp-chats"] }),
   });
 }
 
