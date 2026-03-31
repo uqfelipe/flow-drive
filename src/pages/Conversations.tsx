@@ -337,8 +337,8 @@ export default function Conversations() {
 
         {/* ─── Right panel ─── */}
         <div className={cn(
-          "flex-1 flex flex-col bg-background",
-          !selectedChat && "hidden md:flex"
+          "flex-1 flex-col bg-background",
+          !selectedChat ? "hidden md:flex" : "flex"
         )}>
           {!selectedChat ? (
             /* Empty state */
