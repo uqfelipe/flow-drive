@@ -12,8 +12,8 @@ export interface RentalRow {
   payment_status: string;
   origin: string;
   created_at: string;
-  vehicles: { name: string; brand: string; model: string; year: number } | null;
-  customers: { name: string; phone: string } | null;
+  vehicles: { name: string; brand: string; model: string; year: number; images: string[] | null } | null;
+  customers: { name: string; phone: string; photo: string | null } | null;
 }
 
 export function useRentals() {
