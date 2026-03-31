@@ -105,7 +105,7 @@ function extractContent(msg: WhatsAppMessage): ExtractedContent {
     c = content;
   }
 
-  const resolveFileUrl = () => fileUrl || c?.url || c?.fileURL || c?.fileUrl || "";
+  const resolveFileUrl = () => fileUrl || c?.url || c?.URL || c?.fileURL || c?.fileUrl || "";
   const resolveText = () => c?.caption || c?.text || topText || "";
   const resolveFileName = () => topFileName || c?.fileName || c?.title || "";
   const resolveMimetype = () => topMimetype || c?.mimetype || "";
