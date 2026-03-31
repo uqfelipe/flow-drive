@@ -1,40 +1,56 @@
 
 
-# Marcar chat como lido ao abrir
+# Fix: Badge de não lidas reaparece ao trocar de chat
 
-## Problema
-Quando você abre um chat, o badge de notificações some (já implementado com `!isActive`), mas ao trocar de chat e voltar, os números reaparecem porque o `wa_unreadCount` vem da API e nunca é zerado.
+## Problema verificado
+Ao abrir "Lu do Magalu" (1 não lida), o badge some pelo `!isActive`. Mas ao trocar para "Anderson Rafael", o badge do "Lu do Magalu" volta com "1" — o `mark-read` não está zerando o contador.
+
+Duas causas:
+1. **Edge Function pode estar retornando erro** — os logs mostram erros 405 no endpoint `/chat/readChat` (versão antiga). A versão atual usa `/chat/read`, mas pode não ter sido redeployada ainda.
+2. **Sem atualização otimista** — mesmo que o mark-read funcione, o refetch da lista de chats pode trazer o count antigo antes da API do WhatsApp processar. Precisamos zerar `wa_unreadCount` imediatamente no cache do React Query.
 
 ## Solução
 
-1. **Adicionar action `mark-read` na Edge Function** (`supabase/functions/whatsapp-chat/index.ts`) — Chamar a API da uazapi `/chat/readChat` para marcar as mensagens como lidas no WhatsApp quando o usuário abrir o chat.
+### 1. Redeploy da Edge Function
+A edge function já tem o código correto (`/chat/read` com `{ number: phone }`). Precisa ser redeployada para garantir que a versão atual está no ar.
 
-2. **Criar hook `useMarkAsRead`** (`src/hooks/use-chat.ts`) — Mutation que chama `mark-read` e depois invalida a lista de chats para atualizar o `wa_unreadCount` para 0.
+### 2. Atualização otimista no `useMarkAsRead` (`src/hooks/use-chat.ts`)
+Adicionar `onMutate` para zerar `wa_unreadCount` imediatamente no cache:
 
-3. **Chamar ao selecionar chat** (`src/pages/Conversations.tsx`) — Quando o `selectedChat` mudar, chamar `markAsRead` automaticamente com o telefone do chat selecionado. Isso zera o contador na API e no frontend.
-
-## Alterações
-
-**`supabase/functions/whatsapp-chat/index.ts`** — Novo bloco antes do `return json({ error: "Invalid action" })`:
-```typescript
-if (action === "mark-read") {
-  if (!phone) return json({ error: "phone required" }, 400);
-  const chatid = phone.includes("@") ? phone : `${phone}@s.whatsapp.net`;
-  await apiCall(inst.server_url, inst.instance_token, "/chat/readChat", { chatid });
-  return json({ success: true });
-}
-```
-
-**`src/hooks/use-chat.ts`** — Novo hook:
 ```typescript
 export function useMarkAsRead() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (phone: string) => chatAction("mark-read", { phone }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["whatsapp-chats"] }),
+    onMutate: async (phone) => {
+      await qc.cancelQueries({ queryKey: ["whatsapp-chats"] });
+      const previous = qc.getQueryData<WhatsAppChat[]>(["whatsapp-chats"]);
+      qc.setQueryData<WhatsAppChat[]>(["whatsapp-chats"], (old) =>
+        (old || []).map((c) => {
+          const chatPhone = c.wa_chatid?.replace(/@.*$/, "");
+          if (chatPhone === phone) {
+            return { ...c, wa_unreadCount: 0 };
+          }
+          return c;
+        })
+      );
+      return { previous };
+    },
+    onError: (_, __, context) => {
+      if (context?.previous) {
+        qc.setQueryData(["whatsapp-chats"], context.previous);
+      }
+    },
+    onSettled: () => qc.invalidateQueries({ queryKey: ["whatsapp-chats"] }),
   });
 }
 ```
 
-**`src/pages/Conversations.tsx`** — Chamar `markAsRead` dentro de um `useEffect` quando `selectedChat` mudar, para marcar automaticamente como lido.
+### 3. Redeploy edge function
+Fazer um redeploy do `whatsapp-chat` para garantir que `/chat/read` está ativo (não `/chat/readChat`).
+
+## Resultado esperado
+- Ao abrir um chat, o badge some **imediatamente** (otimista)
+- Ao trocar de chat, o badge **não volta** (porque o cache já foi zerado e o refetch traz 0)
+- O WhatsApp também marca como lido (via API)
 
