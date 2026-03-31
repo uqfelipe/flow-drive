@@ -1,19 +1,25 @@
 
 
-# Plano: Filtros por Status na Página de Reservas
+# Plano: Mostrar fotos do cliente e do veículo nas reservas
 
 ## O que será feito
 
-Adicionar chips/botões de filtro por status da reserva acima da listagem, permitindo filtrar por: Todas, Pendente, Aprovada, Ativa, Concluída, Cancelada.
+Exibir a foto do cliente e a imagem do veículo em cada card de reserva, substituindo o ícone genérico atual.
 
-## Alteração
+## Alterações
 
-### `src/pages/Rentals.tsx`
+### 1. `src/hooks/use-rentals.ts`
 
-- Adicionar estado `statusFilter` (default: `"all"`)
-- Renderizar uma row de botões/toggles com os status disponíveis (usando `Button` variant outline/default)
-- Aplicar filtro no array `filtered` combinando busca textual + status selecionado
-- Mostrar contador de resultados por status nos botões (badge)
+- Atualizar o select para incluir `photo` do customer e `images` do vehicle:
+  ```
+  .select("*, vehicles(name, brand, model, year, images), customers(name, phone, photo)")
+  ```
+- Atualizar a interface `RentalRow` para incluir esses campos
 
-Layout: botões ficam na mesma linha do campo de busca ou logo abaixo, antes da listagem.
+### 2. `src/pages/Rentals.tsx`
+
+- Importar `Avatar, AvatarImage, AvatarFallback` de `@/components/ui/avatar`
+- Substituir o ícone genérico por dois elementos lado a lado:
+  - **Avatar do cliente**: mostra `rental.customers?.photo` ou iniciais do nome como fallback
+  - **Imagem do veículo**: mostra `rental.vehicles?.images?.[0]` em um thumbnail arredondado, ou ícone de carro como fallback
 
