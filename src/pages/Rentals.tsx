@@ -7,6 +7,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Plus, Search, Filter, CalendarCheck, MessageSquare } from "lucide-react";
 import { useState } from "react";
 import { useRentals } from "@/hooks/use-rentals";
+import { RentalFormDialog } from "@/components/RentalFormDialog";
 
 const rentalStatusMap: Record<string, { label: string; className: string }> = {
   pending: { label: "Pendente", className: "bg-warning/10 text-warning border-warning/20" },
