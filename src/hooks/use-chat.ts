@@ -45,7 +45,7 @@ export function useWhatsAppChats() {
         return !chatId.startsWith("13135550002");
       });
     },
-    refetchInterval: 10000,
+    refetchInterval: 5000,
   });
 }
 
@@ -85,7 +85,7 @@ export function useChatMessages(phone: string | null) {
       return normalized.sort((a, b) => a.timestamp - b.timestamp);
     },
     enabled: !!phone,
-    refetchInterval: 5000,
+    refetchInterval: 2000,
   });
 }
 
@@ -95,8 +95,29 @@ export function useSendMessage() {
     mutationFn: async ({ phone, text }: { phone: string; text: string }) => {
       return chatAction("send-text", { phone, text });
     },
-    onSuccess: (_, vars) => {
+    onMutate: async ({ phone, text }) => {
+      await qc.cancelQueries({ queryKey: ["whatsapp-messages", phone] });
+      const previous = qc.getQueryData<WhatsAppMessage[]>(["whatsapp-messages", phone]);
+      const optimisticMsg: WhatsAppMessage = {
+        id: `temp-${Date.now()}`,
+        chatid: `${phone}@s.whatsapp.net`,
+        content: text,
+        fromMe: true,
+        timestamp: Math.floor(Date.now() / 1000),
+        type: "text",
+        status: "pending",
+      };
+      qc.setQueryData<WhatsAppMessage[]>(["whatsapp-messages", phone], (old) => [...(old || []), optimisticMsg]);
+      return { previous };
+    },
+    onError: (_, vars, context) => {
+      if (context?.previous) {
+        qc.setQueryData(["whatsapp-messages", vars.phone], context.previous);
+      }
+    },
+    onSettled: (_, __, vars) => {
       qc.invalidateQueries({ queryKey: ["whatsapp-messages", vars.phone] });
+      qc.invalidateQueries({ queryKey: ["whatsapp-chats"] });
     },
   });
 }
@@ -107,8 +128,30 @@ export function useSendImage() {
     mutationFn: async ({ phone, imageUrl, text }: { phone: string; imageUrl: string; text?: string }) => {
       return chatAction("send-image", { phone, imageUrl, text: text || "" });
     },
-    onSuccess: (_, vars) => {
+    onMutate: async ({ phone, imageUrl, text }) => {
+      await qc.cancelQueries({ queryKey: ["whatsapp-messages", phone] });
+      const previous = qc.getQueryData<WhatsAppMessage[]>(["whatsapp-messages", phone]);
+      const optimisticMsg: WhatsAppMessage = {
+        id: `temp-${Date.now()}`,
+        chatid: `${phone}@s.whatsapp.net`,
+        content: text || "",
+        fromMe: true,
+        timestamp: Math.floor(Date.now() / 1000),
+        type: "image",
+        status: "pending",
+        fileURL: imageUrl,
+      };
+      qc.setQueryData<WhatsAppMessage[]>(["whatsapp-messages", phone], (old) => [...(old || []), optimisticMsg]);
+      return { previous };
+    },
+    onError: (_, vars, context) => {
+      if (context?.previous) {
+        qc.setQueryData(["whatsapp-messages", vars.phone], context.previous);
+      }
+    },
+    onSettled: (_, __, vars) => {
       qc.invalidateQueries({ queryKey: ["whatsapp-messages", vars.phone] });
+      qc.invalidateQueries({ queryKey: ["whatsapp-chats"] });
     },
   });
 }
