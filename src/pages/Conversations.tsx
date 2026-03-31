@@ -1049,7 +1049,12 @@ export default function Conversations() {
               <div className="flex-1 overflow-hidden relative">
                 <div className="absolute inset-0 bg-background" style={{ backgroundImage: chatBgPattern }} />
 
-                <ScrollArea className="h-full relative z-10">
+                <ScrollArea className="h-full relative z-10" ref={scrollAreaRef} onScrollCapture={(e) => {
+                  const target = e.currentTarget.querySelector('[data-radix-scroll-area-viewport]') as HTMLElement;
+                  if (!target) return;
+                  const distanceFromBottom = target.scrollHeight - target.scrollTop - target.clientHeight;
+                  setShowScrollBtn(distanceFromBottom > 120);
+                }}>
                   <div className="px-4 md:px-8 lg:px-16 py-4 min-h-full flex flex-col justify-end">
                     {msgsLoading ? (
                       <div className="space-y-4 py-8">
