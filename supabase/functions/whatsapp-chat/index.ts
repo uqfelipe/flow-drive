@@ -130,7 +130,8 @@ Deno.serve(async (req) => {
 
     if (action === "mark-read") {
       if (!phone) return json({ error: "phone required" }, 400);
-      await apiCall(inst.server_url, inst.instance_token, "/chat/read", { number: phone });
+      const chatid = phone.includes("@") ? phone : `${phone}@s.whatsapp.net`;
+      await apiCall(inst.server_url, inst.instance_token, "/chat/read", { chatid });
       return json({ success: true });
     }
 
