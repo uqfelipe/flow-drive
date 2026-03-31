@@ -1301,51 +1301,102 @@ export default function Conversations() {
 
               {/* ─── Input area ─── */}
               <div className="border-t border-border/50 px-4 md:px-8 lg:px-16 py-3 bg-card/90 backdrop-blur-sm">
-                <div className="flex items-center gap-2">
-                  <Button variant="ghost" size="icon" className="h-10 w-10 rounded-xl shrink-0 text-muted-foreground hover:text-foreground">
-                    <Smile className="h-5 w-5" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-10 w-10 rounded-xl shrink-0 text-muted-foreground hover:text-foreground"
-                    onClick={() => setMediaDialogOpen(true)}
-                  >
-                    <Paperclip className="h-5 w-5" />
-                  </Button>
-                  <div className="flex-1 relative">
-                    <Input
-                      placeholder="Digite uma mensagem..."
-                      className="bg-background/80 backdrop-blur-sm h-11 text-sm rounded-2xl border-border/50 focus-visible:ring-primary/30 focus-visible:border-primary/30"
-                      value={text}
-                      onChange={(e) => setText(e.target.value)}
-                      onKeyDown={handleKeyDown}
-                    />
-                  </div>
-                  {text.trim() ? (
+                <AnimatePresence mode="wait">
+                  {isRecording ? (
                     <motion.div
-                      initial={{ scale: 0, rotate: -90 }}
-                      animate={{ scale: 1, rotate: 0 }}
-                      transition={{ type: "spring", stiffness: 400, damping: 15 }}
+                      key="recording"
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: 10 }}
+                      transition={{ duration: 0.2 }}
+                      className="flex items-center gap-3"
                     >
                       <Button
+                        variant="ghost"
                         size="icon"
-                        onClick={handleSend}
-                        className="shrink-0 h-11 w-11 rounded-2xl shadow-md shadow-primary/20 transition-all"
+                        onClick={cancelRecording}
+                        className="shrink-0 h-11 w-11 rounded-2xl text-destructive hover:text-destructive hover:bg-destructive/10"
                       >
-                        <Send className="h-4 w-4" />
+                        <Trash2 className="h-5 w-5" />
                       </Button>
+                      <div className="flex-1 flex items-center gap-3 px-4 h-11 rounded-2xl bg-background/80 border border-border/50">
+                        <span className="relative flex h-3 w-3">
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-destructive opacity-75" />
+                          <span className="relative inline-flex rounded-full h-3 w-3 bg-destructive" />
+                        </span>
+                        <span className="text-sm font-mono text-foreground">{formatRecordingTime(recordingTime)}</span>
+                        <span className="text-xs text-muted-foreground">Gravando...</span>
+                      </div>
+                      <motion.div
+                        initial={{ scale: 0, rotate: -90 }}
+                        animate={{ scale: 1, rotate: 0 }}
+                        transition={{ type: "spring", stiffness: 400, damping: 15 }}
+                      >
+                        <Button
+                          size="icon"
+                          onClick={stopAndSendRecording}
+                          className="shrink-0 h-11 w-11 rounded-2xl shadow-md shadow-primary/20 transition-all"
+                        >
+                          <Send className="h-4 w-4" />
+                        </Button>
+                      </motion.div>
                     </motion.div>
                   ) : (
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="shrink-0 h-11 w-11 rounded-2xl text-muted-foreground hover:text-foreground"
+                    <motion.div
+                      key="input"
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: 10 }}
+                      transition={{ duration: 0.2 }}
+                      className="flex items-center gap-2"
                     >
-                      <Mic className="h-5 w-5" />
-                    </Button>
+                      <Button variant="ghost" size="icon" className="h-10 w-10 rounded-xl shrink-0 text-muted-foreground hover:text-foreground">
+                        <Smile className="h-5 w-5" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-10 w-10 rounded-xl shrink-0 text-muted-foreground hover:text-foreground"
+                        onClick={() => setMediaDialogOpen(true)}
+                      >
+                        <Paperclip className="h-5 w-5" />
+                      </Button>
+                      <div className="flex-1 relative">
+                        <Input
+                          placeholder="Digite uma mensagem..."
+                          className="bg-background/80 backdrop-blur-sm h-11 text-sm rounded-2xl border-border/50 focus-visible:ring-primary/30 focus-visible:border-primary/30"
+                          value={text}
+                          onChange={(e) => setText(e.target.value)}
+                          onKeyDown={handleKeyDown}
+                        />
+                      </div>
+                      {text.trim() ? (
+                        <motion.div
+                          initial={{ scale: 0, rotate: -90 }}
+                          animate={{ scale: 1, rotate: 0 }}
+                          transition={{ type: "spring", stiffness: 400, damping: 15 }}
+                        >
+                          <Button
+                            size="icon"
+                            onClick={handleSend}
+                            className="shrink-0 h-11 w-11 rounded-2xl shadow-md shadow-primary/20 transition-all"
+                          >
+                            <Send className="h-4 w-4" />
+                          </Button>
+                        </motion.div>
+                      ) : (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="shrink-0 h-11 w-11 rounded-2xl text-muted-foreground hover:text-foreground"
+                          onClick={startRecording}
+                        >
+                          <Mic className="h-5 w-5" />
+                        </Button>
+                      )}
+                    </motion.div>
                   )}
-                </div>
+                </AnimatePresence>
               </div>
             </>
           )}
