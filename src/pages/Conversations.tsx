@@ -222,10 +222,10 @@ function MediaVideo({ url, caption, fromMe }: { url: string; caption?: string; f
 }
 
 function MediaAudio({ url, isPtt, fromMe }: { url: string; isPtt: boolean; fromMe: boolean }) {
-  const audioRef = React.useRef<HTMLAudioElement>(null);
-  const [isPlaying, setIsPlaying] = React.useState(false);
-  const [currentTime, setCurrentTime] = React.useState(0);
-  const [duration, setDuration] = React.useState(0);
+  const audioRef = useRef<HTMLAudioElement>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
 
   const fmtTime = (s: number) => {
     const m = Math.floor(s / 60);
