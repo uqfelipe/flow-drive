@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
+import { useWhatsAppChats } from "@/hooks/use-chat";
 import {
   Sidebar,
   SidebarContent,
@@ -49,6 +50,8 @@ export function AppSidebar() {
   const collapsed = state === "collapsed";
   const location = useLocation();
   const isActive = (path: string) => location.pathname === path;
+  const { data: chats } = useWhatsAppChats();
+  const totalUnread = chats?.reduce((sum, c) => sum + (c.wa_unreadCount || 0), 0) || 0;
 
   return (
     <Sidebar collapsible="icon" className="border-r border-sidebar-border">
@@ -118,7 +121,14 @@ export function AppSidebar() {
                       className="transition-all duration-200 rounded-lg"
                       activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-medium border-l-2 border-sidebar-primary"
                     >
-                      <item.icon className="h-4 w-4" />
+                      <div className="relative">
+                        <item.icon className="h-4 w-4" />
+                        {item.url === "/conversations" && totalUnread > 0 && (
+                          <span className="absolute -top-1.5 -right-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive text-[10px] font-bold text-destructive-foreground px-0.5">
+                            {totalUnread > 99 ? "99+" : totalUnread}
+                          </span>
+                        )}
+                      </div>
                       {!collapsed && <span>{item.title}</span>}
                     </NavLink>
                   </SidebarMenuButton>
