@@ -174,11 +174,9 @@ Deno.serve(async (req) => {
     }
 
     if (action === "delete-message") {
-      if (!msgId || !remoteJid) return json({ error: "messageId and remoteJid required" }, 400);
-      const data = await apiCall(inst.server_url, inst.instance_token, `/chat/deleteMessageForEveryone/${inst.instance_name}`, {
+      if (!msgId) return json({ error: "messageId required" }, 400);
+      const data = await apiCall(inst.server_url, inst.instance_token, "/message/delete", {
         id: msgId,
-        remoteJid,
-        fromMe: fromMe === "true" || fromMe === true,
       });
       return json(data);
     }
