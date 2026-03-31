@@ -124,7 +124,7 @@ function extractContent(msg: WhatsAppMessage): ExtractedContent {
 
   // Video
   if (msgType.includes("video") || c?.mimetype?.startsWith("video")) {
-    return { text: resolveText(), type: "video", fileUrl: resolveFileUrl(), mimetype: resolveMimetype() };
+    return { text: resolveText(), type: "video", fileUrl: resolveFileUrl(), mimetype: resolveMimetype(), thumbnail: resolveThumbnail() };
   }
 
   // Audio / PTT (voice note)
