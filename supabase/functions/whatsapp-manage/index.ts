@@ -57,7 +57,8 @@ async function handleGetOrCreate() {
     deviceName: "LocadoraCRM",
   };
 
-  console.log("Creating instance:", instanceName);
+  console.log("Creating instance:", instanceName, "URL:", CREATE_URL);
+  console.log("Payload:", JSON.stringify(createPayload));
   const createRes = await fetch(CREATE_URL, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
