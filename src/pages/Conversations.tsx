@@ -52,23 +52,34 @@ function formatMsgTime(ts?: number) {
   return d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
 }
 
-function extractContent(msg: WhatsAppMessage): { text: string; type: "text" | "image" | "document" | "audio" | "video" | "sticker" | "other" } {
+function extractContent(msg: WhatsAppMessage): { text: string; type: "text" | "image" | "document" | "audio" | "video" | "sticker" | "other"; imageUrl?: string } {
   const content = msg.content;
-  if (typeof content === "string") {
-    return { text: content, type: "text" };
-  }
+  // Check for fileURL first (media messages from uazapi)
+  const fileUrl = (msg as any).fileURL || (msg as any).fileUrl;
+
   if (typeof content === "object" && content !== null) {
     const c = content as any;
+    const imgUrl = fileUrl || c.url || c.fileURL || c.fileUrl;
+
+    if (c.mimetype?.startsWith("image") || msg.type?.toLowerCase().includes("image")) {
+      return { text: c.caption || c.text || "", type: "image", imageUrl: imgUrl };
+    }
+    if (c.caption && imgUrl) return { text: c.caption, type: "image", imageUrl: imgUrl };
     if (c.text) return { text: c.text, type: "text" };
-    if (c.caption) return { text: c.caption, type: "image" };
     if (c.fileName) return { text: `📄 ${c.fileName}`, type: "document" };
-    if (c.mimetype?.startsWith("image")) return { text: "📷 Imagem", type: "image" };
-    if (c.mimetype?.startsWith("video")) return { text: "🎥 Vídeo", type: "video" };
+    if (c.mimetype?.startsWith("video")) return { text: c.caption || "🎥 Vídeo", type: "video" };
     if (c.mimetype?.startsWith("audio")) return { text: "🎵 Áudio", type: "audio" };
     if (c.title) return { text: c.title, type: "other" };
   }
+
+  if (typeof content === "string") {
+    const msgType = msg.type?.toLowerCase() ?? "";
+    if (msgType.includes("image") && fileUrl) return { text: content || "", type: "image", imageUrl: fileUrl };
+    if (content) return { text: content, type: "text" };
+  }
+
   const msgType = msg.type?.toLowerCase() ?? "";
-  if (msgType.includes("image")) return { text: "📷 Imagem", type: "image" };
+  if (msgType.includes("image")) return { text: "📷 Imagem", type: "image", imageUrl: fileUrl };
   if (msgType.includes("video")) return { text: "🎥 Vídeo", type: "video" };
   if (msgType.includes("audio") || msgType.includes("ptt")) return { text: "🎵 Áudio", type: "audio" };
   if (msgType.includes("document")) return { text: "📄 Documento", type: "document" };
