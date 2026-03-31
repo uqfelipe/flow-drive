@@ -534,8 +534,14 @@ export default function Conversations() {
                   <Button variant="ghost" size="icon" className="h-10 w-10 rounded-xl shrink-0 text-muted-foreground hover:text-foreground">
                     <Smile className="h-5 w-5" />
                   </Button>
-                  <Button variant="ghost" size="icon" className="h-10 w-10 rounded-xl shrink-0 text-muted-foreground hover:text-foreground">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-10 w-10 rounded-xl shrink-0 text-muted-foreground hover:text-foreground"
+                    onClick={() => setImageDialogOpen(true)}
+                  >
                     <Paperclip className="h-5 w-5" />
+                  </Button>
                   </Button>
                   <div className="flex-1 relative">
                     <Input
