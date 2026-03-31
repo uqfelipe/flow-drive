@@ -318,7 +318,16 @@ export default function Conversations() {
                   >
                     <ArrowLeft className="h-5 w-5" />
                   </button>
-                  <Avatar className="h-10 w-10 ring-2 ring-primary/20 ring-offset-2 ring-offset-card">
+                  <Avatar
+                    className={cn(
+                      "h-10 w-10 ring-2 ring-primary/20 ring-offset-2 ring-offset-card",
+                      (selectedChat.image || selectedChat.imagePreview || selectedChat.wa_profilePicUrl) && "cursor-pointer hover:opacity-80"
+                    )}
+                    onClick={() => {
+                      const src = selectedChat.image || selectedChat.imagePreview || selectedChat.wa_profilePicUrl;
+                      if (src) setLightboxImg(src);
+                    }}
+                  >
                     {(selectedChat.image || selectedChat.imagePreview || selectedChat.wa_profilePicUrl) && <AvatarImage src={selectedChat.image || selectedChat.imagePreview || selectedChat.wa_profilePicUrl} />}
                     <AvatarFallback className="bg-primary/15 text-primary text-xs font-bold">
                       {getInitials(chatName(selectedChat))}
