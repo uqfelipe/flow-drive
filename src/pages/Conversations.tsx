@@ -1127,18 +1127,6 @@ export default function Conversations() {
                                         ? "bg-gradient-to-br from-primary to-primary/90 text-primary-foreground rounded-2xl rounded-br-md shadow-md shadow-primary/10"
                                         : "bg-card text-card-foreground border border-border/50 rounded-2xl rounded-bl-md shadow-sm"
                                     )}>
-                                      {/* Tail */}
-                                      <div className={cn(
-                                        "absolute top-0 w-3 h-3 overflow-hidden",
-                                        msg.fromMe ? "-right-1.5" : "-left-1.5"
-                                      )}>
-                                        <div className={cn(
-                                          "w-3 h-3 rotate-45 transform origin-center",
-                                          msg.fromMe
-                                            ? "bg-primary translate-x-[-50%]"
-                                            : "bg-card border-l border-t border-border/50 translate-x-[50%]"
-                                        )} />
-                                      </div>
 
                                       {/* Media content */}
                                       {renderMediaContent(msg, extracted)}
