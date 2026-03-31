@@ -101,7 +101,19 @@ Deno.serve(async (req) => {
       if (!phone) return json({ error: "phone required" }, 400);
       const chatid = phone.includes("@") ? phone : `${phone}@s.whatsapp.net`;
       try {
-        const data = await apiCall(inst.server_url, inst.instance_token, "/chat/presence", { chatid });
+        let data: any = null;
+        // Try with chatLid first (format @lid) if available
+        if (chatLid) {
+          try {
+            data = await apiCall(inst.server_url, inst.instance_token, "/chat/presence", { chatid: chatLid });
+            console.log("presence chatLid response:", JSON.stringify(data));
+          } catch (_) { /* ignore, fallback below */ }
+        }
+        // Fallback to @s.whatsapp.net format
+        if (!data?.isOnline && !data?.composing && !data?.isTyping) {
+          data = await apiCall(inst.server_url, inst.instance_token, "/chat/presence", { chatid });
+          console.log("presence chatid response:", JSON.stringify(data));
+        }
         return json({ isOnline: !!data?.isOnline, isTyping: !!data?.composing || !!data?.isTyping });
       } catch (_e) {
         return json({ isOnline: false, isTyping: false });
