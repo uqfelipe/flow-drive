@@ -91,6 +91,7 @@ export default function Rentals() {
           </div>
         )}
       </div>
+      <RentalFormDialog open={formOpen} onOpenChange={setFormOpen} />
     </AdminLayout>
   );
 }
