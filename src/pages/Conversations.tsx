@@ -10,7 +10,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue
 } from "@/components/ui/select";
 import {
-  Search, Send, MessageSquare, ArrowLeft, Phone, Image, FileText,
+  Search, Send, MessageSquare, ArrowLeft, Phone, Image, FileText, ChevronDown,
   Smile, Check, CheckCheck, Mic, Paperclip, MoreVertical, Video, X,
   MapPin, User, Download, Play, Pause, File, ExternalLink, Loader2
 } from "lucide-react";
