@@ -111,9 +111,15 @@ function extractContent(msg: WhatsAppMessage): ExtractedContent {
   const resolveFileName = () => topFileName || c?.fileName || c?.title || "";
   const resolveMimetype = () => topMimetype || c?.mimetype || "";
 
+  // Base64 thumbnail helper
+  const resolveThumbnail = () => {
+    if (c?.JPEGThumbnail) return `data:image/jpeg;base64,${c.JPEGThumbnail}`;
+    return "";
+  };
+
   // Image
   if (msgType.includes("image") || c?.mimetype?.startsWith("image")) {
-    return { text: resolveText(), type: "image", fileUrl: resolveFileUrl(), mimetype: resolveMimetype() };
+    return { text: resolveText(), type: "image", fileUrl: resolveFileUrl(), mimetype: resolveMimetype(), thumbnail: resolveThumbnail() };
   }
 
   // Video
