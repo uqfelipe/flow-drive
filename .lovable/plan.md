@@ -1,55 +1,82 @@
 
 
-# Mensagens em tempo real no chat WhatsApp
+# Corrigir indicador de digitando no WhatsApp
 
 ## Problema
-Atualmente as mensagens são atualizadas por polling a cada 5 segundos (`refetchInterval: 5000`), causando delay perceptível. Além disso, ao enviar uma mensagem, o usuário precisa esperar o próximo ciclo de polling para vê-la aparecer.
+A API `/chat/presence` está retornando `{"isOnline":false,"isTyping":false}` sempre. Isso pode ser porque:
+1. A API do WhatsApi usa um endpoint ou campo diferente para presença
+2. O `chatid` pode precisar usar o formato `@lid` em vez de `@s.whatsapp.net` (nos dados da API, vemos que o sender é `255916012216453@lid`)
 
-## Solução
+## Plano
 
-### 1. Optimistic Update ao enviar mensagem (`src/hooks/use-chat.ts`)
-Quando o usuário envia uma mensagem, inserir imediatamente no cache local do React Query antes da API responder:
-- No `useSendMessage`, usar `onMutate` para adicionar a mensagem ao cache com status "enviando"
-- No `onSuccess`, invalidar para buscar o estado real
-- No `onError`, reverter o cache (rollback)
+### 1. Testar envio de mensagem pelo browser
+Vou enviar uma mensagem de teste para 553398417049 pela interface, e você digita de volta para testarmos.
 
-### 2. Reduzir polling para 2 segundos (`src/hooks/use-chat.ts`)
-- Mensagens: `refetchInterval: 2000` (era 5000)
-- Chats: `refetchInterval: 5000` (era 10000)
+### 2. Ajustar Edge Function para tentar ambos formatos de presença (`supabase/functions/whatsapp-chat/index.ts`)
+- Tentar o endpoint `/chat/presence` com o `chatid` no formato `@s.whatsapp.net`
+- Se não funcionar, tentar também com o `wa_chatlid` (formato `@lid`) que a API retorna nos chats
+- Adicionar log para debug do que a API retorna
 
-### 3. Invalidar imediatamente após envio
-- Já existe o `invalidateQueries` no `onSuccess`, mas adicionar também no `onSettled` para garantir
+### 3. Passar o `wa_chatlid` do chat selecionado para o hook de presença (`src/pages/Conversations.tsx` + `src/hooks/use-chat.ts`)
+- O chat selecionado tem o campo `wa_chatlid` (ex: `255916012216453@lid`)
+- Passar esse ID alternativo para o `usePresence` hook
+- Na edge function, usar esse ID se disponível para a chamada de presença
+
+### 4. Reduzir polling de presença para 2s
+- Mudar `refetchInterval` de 3000 para 2000ms para detecção mais rápida
 
 ## Detalhes técnicos
 
-No `useSendMessage`:
 ```typescript
-onMutate: async ({ phone, text }) => {
-  await qc.cancelQueries({ queryKey: ["whatsapp-messages", phone] });
-  const previous = qc.getQueryData(["whatsapp-messages", phone]);
-  const optimisticMsg = {
-    id: `temp-${Date.now()}`,
-    chatid: `${phone}@s.whatsapp.net`,
-    content: text,
-    fromMe: true,
-    timestamp: Math.floor(Date.now() / 1000),
-    type: "text",
-    status: "pending",
-    text: text,
-  };
-  qc.setQueryData(["whatsapp-messages", phone], (old) => [...(old || []), optimisticMsg]);
-  return { previous };
-},
-onError: (_, vars, context) => {
-  qc.setQueryData(["whatsapp-messages", vars.phone], context?.previous);
-},
-onSettled: (_, __, vars) => {
-  qc.invalidateQueries({ queryKey: ["whatsapp-messages", vars.phone] });
-  qc.invalidateQueries({ queryKey: ["whatsapp-chats"] });
+// usePresence agora aceita chatLid opcional
+export function usePresence(phone: string | null, chatLid?: string) {
+  return useQuery<PresenceData>({
+    queryKey: ["whatsapp-presence", phone],
+    queryFn: async () => {
+      if (!phone) return { isOnline: false, isTyping: false };
+      const data = await chatAction("check-presence", { 
+        phone, 
+        chatLid: chatLid || "" 
+      });
+      return {
+        isOnline: data?.isOnline ?? false,
+        isTyping: data?.isTyping ?? data?.composing ?? false,
+      };
+    },
+    enabled: !!phone,
+    refetchInterval: 2000,
+  });
 }
 ```
 
-Mesma abordagem para `useSendImage`.
+Edge function tentará ambos formatos:
+```typescript
+if (action === "check-presence") {
+  const chatid = phone.includes("@") ? phone : `${phone}@s.whatsapp.net`;
+  const chatLid = extra?.chatLid || "";
+  try {
+    // Try with chatLid first if available
+    let data;
+    if (chatLid) {
+      data = await apiCall(serverUrl, token, "/chat/presence", { chatid: chatLid });
+    }
+    if (!data?.isOnline && !data?.composing) {
+      data = await apiCall(serverUrl, token, "/chat/presence", { chatid });
+    }
+    return json({ isOnline: !!data?.isOnline, isTyping: !!data?.composing || !!data?.isTyping });
+  } catch (_e) {
+    return json({ isOnline: false, isTyping: false });
+  }
+}
+```
 
-Resultado: mensagem aparece instantaneamente na tela ao enviar, e recebimento atualiza a cada 2s.
+No Conversations.tsx, passar o `wa_chatlid`:
+```typescript
+const { data: presence } = usePresence(selectedPhone, selectedChat?.wa_chatlid);
+```
+
+## Arquivos modificados
+- `supabase/functions/whatsapp-chat/index.ts` - Tentar ambos formatos de chatid
+- `src/hooks/use-chat.ts` - Aceitar chatLid, reduzir polling
+- `src/pages/Conversations.tsx` - Passar wa_chatlid para usePresence
 
