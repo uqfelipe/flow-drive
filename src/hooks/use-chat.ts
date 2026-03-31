@@ -52,42 +52,31 @@ export function useChatMessages(phone: string | null) {
       const data = await chatAction("fetch-messages", { phone });
       const raw = data?.messages ?? [];
       // Normalize API fields to our WhatsAppMessage interface
-      const normalized: WhatsAppMessage[] = raw.map((msg: any) => {
-        // Timestamp: API returns ms (13 digits) — convert to seconds
-        let ts = msg.messageTimestamp ?? msg.timestamp ?? 0;
-        if (ts > 9999999999999) ts = Math.floor(ts / 1000); // microseconds edge case
-        else if (ts > 9999999999) ts = Math.floor(ts / 1000); // milliseconds
-        // else already in seconds
+      const normalized: WhatsAppMessage[] = raw
+        .filter((msg: any) => {
+          // Filter out Meta AI messages (UnknownMessageType with no text)
+          const rawType = (msg.messageType ?? msg.type ?? "");
+          if (rawType === "UnknownMessageType") return false;
+          return true;
+        })
+        .map((msg: any) => {
+          // Timestamp: API returns ms (13 digits) — convert to seconds
+          let ts = msg.messageTimestamp ?? msg.timestamp ?? 0;
+          if (ts > 9999999999999) ts = Math.floor(ts / 1000);
+          else if (ts > 9999999999) ts = Math.floor(ts / 1000);
 
-        // Extract Meta AI response text from base64 if UnknownMessageType
-        let extractedText = msg.text ?? "";
-        const rawType = (msg.messageType ?? msg.type ?? "");
-        if (rawType === "UnknownMessageType" && !extractedText) {
-          try {
-            const b64 = msg.content?.message?.protocolMessage?.editedMessage?.richResponseMessage?.unifiedResponse?.data;
-            if (b64) {
-              const json = JSON.parse(atob(b64));
-              const texts = (json.sections ?? [])
-                .map((s: any) => s?.view_model?.primitive?.text)
-                .filter(Boolean);
-              if (texts.length) extractedText = "🤖 " + texts.join("\n");
-            }
-          } catch { /* ignore decode errors */ }
-          if (!extractedText) extractedText = "[mensagem não suportada]";
-        }
-
-        return {
-          id: msg.id ?? msg.messageid ?? "",
-          chatid: msg.chatid ?? "",
-          content: msg.content,
-          fromMe: msg.fromMe ?? false,
-          timestamp: ts,
-          type: rawType.toLowerCase(),
-          status: (msg.status ?? "").toLowerCase(),
-          fileURL: msg.fileURL ?? msg.fileUrl ?? "",
-          text: extractedText,
-        } as WhatsAppMessage & { text?: string };
-      });
+          return {
+            id: msg.id ?? msg.messageid ?? "",
+            chatid: msg.chatid ?? "",
+            content: msg.content,
+            fromMe: msg.fromMe ?? false,
+            timestamp: ts,
+            type: (msg.messageType ?? msg.type ?? "").toLowerCase(),
+            status: (msg.status ?? "").toLowerCase(),
+            fileURL: msg.fileURL ?? msg.fileUrl ?? "",
+            text: msg.text ?? "",
+          } as WhatsAppMessage & { text?: string };
+        });
       return normalized.sort((a, b) => a.timestamp - b.timestamp);
     },
     enabled: !!phone,
