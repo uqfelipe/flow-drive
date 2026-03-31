@@ -239,6 +239,7 @@ function MediaAudio({ url, isPtt, fromMe, messageId, durationHint }: { url: stri
   });
   const [isDownloading, setIsDownloading] = useState(false);
   const [downloadError, setDownloadError] = useState(false);
+  const [userRequestedPlay, setUserRequestedPlay] = useState(false);
 
   const fmtTime = (s: number) => {
     const m = Math.floor(s / 60);
