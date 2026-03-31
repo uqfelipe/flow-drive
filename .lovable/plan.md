@@ -1,16 +1,29 @@
 
 
-# Melhorar visual do player de vídeo e remover autoplay
+# Suporte a videos base64 inline no chat
 
-## Alterações em `src/pages/Conversations.tsx`
+## Alteracoes em `src/pages/Conversations.tsx`
 
-### MediaVideo (linhas 298-311)
-- Remover `autoPlay` do `<video>` para nunca reproduzir automaticamente
-- Melhorar visual: adicionar fundo escuro arredondado, sombra suave, e estilização mais polida
-- Adicionar `controlsList="nodownload"` para visual mais limpo
-- Usar `rounded-2xl` e `shadow-lg` para visual premium
+### 1. `extractContent` — detectar base64 video no conteudo
+Antes do check de video por `msgType` (linha ~126), adicionar deteccao de strings `data:video/` no conteudo raw (string ou campo do objeto). Se encontrado, retornar tipo `video` com `fileUrl` sendo a propria string base64.
 
-### Thumbnail/preview (linhas 314-339)
-- Melhorar botão de play: gradiente sutil, sombra, escala no hover
-- Transição mais suave no overlay
+### 2. `MediaVideo` — inicializar `playableUrl` com base64
+No estado inicial do `playableUrl` (linha 271-274), adicionar check: se `url` comeca com `data:video/`, usar diretamente como playable (sem precisar download).
+
+### Logica resumida
+```
+// extractContent: detectar base64
+if (typeof content === "string" && content.startsWith("data:video/"))
+  → return { type: "video", fileUrl: content, text: "" }
+
+// Tambem checar c?.data ou c?.base64 se for objeto
+
+// MediaVideo init:
+if (url.startsWith("data:video/")) → playableUrl = url
+```
+
+## Arquivos alterados
+| Arquivo | O que muda |
+|---------|-----------|
+| `src/pages/Conversations.tsx` | 2 pontos: extractContent + MediaVideo init |
 
