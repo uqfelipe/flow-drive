@@ -22,7 +22,7 @@ export function useRentals() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("rentals")
-        .select("*, vehicles(name, brand, model, year), customers(name, phone)")
+        .select("*, vehicles(name, brand, model, year, images), customers(name, phone, photo)")
         .order("created_at", { ascending: false });
       if (error) throw error;
       return data as RentalRow[];
