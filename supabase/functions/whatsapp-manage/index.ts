@@ -5,6 +5,7 @@ const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const WHATSAPI_TOKEN = Deno.env.get("WHATSAPI_API_TOKEN")!;
 const CREATE_URL = Deno.env.get("WHATSAPI_CREATE_URL")!;
+const PROXY_APIKEY = Deno.env.get("WHATSAPI_PROXY_APIKEY") || "";
 
 const USER_ID = "admin"; // single-tenant, no auth
 
