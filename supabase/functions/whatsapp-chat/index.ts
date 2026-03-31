@@ -173,6 +173,22 @@ Deno.serve(async (req) => {
       return json({ success: true });
     }
 
+    if (action === "delete-message") {
+      if (!msgId || !remoteJid) return json({ error: "messageId and remoteJid required" }, 400);
+      const deleteUrl = `${inst.server_url}/chat/deleteMessageForEveryone/${inst.instance_name}`;
+      const res = await fetch(deleteUrl, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json", token: inst.instance_token },
+        body: JSON.stringify({ id: msgId, remoteJid, fromMe: fromMe ?? true }),
+      });
+      if (!res.ok) {
+        const errText = await res.text();
+        throw new Error(`Delete error ${res.status}: ${errText}`);
+      }
+      const data = await res.json();
+      return json(data);
+    }
+
     return json({ error: "Invalid action" }, 400);
   } catch (e: any) {
     console.error("whatsapp-chat error:", e);
