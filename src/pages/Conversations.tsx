@@ -7,7 +7,7 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import {
   Search, Send, MessageSquare, ArrowLeft, Phone, Image, FileText,
-  Smile, Check, CheckCheck, Mic, Paperclip, MoreVertical, Video
+  Smile, Check, CheckCheck, Mic, Paperclip, MoreVertical, Video, X
 } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 import { useWhatsAppChats, useChatMessages, useSendMessage, type WhatsAppChat, type WhatsAppMessage } from "@/hooks/use-chat";
@@ -105,6 +105,7 @@ export default function Conversations() {
   const [search, setSearch] = useState("");
   const [selectedChat, setSelectedChat] = useState<WhatsAppChat | null>(null);
   const [text, setText] = useState("");
+  const [lightboxImg, setLightboxImg] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const { data: chats, isLoading: chatsLoading } = useWhatsAppChats();
@@ -137,6 +138,7 @@ export default function Conversations() {
   };
 
   return (
+    <>
     <AdminLayout title="Conversas" subtitle="Chat via WhatsApp">
       <div className="flex h-[calc(100vh-80px)] overflow-hidden rounded-xl border border-border shadow-lg mx-1 mb-1">
         {/* ─── Left panel ─── */}
@@ -207,10 +209,17 @@ export default function Conversations() {
                       onClick={() => setSelectedChat(chat)}
                     >
                       <div className="relative">
-                        <Avatar className={cn(
-                          "h-12 w-12 shrink-0 transition-all duration-200",
-                          isActive && "ring-2 ring-primary/40 ring-offset-2 ring-offset-card"
-                        )}>
+                        <Avatar
+                          className={cn(
+                            "h-12 w-12 shrink-0 transition-all duration-200",
+                            isActive && "ring-2 ring-primary/40 ring-offset-2 ring-offset-card",
+                            (chat.image || chat.imagePreview || chat.wa_profilePicUrl) && "cursor-pointer hover:opacity-80"
+                          )}
+                          onClick={(e) => {
+                            const src = chat.image || chat.imagePreview || chat.wa_profilePicUrl;
+                            if (src) { e.stopPropagation(); setLightboxImg(src); }
+                          }}
+                        >
                           {(chat.image || chat.imagePreview || chat.wa_profilePicUrl) && <AvatarImage src={chat.image || chat.imagePreview || chat.wa_profilePicUrl} />}
                           <AvatarFallback className={cn(
                             "text-xs font-bold transition-colors",
@@ -310,7 +319,16 @@ export default function Conversations() {
                   >
                     <ArrowLeft className="h-5 w-5" />
                   </button>
-                  <Avatar className="h-10 w-10 ring-2 ring-primary/20 ring-offset-2 ring-offset-card">
+                  <Avatar
+                    className={cn(
+                      "h-10 w-10 ring-2 ring-primary/20 ring-offset-2 ring-offset-card",
+                      (selectedChat.image || selectedChat.imagePreview || selectedChat.wa_profilePicUrl) && "cursor-pointer hover:opacity-80"
+                    )}
+                    onClick={() => {
+                      const src = selectedChat.image || selectedChat.imagePreview || selectedChat.wa_profilePicUrl;
+                      if (src) setLightboxImg(src);
+                    }}
+                  >
                     {(selectedChat.image || selectedChat.imagePreview || selectedChat.wa_profilePicUrl) && <AvatarImage src={selectedChat.image || selectedChat.imagePreview || selectedChat.wa_profilePicUrl} />}
                     <AvatarFallback className="bg-primary/15 text-primary text-xs font-bold">
                       {getInitials(chatName(selectedChat))}
@@ -503,5 +521,40 @@ export default function Conversations() {
         </div>
       </div>
     </AdminLayout>
+
+    {/* Lightbox overlay for profile picture */}
+    <AnimatePresence>
+      {lightboxImg && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm"
+          onClick={() => setLightboxImg(null)}
+        >
+          <motion.div
+            initial={{ scale: 0.7, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0.7, opacity: 0 }}
+            transition={{ type: "spring", damping: 25, stiffness: 300 }}
+            className="relative"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              onClick={() => setLightboxImg(null)}
+              className="absolute -top-3 -right-3 z-10 rounded-full bg-card p-1.5 shadow-lg border border-border hover:bg-muted transition-colors"
+            >
+              <X className="h-5 w-5" />
+            </button>
+            <img
+              src={lightboxImg}
+              alt="Foto de perfil"
+              className="max-h-[80vh] max-w-[80vw] rounded-2xl shadow-2xl object-contain"
+            />
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+    </>
   );
 }
