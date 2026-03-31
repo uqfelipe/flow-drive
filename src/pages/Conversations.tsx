@@ -356,11 +356,7 @@ export default function Conversations() {
                             "text-[11px] truncate leading-relaxed",
                             hasUnread ? "text-foreground/70 font-medium" : "text-muted-foreground/70"
                           )}>
-                            {typeof chat.wa_lastMsg === "string"
-                              ? chat.wa_lastMsg
-                              : typeof chat.wa_lastMsg === "object" && chat.wa_lastMsg !== null
-                                ? (chat.wa_lastMsg as any).text ?? (chat.wa_lastMsg as any).caption ?? ""
-                                : formatPhone(phoneFromChatId(chat.wa_chatid))}
+                            {chatPreview(chat.wa_lastMsg) || formatPhone(phoneFromChatId(chat.wa_chatid))}
                           </p>
                           {hasUnread && !isActive && (
                             <span className="bg-success text-success-foreground text-[10px] font-bold rounded-full h-[18px] min-w-[18px] flex items-center justify-center px-1 shrink-0">
