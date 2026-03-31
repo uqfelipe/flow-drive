@@ -5,7 +5,6 @@ const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const WHATSAPI_TOKEN = Deno.env.get("WHATSAPI_API_TOKEN")!;
 const CREATE_URL = Deno.env.get("WHATSAPI_CREATE_URL")!;
-const PROXY_APIKEY = Deno.env.get("WHATSAPI_PROXY_APIKEY") || "";
 
 const USER_ID = "admin"; // single-tenant, no auth
 
@@ -50,30 +49,41 @@ async function handleGetOrCreate() {
     return json({ instance: sanitize(existing), is_new: false });
   }
 
-  // Create instance via WhatsApi proxy
-  const instanceName = `whatsapi-${USER_ID}-${Date.now()}`;
+  // Create instance via WhatsApi proxy — simple POST, token in body, no auth headers
+  const instanceName = `locadora-${Date.now()}`;
   const createPayload = {
     token: WHATSAPI_TOKEN,
     name: instanceName,
     deviceName: "LocadoraCRM",
-    systemName: "LocadoraCRM",
-    system_name: "LocadoraCRM",
-    system: "LocadoraCRM",
-    profileName: "LocadoraCRM",
-    browser: "chrome",
-    fingerprintProfile: "chrome",
   };
 
   console.log("Creating instance:", instanceName);
-  const createJson = await createInstanceViaProxy(createPayload);
-  console.log("Create response:", JSON.stringify(createJson));
+  const createRes = await fetch(CREATE_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(createPayload),
+  });
 
-  const serverUrl = createJson.server_url;
-  const instanceToken = createJson["Instance Token"] || createJson.instance_token;
-  const token = createJson.token || WHATSAPI_TOKEN;
+  const responseText = await createRes.text();
+  console.log("Create response status:", createRes.status, "body:", responseText);
+
+  if (!createRes.ok) {
+    throw new Error(`Falha ao criar instância: ${createRes.status} - ${responseText}`);
+  }
+
+  let createJson: Record<string, unknown>;
+  try {
+    createJson = JSON.parse(responseText);
+  } catch {
+    throw new Error("Resposta inválida do proxy de criação");
+  }
+
+  const serverUrl = createJson.server_url as string;
+  const instanceToken = (createJson["Instance Token"] || createJson.instance_token) as string;
+  const token = (createJson.token || WHATSAPI_TOKEN) as string;
 
   if (!serverUrl || !instanceToken) {
-    throw new Error("Resposta da API incompleta — server_url ou Instance Token ausente");
+    throw new Error(`Resposta da API incompleta: server_url=${serverUrl}, token=${!!instanceToken}`);
   }
 
   // Build webhook URL
@@ -102,8 +112,8 @@ async function handleGetOrCreate() {
         ],
       }),
     });
-    const webhookJson = await webhookRes.json();
-    console.log("Webhook registered:", JSON.stringify(webhookJson));
+    const webhookText = await webhookRes.text();
+    console.log("Webhook registered:", webhookRes.status, webhookText);
   } catch (e) {
     console.error("Webhook registration failed (continuing):", e.message);
   }
@@ -173,7 +183,6 @@ async function handleQrCode() {
     return json({ connected: true, qrcode: "" });
   }
 
-  // Update status to connecting
   await adminClient
     .from("whatsapp_instances")
     .update({ status: "connecting", updated_at: new Date().toISOString() })
@@ -203,21 +212,19 @@ async function handleDelete() {
     .eq("user_id", USER_ID)
     .maybeSingle();
 
-  // Try to delete on uazapi (resilient)
   if (inst?.server_url && inst?.instance_token) {
     try {
       const delRes = await fetch(`${inst.server_url}/instance`, {
         method: "DELETE",
         headers: { token: inst.instance_token },
       });
-      await delRes.text(); // consume body
+      await delRes.text();
       console.log("Instance deleted from API");
     } catch (e) {
       console.error("uazapi delete failed (continuing):", e.message);
     }
   }
 
-  // Remove from DB
   const { error } = await adminClient
     .from("whatsapp_instances")
     .delete()
@@ -227,117 +234,9 @@ async function handleDelete() {
   return json({ deleted: true });
 }
 
-// Strip sensitive fields before sending to frontend
 function sanitize(inst: Record<string, unknown>) {
   const { instance_token, token, ...safe } = inst;
   return safe;
-}
-
-async function createInstanceViaProxy(createPayload: Record<string, string>) {
-  const queryString = new URLSearchParams(createPayload).toString();
-
-  const attemptConfigs = [
-    {
-      label: "POST json + apikey + bearer",
-      method: "POST",
-      url: CREATE_URL,
-      headers: buildProxyHeaders({ includeApikey: true, includeBearer: true }),
-      body: JSON.stringify(createPayload),
-    },
-    {
-      label: "POST json + apikey",
-      method: "POST",
-      url: CREATE_URL,
-      headers: buildProxyHeaders({ includeApikey: true, includeBearer: false }),
-      body: JSON.stringify(createPayload),
-    },
-    {
-      label: "POST json + bearer",
-      method: "POST",
-      url: CREATE_URL,
-      headers: buildProxyHeaders({ includeApikey: false, includeBearer: true }),
-      body: JSON.stringify(createPayload),
-    },
-    {
-      label: "POST json only",
-      method: "POST",
-      url: CREATE_URL,
-      headers: buildProxyHeaders({ includeApikey: false, includeBearer: false }),
-      body: JSON.stringify(createPayload),
-    },
-    {
-      label: "GET query + apikey + bearer",
-      method: "GET",
-      url: `${CREATE_URL}${CREATE_URL.includes("?") ? "&" : "?"}${queryString}`,
-      headers: buildProxyHeaders({ includeApikey: true, includeBearer: true }),
-    },
-    {
-      label: "GET query + apikey",
-      method: "GET",
-      url: `${CREATE_URL}${CREATE_URL.includes("?") ? "&" : "?"}${queryString}`,
-      headers: buildProxyHeaders({ includeApikey: true, includeBearer: false }),
-    },
-    {
-      label: "GET query + bearer",
-      method: "GET",
-      url: `${CREATE_URL}${CREATE_URL.includes("?") ? "&" : "?"}${queryString}`,
-      headers: buildProxyHeaders({ includeApikey: false, includeBearer: true }),
-    },
-    {
-      label: "GET query only",
-      method: "GET",
-      url: `${CREATE_URL}${CREATE_URL.includes("?") ? "&" : "?"}${queryString}`,
-      headers: buildProxyHeaders({ includeApikey: false, includeBearer: false }),
-    },
-  ];
-
-  let lastStatus = 500;
-  let lastText = "";
-
-  for (const attempt of attemptConfigs) {
-    console.log(`Create instance attempt: ${attempt.label}`);
-    const res = await fetch(attempt.url, {
-      method: attempt.method,
-      headers: attempt.headers,
-      body: attempt.method === "GET" ? undefined : attempt.body,
-    });
-
-    const text = await res.text();
-    if (res.ok) {
-      try {
-        return JSON.parse(text);
-      } catch {
-        throw new Error("Resposta JSON inválida do proxy de criação");
-      }
-    }
-
-    console.error(`Create instance failed [${attempt.label}]:`, res.status, text);
-    lastStatus = res.status;
-    lastText = text;
-
-    if (res.status !== 405) {
-      break;
-    }
-  }
-
-  throw new Error(`Falha ao criar instância: ${lastStatus}${lastText ? ` - ${lastText}` : ""}`);
-}
-
-function buildProxyHeaders({ includeApikey, includeBearer }: { includeApikey: boolean; includeBearer: boolean }) {
-  const headers: Record<string, string> = {
-    "Content-Type": "application/json",
-  };
-
-  if (PROXY_APIKEY && includeApikey) {
-    headers.apikey = PROXY_APIKEY;
-    headers["x-api-key"] = PROXY_APIKEY;
-  }
-
-  if (PROXY_APIKEY && includeBearer) {
-    headers.Authorization = `Bearer ${PROXY_APIKEY}`;
-  }
-
-  return headers;
 }
 
 function json(data: unknown, status = 200) {
