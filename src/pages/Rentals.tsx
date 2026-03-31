@@ -7,6 +7,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Plus, Search, Filter, CalendarCheck, MessageSquare } from "lucide-react";
 import { useState } from "react";
 import { useRentals } from "@/hooks/use-rentals";
+import { RentalFormDialog } from "@/components/RentalFormDialog";
 
 const rentalStatusMap: Record<string, { label: string; className: string }> = {
   pending: { label: "Pendente", className: "bg-warning/10 text-warning border-warning/20" },
@@ -24,6 +25,7 @@ const paymentStatusMap: Record<string, { label: string; className: string }> = {
 
 export default function Rentals() {
   const [search, setSearch] = useState("");
+  const [formOpen, setFormOpen] = useState(false);
   const { data: rentals, isLoading } = useRentals();
 
   const filtered = (rentals ?? []).filter((r) => {
@@ -45,7 +47,7 @@ export default function Rentals() {
           </div>
           <div className="flex items-center gap-2">
             <Button variant="outline" size="sm"><Filter className="h-4 w-4 mr-1" /> Filtrar</Button>
-            <Button size="sm"><Plus className="h-4 w-4 mr-1" /> Nova Reserva</Button>
+            <Button size="sm" onClick={() => setFormOpen(true)}><Plus className="h-4 w-4 mr-1" /> Nova Reserva</Button>
           </div>
         </div>
 
@@ -89,6 +91,7 @@ export default function Rentals() {
           </div>
         )}
       </div>
+      <RentalFormDialog open={formOpen} onOpenChange={setFormOpen} />
     </AdminLayout>
   );
 }
