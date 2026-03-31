@@ -26,19 +26,21 @@ export interface WhatsAppChat {
 export interface WhatsAppMessage {
   id: string;
   chatid: string;
-  content: string;
+  content: any;
   fromMe: boolean;
   timestamp: number;
   type: string;
   status?: string;
   fileURL?: string;
+  text?: string;
+  fileName?: string;
+  mimetype?: string;
 }
 
 export function useWhatsAppChats() {
   return useQuery<WhatsAppChat[]>({
     queryKey: ["whatsapp-chats"],
     queryFn: async () => {
-      // Fetch connected instance number to hide own chat
       const { data: inst } = await supabase
         .from("whatsapp_instances")
         .select("instance_name")
@@ -78,10 +80,6 @@ export function useWhatsAppChats() {
   });
 }
 
-/**
- * Subscribe to Supabase Realtime on message_signals table.
- * When webhook inserts/updates a signal, refetch active queries immediately.
- */
 export function useRealtimeMessages(activePhone?: string | null) {
   const qc = useQueryClient();
 
@@ -126,7 +124,6 @@ export function usePresence(phone: string | null) {
     queryFn: async () => {
       if (!phone) return { isOnline: false, isTyping: false };
       const chatid = phone.includes("@") ? phone : `${phone}@s.whatsapp.net`;
-      // Query presence_cache directly from Supabase for fastest response
       const { data: row } = await supabase
         .from("presence_cache")
         .select("is_typing, is_online, updated_at")
@@ -156,19 +153,25 @@ export function useChatMessages(phone: string | null) {
       if (!phone) return [];
       const data = await chatAction("fetch-messages", { phone });
       const raw = data?.messages ?? [];
-      // Normalize API fields to our WhatsAppMessage interface
       const normalized: WhatsAppMessage[] = raw
         .filter((msg: any) => {
-          // Filter out Meta AI messages (UnknownMessageType with no text)
           const rawType = (msg.messageType ?? msg.type ?? "");
           if (rawType === "UnknownMessageType") return false;
           return true;
         })
         .map((msg: any) => {
-          // Timestamp: API returns ms (13 digits) — convert to seconds
           let ts = msg.messageTimestamp ?? msg.timestamp ?? 0;
           if (ts > 9999999999999) ts = Math.floor(ts / 1000);
           else if (ts > 9999999999) ts = Math.floor(ts / 1000);
+
+          // Extract fileName from content object or top-level
+          const content = msg.content;
+          let fileName = msg.fileName || "";
+          let mimetype = msg.mimetype || "";
+          if (typeof content === "object" && content !== null) {
+            fileName = fileName || content.fileName || content.title || "";
+            mimetype = mimetype || content.mimetype || "";
+          }
 
           return {
             id: msg.id ?? msg.messageid ?? "",
@@ -180,7 +183,9 @@ export function useChatMessages(phone: string | null) {
             status: (msg.status ?? "").toLowerCase(),
             fileURL: msg.fileURL ?? msg.fileUrl ?? "",
             text: msg.text ?? "",
-          } as WhatsAppMessage & { text?: string };
+            fileName,
+            mimetype,
+          } as WhatsAppMessage;
         });
       return normalized.sort((a, b) => a.timestamp - b.timestamp);
     },
@@ -267,6 +272,41 @@ export function useSendImage() {
         type: "image",
         status: "pending",
         fileURL: imageUrl,
+      };
+      qc.setQueryData<WhatsAppMessage[]>(["whatsapp-messages", phone], (old) => [...(old || []), optimisticMsg]);
+      return { previous };
+    },
+    onError: (_, vars, context) => {
+      if (context?.previous) {
+        qc.setQueryData(["whatsapp-messages", vars.phone], context.previous);
+      }
+    },
+    onSettled: (_, __, vars) => {
+      qc.invalidateQueries({ queryKey: ["whatsapp-messages", vars.phone] });
+      qc.invalidateQueries({ queryKey: ["whatsapp-chats"] });
+    },
+  });
+}
+
+export function useSendMedia() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ phone, type, fileUrl, text, docName }: { phone: string; type: string; fileUrl: string; text?: string; docName?: string }) => {
+      return chatAction("send-media", { phone, type, fileUrl, text: text || "", docName: docName || "" });
+    },
+    onMutate: async ({ phone, type, fileUrl, text, docName }) => {
+      await qc.cancelQueries({ queryKey: ["whatsapp-messages", phone] });
+      const previous = qc.getQueryData<WhatsAppMessage[]>(["whatsapp-messages", phone]);
+      const optimisticMsg: WhatsAppMessage = {
+        id: `temp-${Date.now()}`,
+        chatid: `${phone}@s.whatsapp.net`,
+        content: text || "",
+        fromMe: true,
+        timestamp: Math.floor(Date.now() / 1000),
+        type,
+        status: "pending",
+        fileURL: fileUrl,
+        fileName: docName,
       };
       qc.setQueryData<WhatsAppMessage[]>(["whatsapp-messages", phone], (old) => [...(old || []), optimisticMsg]);
       return { previous };
