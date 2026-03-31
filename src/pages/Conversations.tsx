@@ -542,7 +542,6 @@ export default function Conversations() {
                   >
                     <Paperclip className="h-5 w-5" />
                   </Button>
-                  </Button>
                   <div className="flex-1 relative">
                     <Input
                       placeholder="Digite uma mensagem..."
