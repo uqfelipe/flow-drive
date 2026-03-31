@@ -273,6 +273,7 @@ function MediaAudio({ url, isPtt, fromMe, messageId, durationHint }: { url: stri
 
   const togglePlay = async () => {
     if (!playableUrl) {
+      setUserRequestedPlay(true);
       await downloadMedia();
       return;
     }
