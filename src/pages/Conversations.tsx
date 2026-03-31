@@ -427,7 +427,7 @@ export default function Conversations() {
                                       <span className="text-[10px]">{formatMsgTime(msg.timestamp)}</span>
                                       {msg.fromMe && (
                                         msg.status === "read" || msg.status === "played"
-                                          ? <CheckCheck className="h-3 w-3 text-sky-300" />
+                                          ? <CheckCheck className="h-3 w-3" style={{ color: "hsl(199, 89%, 70%)" }} />
                                           : msg.status === "delivered"
                                             ? <CheckCheck className="h-3 w-3" />
                                             : <Check className="h-3 w-3" />
