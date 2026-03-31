@@ -10,7 +10,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue
 } from "@/components/ui/select";
 import {
-  Search, Send, MessageSquare, ArrowLeft, Phone, Image, FileText,
+  Search, Send, MessageSquare, ArrowLeft, Phone, Image, FileText, ChevronDown,
   Smile, Check, CheckCheck, Mic, Paperclip, MoreVertical, Video, X,
   MapPin, User, Download, Play, Pause, File, ExternalLink, Loader2
 } from "lucide-react";
@@ -644,6 +644,8 @@ export default function Conversations() {
   const [mediaType, setMediaType] = useState<string>("image");
   const [mediaDocName, setMediaDocName] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const scrollAreaRef = useRef<HTMLDivElement>(null);
+  const [showScrollBtn, setShowScrollBtn] = useState(false);
   const lastHandledIncomingRef = useRef<string | null>(null);
 
   const openLightbox = async (phone: string, fallbackImg?: string) => {
@@ -1047,7 +1049,12 @@ export default function Conversations() {
               <div className="flex-1 overflow-hidden relative">
                 <div className="absolute inset-0 bg-background" style={{ backgroundImage: chatBgPattern }} />
 
-                <ScrollArea className="h-full relative z-10">
+                <ScrollArea className="h-full relative z-10" ref={scrollAreaRef} onScrollCapture={(e) => {
+                  const target = e.currentTarget.querySelector('[data-radix-scroll-area-viewport]') as HTMLElement;
+                  if (!target) return;
+                  const distanceFromBottom = target.scrollHeight - target.scrollTop - target.clientHeight;
+                  setShowScrollBtn(distanceFromBottom > 120);
+                }}>
                   <div className="px-4 md:px-8 lg:px-16 py-4 min-h-full flex flex-col justify-end">
                     {msgsLoading ? (
                       <div className="space-y-4 py-8">
@@ -1181,6 +1188,22 @@ export default function Conversations() {
                     )}
                   </div>
                 </ScrollArea>
+
+                {/* Scroll to bottom button */}
+                <AnimatePresence>
+                  {showScrollBtn && (
+                    <motion.button
+                      initial={{ opacity: 0, scale: 0.8 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.8 }}
+                      transition={{ duration: 0.2 }}
+                      onClick={() => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })}
+                      className="absolute bottom-4 right-6 z-20 h-10 w-10 rounded-full bg-card border border-border/60 shadow-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+                    >
+                      <ChevronDown className="h-5 w-5" />
+                    </motion.button>
+                  )}
+                </AnimatePresence>
               </div>
 
               {/* ─── Input area ─── */}
