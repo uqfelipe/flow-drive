@@ -221,11 +221,22 @@ function MediaVideo({ url, caption, fromMe }: { url: string; caption?: string; f
   );
 }
 
-function MediaAudio({ url, isPtt, fromMe }: { url: string; isPtt: boolean; fromMe: boolean }) {
+// Cache for downloaded media URLs
+const mediaUrlCache = new Map<string, string>();
+
+function MediaAudio({ url, isPtt, fromMe, messageId, durationHint }: { url: string; isPtt: boolean; fromMe: boolean; messageId?: string; durationHint?: number }) {
   const audioRef = useRef<HTMLAudioElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
-  const [duration, setDuration] = useState(0);
+  const [duration, setDuration] = useState(durationHint || 0);
+  const [playableUrl, setPlayableUrl] = useState<string>(() => {
+    if (messageId && mediaUrlCache.has(messageId)) return mediaUrlCache.get(messageId)!;
+    // Only use url if it's not an encrypted WhatsApp CDN URL
+    if (url && !url.includes(".enc?") && !url.includes("mmg.whatsapp.net")) return url;
+    return "";
+  });
+  const [isDownloading, setIsDownloading] = useState(false);
+  const [downloadError, setDownloadError] = useState(false);
 
   const fmtTime = (s: number) => {
     const m = Math.floor(s / 60);
@@ -233,11 +244,51 @@ function MediaAudio({ url, isPtt, fromMe }: { url: string; isPtt: boolean; fromM
     return `${m}:${sec.toString().padStart(2, "0")}`;
   };
 
-  const togglePlay = () => {
+  const downloadMedia = async () => {
+    if (!messageId || isDownloading) return;
+    setIsDownloading(true);
+    setDownloadError(false);
+    try {
+      const { data, error } = await supabase.functions.invoke("whatsapp-chat", {
+        body: { action: "download-media", phone: messageId },
+      });
+      if (error) throw error;
+      const downloadedUrl = data?.fileURL || "";
+      if (downloadedUrl) {
+        mediaUrlCache.set(messageId, downloadedUrl);
+        setPlayableUrl(downloadedUrl);
+      } else {
+        setDownloadError(true);
+      }
+    } catch (e) {
+      console.error("Failed to download media:", e);
+      setDownloadError(true);
+    } finally {
+      setIsDownloading(false);
+    }
+  };
+
+  const togglePlay = async () => {
+    if (!playableUrl) {
+      await downloadMedia();
+      return;
+    }
     const a = audioRef.current;
     if (!a) return;
     if (isPlaying) { a.pause(); } else { a.play(); }
   };
+
+  // Auto-play after download
+  useEffect(() => {
+    if (playableUrl && audioRef.current && !isPlaying && isDownloading === false) {
+      // Small delay to let audio element load the src
+      const timer = setTimeout(() => {
+        audioRef.current?.play().catch(() => {});
+      }, 200);
+      return () => clearTimeout(timer);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [playableUrl]);
 
   // Waveform bars pattern
   const bars = [3, 6, 4, 8, 5, 9, 3, 7, 4, 6, 8, 3, 5, 7, 4, 9, 6, 3, 7, 5, 8, 4, 6, 3, 7, 5, 9, 4];
@@ -251,14 +302,18 @@ function MediaAudio({ url, isPtt, fromMe }: { url: string; isPtt: boolean; fromM
       {/* Play/Pause button */}
       <button
         onClick={togglePlay}
+        disabled={isDownloading}
         className={cn(
           "h-10 w-10 rounded-full flex items-center justify-center shrink-0 transition-colors",
           fromMe
             ? "bg-primary-foreground/20 hover:bg-primary-foreground/30 text-primary-foreground"
-            : "bg-primary/15 hover:bg-primary/25 text-primary"
+            : "bg-primary/15 hover:bg-primary/25 text-primary",
+          isDownloading && "opacity-50 cursor-wait"
         )}
       >
-        {isPlaying ? (
+        {isDownloading ? (
+          <div className="h-5 w-5 border-2 border-current border-t-transparent rounded-full animate-spin" />
+        ) : isPlaying ? (
           <Pause className="h-5 w-5 fill-current" />
         ) : (
           <Play className="h-5 w-5 fill-current ml-0.5" />
@@ -286,7 +341,7 @@ function MediaAudio({ url, isPtt, fromMe }: { url: string; isPtt: boolean; fromM
             "text-[11px]",
             fromMe ? "text-primary-foreground/70" : "text-muted-foreground"
           )}>
-            {isPlaying || currentTime > 0 ? fmtTime(currentTime) : fmtTime(duration)}
+            {downloadError ? "Erro" : isPlaying || currentTime > 0 ? fmtTime(currentTime) : fmtTime(duration)}
           </span>
           {isPtt && (
             <Mic className={cn(
@@ -298,20 +353,24 @@ function MediaAudio({ url, isPtt, fromMe }: { url: string; isPtt: boolean; fromM
       </div>
 
       {/* Hidden audio element */}
-      <audio
-        ref={audioRef}
-        src={url}
-        preload="metadata"
-        onLoadedMetadata={() => {
-          if (audioRef.current) setDuration(audioRef.current.duration);
-        }}
-        onTimeUpdate={() => {
-          if (audioRef.current) setCurrentTime(audioRef.current.currentTime);
-        }}
-        onPlay={() => setIsPlaying(true)}
-        onPause={() => setIsPlaying(false)}
-        onEnded={() => { setIsPlaying(false); setCurrentTime(0); }}
-      />
+      {playableUrl && (
+        <audio
+          ref={audioRef}
+          src={playableUrl}
+          preload="metadata"
+          onLoadedMetadata={() => {
+            if (audioRef.current && audioRef.current.duration && isFinite(audioRef.current.duration)) {
+              setDuration(audioRef.current.duration);
+            }
+          }}
+          onTimeUpdate={() => {
+            if (audioRef.current) setCurrentTime(audioRef.current.currentTime);
+          }}
+          onPlay={() => setIsPlaying(true)}
+          onPause={() => setIsPlaying(false)}
+          onEnded={() => { setIsPlaying(false); setCurrentTime(0); }}
+        />
+      )}
     </div>
   );
 }
