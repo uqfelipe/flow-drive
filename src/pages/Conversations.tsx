@@ -624,6 +624,8 @@ export default function Conversations() {
           </motion.div>
         </motion.div>
       )}
+    </AnimatePresence>
+
     {/* Send image dialog */}
     <Dialog open={imageDialogOpen} onOpenChange={setImageDialogOpen}>
       <DialogContent className="sm:max-w-md">
