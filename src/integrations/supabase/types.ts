@@ -59,6 +59,24 @@ export type Database = {
           },
         ]
       }
+      chat_read_status: {
+        Row: {
+          chat_id: string
+          id: string
+          read_at: string
+        }
+        Insert: {
+          chat_id: string
+          id?: string
+          read_at?: string
+        }
+        Update: {
+          chat_id?: string
+          id?: string
+          read_at?: string
+        }
+        Relationships: []
+      }
       chat_sessions: {
         Row: {
           created_at: string
