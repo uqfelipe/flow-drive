@@ -11,7 +11,7 @@ import {
   Smile, Check, CheckCheck, Mic, Paperclip, MoreVertical, Video, X
 } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
-import { useWhatsAppChats, useChatMessages, useSendMessage, useSendImage, type WhatsAppChat, type WhatsAppMessage } from "@/hooks/use-chat";
+import { useWhatsAppChats, useChatMessages, useSendMessage, useSendImage, usePresence, type WhatsAppChat, type WhatsAppMessage } from "@/hooks/use-chat";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription
 } from "@/components/ui/dialog";
@@ -154,6 +154,7 @@ export default function Conversations() {
   const { data: chats, isLoading: chatsLoading } = useWhatsAppChats();
   const selectedPhone = selectedChat ? phoneFromChatId(selectedChat.wa_chatid) : null;
   const { data: messages, isLoading: msgsLoading } = useChatMessages(selectedPhone);
+  const { data: presence } = usePresence(selectedPhone);
   const sendMutation = useSendMessage();
   const sendImageMutation = useSendImage();
 
@@ -524,6 +525,25 @@ export default function Conversations() {
                               </div>
                             );
                           })}
+                          {/* Typing indicator */}
+                          <AnimatePresence>
+                            {presence?.isTyping && (
+                              <motion.div
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, y: 10 }}
+                                className="flex justify-start px-2 py-1"
+                              >
+                                <div className="bg-muted rounded-2xl rounded-bl-md px-4 py-2.5 shadow-sm">
+                                  <div className="flex items-center gap-1">
+                                    <span className="h-2 w-2 rounded-full bg-muted-foreground/50 animate-bounce" style={{ animationDelay: "0ms" }} />
+                                    <span className="h-2 w-2 rounded-full bg-muted-foreground/50 animate-bounce" style={{ animationDelay: "150ms" }} />
+                                    <span className="h-2 w-2 rounded-full bg-muted-foreground/50 animate-bounce" style={{ animationDelay: "300ms" }} />
+                                  </div>
+                                </div>
+                              </motion.div>
+                            )}
+                          </AnimatePresence>
                           <div ref={messagesEndRef} />
                         </motion.div>
                       </AnimatePresence>

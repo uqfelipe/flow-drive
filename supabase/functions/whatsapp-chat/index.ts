@@ -97,6 +97,19 @@ Deno.serve(async (req) => {
       return json(data);
     }
 
+    if (action === "check-presence") {
+      if (!phone) return json({ error: "phone required" }, 400);
+      const chatid = phone.includes("@") ? phone : `${phone}@s.whatsapp.net`;
+      try {
+        const data = await apiCall(inst.server_url, inst.instance_token, "/chat/presence", {
+          chatid,
+        });
+        return json(data);
+      } catch {
+        return json({ isOnline: false, isTyping: false });
+      }
+    }
+
     return json({ error: "Invalid action" }, 400);
   } catch (e: any) {
     console.error("whatsapp-chat error:", e);
