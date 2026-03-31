@@ -234,7 +234,7 @@ export default function Conversations() {
                           )}
                           onClick={(e) => {
                             const src = chat.image || chat.imagePreview || chat.wa_profilePicUrl;
-                            if (src) { e.stopPropagation(); setLightboxImg(src); }
+                            if (src) { e.stopPropagation(); openLightbox(phoneFromChatId(chat.wa_chatid), src); }
                           }}
                         >
                           {(chat.image || chat.imagePreview || chat.wa_profilePicUrl) && <AvatarImage src={chat.image || chat.imagePreview || chat.wa_profilePicUrl} />}
