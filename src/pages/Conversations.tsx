@@ -154,6 +154,7 @@ export default function Conversations() {
   const { data: chats, isLoading: chatsLoading } = useWhatsAppChats();
   const selectedPhone = selectedChat ? phoneFromChatId(selectedChat.wa_chatid) : null;
   const { data: messages, isLoading: msgsLoading } = useChatMessages(selectedPhone);
+  const { data: presence } = usePresence(selectedPhone);
   const sendMutation = useSendMessage();
   const sendImageMutation = useSendImage();
 
