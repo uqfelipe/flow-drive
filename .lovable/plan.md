@@ -1,43 +1,55 @@
 
 
-# Plano: Criar documentação técnica completa da integração WhatsApp
+# Plano: Página de Veículos com CRUD completo
 
-## Objetivo
-Gerar um arquivo `WHATSAPP_IMPLEMENTATION_GUIDE.md` na raiz do projeto contendo a documentação técnica completa e detalhada da integração WhatsApp, baseada inteiramente no código real implementado.
+## O que será feito
 
-## Conteúdo do arquivo
+Transformar a página `/vehicles` de somente leitura para CRUD completo com:
+- Dialog para **criar novo veículo** (formulário com todos os campos)
+- Dialog para **editar veículo** (clicando no card)
+- Botão de **excluir veículo** com confirmação
+- Filtro por status funcional
+- Feedback com toasts de sucesso/erro
 
-O arquivo cobrirá todas as 15 seções solicitadas, extraídas do código real:
+## Arquivos modificados
 
-### Dados reais confirmados no código:
+### 1. `src/components/VehicleFormDialog.tsx` (novo)
+- Componente Dialog reutilizável para criar e editar veículos
+- Campos: nome, marca, modelo, ano, placa, cor, categoria (select), status (select), diária, semanal, mensal, descrição
+- Validação básica dos campos obrigatórios
+- Usa `useCreateVehicle` ou `useUpdateVehicle` conforme o modo
+- Toast de sucesso/erro
 
-**Arquivos envolvidos:**
-- `supabase/functions/whatsapp-manage/index.ts` — Edge Function principal (get-or-create, qrcode, disconnect, delete)
-- `supabase/functions/whatsapp-webhook/index.ts` — Edge Function de webhook
-- `src/hooks/use-whatsapp.ts` — Hook React de gerenciamento
-- `src/pages/WhatsAppConfig.tsx` — Página frontend
-- Migration SQL `20260331172915` — Tabela `whatsapp_instances`
+### 2. `src/components/VehicleDeleteDialog.tsx` (novo)
+- AlertDialog de confirmação antes de excluir
+- Usa `useDeleteVehicle`
+- Toast de sucesso/erro
 
-**Tabela:** `whatsapp_instances` com 13 colunas (id, user_id, instance_name, device_name, server_url, instance_token, token, webhook_url, status, is_connected, last_connection_at, created_at, updated_at)
+### 3. `src/pages/Vehicles.tsx` (modificado)
+- Estado para controlar abertura do dialog de criar/editar e qual veículo está selecionado
+- Botão "Novo Veículo" abre o dialog em modo criação
+- Clique no card abre o dialog em modo edição
+- Botão de filtro por status com dropdown funcional
+- Botão de excluir no card com confirmação
+- Empty state quando não há veículos
 
-**Secrets:** `WHATSAPI_API_TOKEN`, `WHATSAPI_CREATE_URL`, `WHATSAPI_PROXY_APIKEY` (não usado no código final), `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`
+## Campos do formulário
 
-**Endpoints externos:**
-- Criação: `POST {WHATSAPI_CREATE_URL}` com body `{token, name, deviceName}`
-- QR Code: `POST {server_url}/instance/connect` com header `token: {instance_token}`
-- Webhook registro: `POST {server_url}/webhook` com header `token: {instance_token}`
-- Delete: `DELETE {server_url}/instance` com header `token: {instance_token}`
+| Campo | Tipo | Obrigatório |
+|-------|------|-------------|
+| name | Input text | Sim |
+| brand | Input text | Sim |
+| model | Input text | Sim |
+| year | Input number | Sim |
+| plate | Input text | Sim |
+| color | Input text | Não |
+| category | Select (sedan, suv, hatch, pickup, van, luxury, economy) | Sim |
+| status | Select (available, reserved, rented, maintenance, inactive) | Sim |
+| daily_rate | Input number | Sim |
+| weekly_rate | Input number | Sim |
+| monthly_rate | Input number | Sim |
+| description | Textarea | Não |
 
-**Rota frontend:** `/whatsapp`
-
-**Polling:** 15s via `setInterval` no hook, chama `get-or-create` e verifica `is_connected`
-
-**Problemas reais encontrados e resolvidos:**
-1. 405 por URL errada no secret `WHATSAPI_CREATE_URL`
-2. 405 por headers extras (`apikey`, `Authorization`) que o proxy rejeitava
-3. Múltiplas tentativas de fallback desnecessárias
-
-## Ação
-
-Criar um único arquivo `WHATSAPP_IMPLEMENTATION_GUIDE.md` na raiz do projeto com ~3000-4000 linhas de documentação técnica completa, incluindo exemplos reais de request/response extraídos dos network logs, SQL completo, código completo das funções, e guia de replicação passo a passo.
+## Sem alterações no banco
+Os hooks CRUD já existem em `use-vehicles.ts`. A tabela `vehicles` já tem todas as colunas necessárias.
 
