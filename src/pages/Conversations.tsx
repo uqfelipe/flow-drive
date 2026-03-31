@@ -211,7 +211,7 @@ export default function Conversations() {
                           "h-12 w-12 shrink-0 transition-all duration-200",
                           isActive && "ring-2 ring-primary/40 ring-offset-2 ring-offset-card"
                         )}>
-                          {chat.wa_profilePicUrl && <AvatarImage src={chat.wa_profilePicUrl} />}
+                          {(chat.image || chat.imagePreview || chat.wa_profilePicUrl) && <AvatarImage src={chat.image || chat.imagePreview || chat.wa_profilePicUrl} />}
                           <AvatarFallback className={cn(
                             "text-xs font-bold transition-colors",
                             isActive
