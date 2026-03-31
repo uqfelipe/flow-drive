@@ -1,44 +1,45 @@
 
 
-# Chat list preview estilo WhatsApp
+# Fix: Prévia da última mensagem não aparecendo na lista de conversas
 
-## O que mudar
+## Problema
 
-Na lista de conversas (linhas 354-360 de `Conversations.tsx`), adicionar antes do texto de prévia:
-- **Ícone de check** (✓ ou ✓✓) quando a última mensagem foi enviada por você (`fromMe`)
-- Manter os ícones de mídia (📷, 🎵, 📄, etc.) já existentes no `chatPreview`
+Na linha 341-345 de `Conversations.tsx`, quando `wa_lastMsg` é um objeto, o código tenta extrair `.text` ou `.caption`. Se nenhum desses campos existir (ex: mensagem de áudio, imagem sem caption, ou estrutura diferente da esperada), o resultado é string vazia — e nada aparece.
 
-## Alterações em `src/pages/Conversations.tsx`
+## Solução
 
-**1. Atualizar `chatPreview`** para retornar também se é `fromMe`:
+**`src/pages/Conversations.tsx`** — melhorar a função de extração da prévia para cobrir mais formatos:
 
 ```typescript
-function chatPreviewData(msg: any): { text: string; fromMe?: boolean } {
-  if (!msg) return { text: "" };
-  if (typeof msg === "string") return { text: msg };
-  if (typeof msg !== "object") return { text: String(msg) };
+function chatPreview(msg: any): string {
+  if (!msg) return "";
+  if (typeof msg === "string") return msg;
+  if (typeof msg !== "object") return String(msg);
   
-  const fromMe = msg.fromMe ?? undefined;
+  // Try common fields
   const text = msg.text ?? msg.caption ?? msg.body ?? msg.conversation ?? "";
-  if (text) return { text, fromMe };
-  // ... same media fallbacks as current chatPreview
-  return { text: "[mídia]", fromMe };
+  if (text) return text;
+  
+  // Media fallbacks
+  if (msg.mimetype?.startsWith("image") || msg.imageMessage) return "📷 Imagem";
+  if (msg.mimetype?.startsWith("video") || msg.videoMessage) return "🎥 Vídeo";
+  if (msg.mimetype?.startsWith("audio") || msg.audioMessage) return "🎵 Áudio";
+  if (msg.documentMessage || msg.fileName) return `📄 ${msg.fileName || "Documento"}`;
+  if (msg.stickerMessage) return "🏷️ Sticker";
+  if (msg.contactMessage) return "👤 Contato";
+  if (msg.locationMessage) return "📍 Localização";
+  
+  // Last resort: stringify and check
+  const str = JSON.stringify(msg);
+  if (str.length > 2 && str.length < 100) return str;
+  return "[mídia]";
 }
 ```
 
-**2. Renderizar checks + prévia** (linhas 354-360):
-
-```tsx
-<div className="flex items-center justify-between gap-2 mt-0.5">
-  <p className={cn("text-[11px] truncate leading-relaxed flex items-center gap-0.5", ...)}>
-    {preview.fromMe && (
-      <CheckCheck className="h-3 w-3 shrink-0 text-blue-400" />
-    )}
-    <span className="truncate">{preview.text || formatPhone(...)}</span>
-  </p>
-  {/* badge não lida */}
-</div>
+Substituir as linhas 341-345 por:
+```typescript
+{chatPreview(chat.wa_lastMsg) || formatPhone(phoneFromChatId(chat.wa_chatid))}
 ```
 
-Resultado: a prévia mostra `✓✓ Oiê! Pra gente continuar...` para mensagens enviadas, igual ao WhatsApp.
+**Arquivo alterado:** apenas `src/pages/Conversations.tsx` — uma nova função helper + 1 linha na renderização.
 

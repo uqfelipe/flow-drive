@@ -27,24 +27,22 @@ function chatName(chat: WhatsAppChat) {
   return chat.wa_contactName || chat.wa_name || chat.name || chat.wa_chatid?.replace("@s.whatsapp.net", "") || "—";
 }
 
-function chatPreviewData(msg: any): { text: string; fromMe?: boolean } {
-  if (!msg) return { text: "" };
-  if (typeof msg === "string") return { text: msg };
-  if (typeof msg !== "object") return { text: String(msg) };
-
-  const fromMe = msg.fromMe ?? undefined;
+function chatPreview(msg: any): string {
+  if (!msg) return "";
+  if (typeof msg === "string") return msg;
+  if (typeof msg !== "object") return String(msg);
   const text = msg.text ?? msg.caption ?? msg.body ?? msg.conversation ?? "";
-  if (text) return { text, fromMe };
-  if (msg.mimetype?.startsWith("image") || msg.imageMessage) return { text: "📷 Imagem", fromMe };
-  if (msg.mimetype?.startsWith("video") || msg.videoMessage) return { text: "🎥 Vídeo", fromMe };
-  if (msg.mimetype?.startsWith("audio") || msg.audioMessage) return { text: "🎵 Áudio", fromMe };
-  if (msg.documentMessage || msg.fileName) return { text: `📄 ${msg.fileName || "Documento"}`, fromMe };
-  if (msg.stickerMessage) return { text: "🏷️ Sticker", fromMe };
-  if (msg.contactMessage) return { text: "👤 Contato", fromMe };
-  if (msg.locationMessage) return { text: "📍 Localização", fromMe };
+  if (text) return text;
+  if (msg.mimetype?.startsWith("image") || msg.imageMessage) return "📷 Imagem";
+  if (msg.mimetype?.startsWith("video") || msg.videoMessage) return "🎥 Vídeo";
+  if (msg.mimetype?.startsWith("audio") || msg.audioMessage) return "🎵 Áudio";
+  if (msg.documentMessage || msg.fileName) return `📄 ${msg.fileName || "Documento"}`;
+  if (msg.stickerMessage) return "🏷️ Sticker";
+  if (msg.contactMessage) return "👤 Contato";
+  if (msg.locationMessage) return "📍 Localização";
   const str = JSON.stringify(msg);
-  if (str.length > 2 && str.length < 100) return { text: str, fromMe };
-  return { text: "[mídia]", fromMe };
+  if (str.length > 2 && str.length < 100) return str;
+  return "[mídia]";
 }
 
 function phoneFromChatId(chatid: string) {
@@ -354,20 +352,12 @@ export default function Conversations() {
                           </span>
                         </div>
                         <div className="flex items-center justify-between gap-2 mt-0.5">
-                          {(() => {
-                            const preview = chatPreviewData(chat.wa_lastMsg);
-                            return (
-                              <p className={cn(
-                                "text-[11px] truncate leading-relaxed flex items-center gap-0.5",
-                                hasUnread ? "text-foreground/70 font-medium" : "text-muted-foreground/70"
-                              )}>
-                                {preview.fromMe && (
-                                  <CheckCheck className="h-3 w-3 shrink-0 text-blue-400" />
-                                )}
-                                <span className="truncate">{preview.text || formatPhone(phoneFromChatId(chat.wa_chatid))}</span>
-                              </p>
-                            );
-                          })()}
+                          <p className={cn(
+                            "text-[11px] truncate leading-relaxed",
+                            hasUnread ? "text-foreground/70 font-medium" : "text-muted-foreground/70"
+                          )}>
+                            {chatPreview(chat.wa_lastMsg) || formatPhone(phoneFromChatId(chat.wa_chatid))}
+                          </p>
                           {hasUnread && !isActive && (
                             <span className="bg-success text-success-foreground text-[10px] font-bold rounded-full h-[18px] min-w-[18px] flex items-center justify-center px-1 shrink-0">
                               {chat.wa_unreadCount}
