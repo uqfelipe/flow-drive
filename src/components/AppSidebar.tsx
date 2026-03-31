@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
+import { useWhatsAppChats } from "@/hooks/use-chat";
 import {
   Sidebar,
   SidebarContent,
