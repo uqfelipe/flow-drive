@@ -25,13 +25,23 @@ const paymentStatusMap: Record<string, { label: string; className: string }> = {
 
 export default function Rentals() {
   const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
   const [formOpen, setFormOpen] = useState(false);
   const { data: rentals, isLoading } = useRentals();
 
-  const filtered = (rentals ?? []).filter((r) => {
+  const allRentals = rentals ?? [];
+
+  const statusCounts = allRentals.reduce<Record<string, number>>((acc, r) => {
+    acc[r.rental_status] = (acc[r.rental_status] || 0) + 1;
+    return acc;
+  }, {});
+
+  const filtered = allRentals.filter((r) => {
     const q = search.toLowerCase();
-    return (r.customers?.name ?? "").toLowerCase().includes(q) ||
+    const matchesSearch = (r.customers?.name ?? "").toLowerCase().includes(q) ||
       (r.vehicles ? `${r.vehicles.brand} ${r.vehicles.model}` : "").toLowerCase().includes(q);
+    const matchesStatus = statusFilter === "all" || r.rental_status === statusFilter;
+    return matchesSearch && matchesStatus;
   });
 
   const fmt = (v: number) => `R$ ${v.toLocaleString("pt-BR", { minimumFractionDigits: 0 })}`;
@@ -44,7 +54,32 @@ export default function Rentals() {
           <div className="relative flex-1 max-w-sm">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input placeholder="Buscar por cliente ou veículo..." className="pl-9 bg-card" value={search} onChange={(e) => setSearch(e.target.value)} />
-          </div>
+        </div>
+
+        <div className="flex items-center gap-2 flex-wrap">
+          {[
+            { value: "all", label: "Todas" },
+            { value: "pending", label: "Pendente" },
+            { value: "approved", label: "Aprovada" },
+            { value: "active", label: "Ativa" },
+            { value: "completed", label: "Concluída" },
+            { value: "cancelled", label: "Cancelada" },
+          ].map((s) => {
+            const count = s.value === "all" ? allRentals.length : (statusCounts[s.value] || 0);
+            return (
+              <Button
+                key={s.value}
+                variant={statusFilter === s.value ? "default" : "outline"}
+                size="sm"
+                onClick={() => setStatusFilter(s.value)}
+                className="text-xs"
+              >
+                {s.label}
+                <Badge variant="secondary" className="ml-1.5 text-[10px] px-1.5 py-0">{count}</Badge>
+              </Button>
+            );
+          })}
+        </div>
           <div className="flex items-center gap-2">
             <Button variant="outline" size="sm"><Filter className="h-4 w-4 mr-1" /> Filtrar</Button>
             <Button size="sm" onClick={() => setFormOpen(true)}><Plus className="h-4 w-4 mr-1" /> Nova Reserva</Button>
