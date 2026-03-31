@@ -3,34 +3,49 @@ import { Handle, Position, type NodeProps } from "@xyflow/react";
 import { getNodeTypeConfig } from "./nodeTypes";
 import type { FlowNodeData } from "@/types";
 
-const categoryBorderColors: Record<string, string> = {
-  trigger: "border-node-trigger/50 hover:border-node-trigger shadow-node-trigger/5",
-  message: "border-node-message/50 hover:border-node-message shadow-node-message/5",
-  logic: "border-node-logic/50 hover:border-node-logic shadow-node-logic/5",
-  input: "border-node-input/50 hover:border-node-input shadow-node-input/5",
-  database: "border-node-database/50 hover:border-node-database shadow-node-database/5",
-  automation: "border-node-automation/50 hover:border-node-automation shadow-node-automation/5",
-  ai: "border-node-ai/50 hover:border-node-ai shadow-node-ai/5",
-};
-
-const categoryBgColors: Record<string, string> = {
-  trigger: "bg-node-trigger/10",
-  message: "bg-node-message/10",
-  logic: "bg-node-logic/10",
-  input: "bg-node-input/10",
-  database: "bg-node-database/10",
-  automation: "bg-node-automation/10",
-  ai: "bg-node-ai/10",
-};
-
-const categoryTextColors: Record<string, string> = {
-  trigger: "text-node-trigger",
-  message: "text-node-message",
-  logic: "text-node-logic",
-  input: "text-node-input",
-  database: "text-node-database",
-  automation: "text-node-automation",
-  ai: "text-node-ai",
+const categoryColors: Record<string, { border: string; bg: string; text: string; bar: string }> = {
+  trigger: {
+    border: "border-node-trigger/40 hover:border-node-trigger",
+    bg: "bg-node-trigger/10",
+    text: "text-node-trigger",
+    bar: "from-node-trigger to-node-trigger/60",
+  },
+  message: {
+    border: "border-node-message/40 hover:border-node-message",
+    bg: "bg-node-message/10",
+    text: "text-node-message",
+    bar: "from-node-message to-node-message/60",
+  },
+  logic: {
+    border: "border-node-logic/40 hover:border-node-logic",
+    bg: "bg-node-logic/10",
+    text: "text-node-logic",
+    bar: "from-node-logic to-node-logic/60",
+  },
+  input: {
+    border: "border-node-input/40 hover:border-node-input",
+    bg: "bg-node-input/10",
+    text: "text-node-input",
+    bar: "from-node-input to-node-input/60",
+  },
+  database: {
+    border: "border-node-database/40 hover:border-node-database",
+    bg: "bg-node-database/10",
+    text: "text-node-database",
+    bar: "from-node-database to-node-database/60",
+  },
+  automation: {
+    border: "border-node-automation/40 hover:border-node-automation",
+    bg: "bg-node-automation/10",
+    text: "text-node-automation",
+    bar: "from-node-automation to-node-automation/60",
+  },
+  ai: {
+    border: "border-node-ai/40 hover:border-node-ai",
+    bg: "bg-node-ai/10",
+    text: "text-node-ai",
+    bar: "from-node-ai to-node-ai/60",
+  },
 };
 
 function FlowNode({ data, selected }: NodeProps) {
@@ -38,29 +53,32 @@ function FlowNode({ data, selected }: NodeProps) {
   const config = getNodeTypeConfig(nodeData.nodeType);
   const Icon = config?.icon;
   const category = nodeData.category;
+  const colors = categoryColors[category] || { border: "border-border", bg: "bg-muted", text: "text-foreground", bar: "from-primary to-primary/60" };
 
   return (
     <div
       className={`
-        relative px-4 py-3 rounded-xl border-2 bg-card min-w-[180px] max-w-[220px]
-        transition-all duration-200 cursor-pointer
-        ${categoryBorderColors[category] || "border-border"}
-        ${selected ? "ring-2 ring-primary/50 scale-105" : ""}
-        shadow-lg hover:shadow-xl
+        relative rounded-xl border bg-card min-w-[180px] max-w-[220px] overflow-hidden
+        transition-all duration-300 cursor-pointer
+        ${colors.border}
+        ${selected ? "ring-2 ring-primary/40 shadow-glow scale-[1.03]" : "shadow-node hover:shadow-node-hover"}
       `}
     >
+      {/* Gradient top bar */}
+      <div className={`h-1 w-full bg-gradient-to-r ${colors.bar}`} />
+
       {/* Input Handle */}
       {category !== "trigger" && (
         <Handle
           type="target"
           position={Position.Top}
-          className="!w-3 !h-3 !bg-muted-foreground !border-2 !border-card hover:!bg-primary transition-colors"
+          className="!w-3 !h-3 !bg-muted-foreground/60 !border-2 !border-card hover:!bg-primary !transition-all !duration-200"
         />
       )}
 
-      <div className="flex items-center gap-2.5">
-        <div className={`p-1.5 rounded-lg ${categoryBgColors[category]}`}>
-          {Icon && <Icon className={`h-4 w-4 ${categoryTextColors[category]}`} />}
+      <div className="flex items-center gap-2.5 px-4 py-3">
+        <div className={`p-1.5 rounded-lg ${colors.bg}`}>
+          {Icon && <Icon className={`h-4 w-4 ${colors.text}`} />}
         </div>
         <div className="flex-1 min-w-0">
           <p className="text-xs font-medium truncate">{nodeData.label}</p>
@@ -76,7 +94,7 @@ function FlowNode({ data, selected }: NodeProps) {
       <Handle
         type="source"
         position={Position.Bottom}
-        className="!w-3 !h-3 !bg-muted-foreground !border-2 !border-card hover:!bg-primary transition-colors"
+        className="!w-3 !h-3 !bg-muted-foreground/60 !border-2 !border-card hover:!bg-primary !transition-all !duration-200"
       />
 
       {/* Extra handles for logic nodes */}

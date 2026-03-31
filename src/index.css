@@ -6,54 +6,55 @@
 
 @layer base {
   :root {
-    --background: 220 20% 97%;
-    --foreground: 220 25% 10%;
+    /* Clean Premium Light Theme */
+    --background: 230 25% 97%;
+    --foreground: 232 33% 13%;
 
     --card: 0 0% 100%;
-    --card-foreground: 220 25% 10%;
+    --card-foreground: 232 33% 13%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 220 25% 10%;
+    --popover-foreground: 232 33% 13%;
 
-    --primary: 217 91% 60%;
+    --primary: 259 95% 68%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 220 14% 92%;
-    --secondary-foreground: 220 25% 10%;
+    --secondary: 250 20% 95%;
+    --secondary-foreground: 232 33% 13%;
 
-    --muted: 220 14% 95%;
-    --muted-foreground: 220 10% 46%;
+    --muted: 250 20% 95%;
+    --muted-foreground: 232 10% 47%;
 
-    --accent: 217 91% 60%;
-    --accent-foreground: 0 0% 100%;
+    --accent: 191 97% 77%;
+    --accent-foreground: 232 33% 13%;
 
     --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 100%;
 
-    --success: 142 71% 45%;
+    --success: 145 65% 42%;
     --success-foreground: 0 0% 100%;
 
-    --warning: 38 92% 50%;
+    --warning: 32 95% 55%;
     --warning-foreground: 0 0% 100%;
 
-    --border: 220 13% 91%;
-    --input: 220 13% 91%;
-    --ring: 217 91% 60%;
+    --border: 230 18% 90%;
+    --input: 230 18% 88%;
+    --ring: 259 95% 68%;
 
     --radius: 0.75rem;
 
-    --sidebar-background: 220 25% 10%;
-    --sidebar-foreground: 220 14% 80%;
-    --sidebar-primary: 217 91% 60%;
+    --sidebar-background: 250 20% 96%;
+    --sidebar-foreground: 232 20% 35%;
+    --sidebar-primary: 259 95% 68%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 220 20% 16%;
-    --sidebar-accent-foreground: 220 14% 90%;
-    --sidebar-border: 220 20% 18%;
-    --sidebar-ring: 217 91% 60%;
+    --sidebar-accent: 259 40% 93%;
+    --sidebar-accent-foreground: 259 60% 45%;
+    --sidebar-border: 250 18% 90%;
+    --sidebar-ring: 259 95% 68%;
 
-    /* Flow builder node colors */
-    --node-trigger: 142 71% 45%;
-    --node-message: 217 91% 60%;
+    /* Flow builder node colors — light */
+    --node-trigger: 145 65% 42%;
+    --node-message: 259 95% 68%;
     --node-logic: 45 93% 47%;
     --node-input: 271 76% 53%;
     --node-database: 25 95% 53%;
@@ -62,48 +63,58 @@
   }
 
   .dark {
-    --background: 224 28% 7%;
-    --foreground: 220 14% 92%;
+    /* Dracula-inspired Dark Theme */
+    --background: 231 15% 10%;
+    --foreground: 60 30% 96%;
 
-    --card: 224 25% 10%;
-    --card-foreground: 220 14% 92%;
+    --card: 232 14% 15%;
+    --card-foreground: 60 30% 96%;
 
-    --popover: 224 25% 10%;
-    --popover-foreground: 220 14% 92%;
+    --popover: 232 14% 15%;
+    --popover-foreground: 60 30% 96%;
 
-    --primary: 217 91% 60%;
-    --primary-foreground: 0 0% 100%;
+    --primary: 265 89% 78%;
+    --primary-foreground: 231 15% 10%;
 
-    --secondary: 220 20% 16%;
-    --secondary-foreground: 220 14% 92%;
+    --secondary: 232 14% 20%;
+    --secondary-foreground: 60 30% 96%;
 
-    --muted: 220 20% 14%;
-    --muted-foreground: 220 10% 55%;
+    --muted: 232 14% 18%;
+    --muted-foreground: 225 27% 51%;
 
-    --accent: 220 20% 16%;
-    --accent-foreground: 220 14% 92%;
+    --accent: 191 97% 77%;
+    --accent-foreground: 231 15% 10%;
 
-    --destructive: 0 72% 51%;
+    --destructive: 0 100% 67%;
     --destructive-foreground: 0 0% 100%;
 
-    --success: 142 71% 45%;
-    --success-foreground: 0 0% 100%;
+    --success: 135 94% 65%;
+    --success-foreground: 231 15% 10%;
 
-    --warning: 38 92% 50%;
-    --warning-foreground: 0 0% 100%;
+    --warning: 31 100% 71%;
+    --warning-foreground: 231 15% 10%;
 
-    --border: 220 20% 18%;
-    --input: 220 20% 18%;
-    --ring: 217 91% 60%;
+    --border: 232 14% 21%;
+    --input: 232 14% 21%;
+    --ring: 265 89% 78%;
 
-    --sidebar-background: 224 30% 6%;
-    --sidebar-foreground: 220 14% 70%;
-    --sidebar-primary: 217 91% 60%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 224 25% 12%;
-    --sidebar-accent-foreground: 220 14% 90%;
-    --sidebar-border: 224 20% 12%;
-    --sidebar-ring: 217 91% 60%;
+    --sidebar-background: 231 18% 8%;
+    --sidebar-foreground: 225 15% 55%;
+    --sidebar-primary: 265 89% 78%;
+    --sidebar-primary-foreground: 231 15% 10%;
+    --sidebar-accent: 232 14% 14%;
+    --sidebar-accent-foreground: 60 30% 90%;
+    --sidebar-border: 232 14% 14%;
+    --sidebar-ring: 265 89% 78%;
+
+    /* Flow builder node colors — Dracula */
+    --node-trigger: 135 94% 65%;
+    --node-message: 265 89% 78%;
+    --node-logic: 65 92% 76%;
+    --node-input: 326 100% 74%;
+    --node-database: 31 100% 71%;
+    --node-automation: 0 100% 67%;
+    --node-ai: 191 97% 77%;
   }
 }
 
@@ -120,6 +131,16 @@
   h1, h2, h3, h4, h5, h6 {
     font-family: 'Space Grotesk', sans-serif;
   }
+
+  /* Global smooth transitions */
+  button, a, input, textarea, select, [role="button"] {
+    @apply transition-all duration-200;
+  }
+
+  ::selection {
+    background: hsl(var(--primary) / 0.25);
+    color: hsl(var(--foreground));
+  }
 }
 
 /* React Flow overrides */
@@ -129,10 +150,55 @@
 
 .react-flow__edge-path {
   stroke-width: 2;
+  filter: drop-shadow(0 0 3px hsl(var(--primary) / 0.3));
+}
+
+.react-flow__edge-path:hover {
+  stroke-width: 3;
 }
 
 .react-flow__background {
   background-color: hsl(var(--background));
+}
+
+.react-flow__controls {
+  border-radius: var(--radius) !important;
+  border: 1px solid hsl(var(--border)) !important;
+  box-shadow: 0 4px 20px hsl(var(--foreground) / 0.08) !important;
+  overflow: hidden !important;
+}
+
+.react-flow__controls button {
+  background: hsl(var(--card)) !important;
+  border-color: hsl(var(--border)) !important;
+  color: hsl(var(--foreground)) !important;
+  width: 28px !important;
+  height: 28px !important;
+}
+
+.react-flow__controls button:hover {
+  background: hsl(var(--muted)) !important;
+}
+
+.react-flow__controls button svg {
+  fill: hsl(var(--foreground)) !important;
+}
+
+.react-flow__minimap {
+  border-radius: var(--radius) !important;
+  border: 1px solid hsl(var(--border)) !important;
+  box-shadow: 0 4px 20px hsl(var(--foreground) / 0.08) !important;
+  background: hsl(var(--card)) !important;
+}
+
+/* Handle pulse animation */
+@keyframes handle-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 hsl(var(--primary) / 0.4); }
+  50% { box-shadow: 0 0 0 4px hsl(var(--primary) / 0); }
+}
+
+.react-flow__handle:hover {
+  animation: handle-pulse 1.5s ease-in-out infinite;
 }
 
 /* Scrollbar styling */
@@ -146,10 +212,30 @@
 }
 
 ::-webkit-scrollbar-thumb {
-  background: hsl(var(--muted-foreground) / 0.3);
+  background: hsl(var(--muted-foreground) / 0.2);
   border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: hsl(var(--muted-foreground) / 0.5);
+  background: hsl(var(--muted-foreground) / 0.4);
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: hsl(var(--muted-foreground) / 0.15);
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--muted-foreground) / 0.3);
+}
+
+/* Premium card hover effect */
+.card-hover-lift {
+  @apply transition-all duration-300;
+}
+.card-hover-lift:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 30px hsl(var(--foreground) / 0.08);
+}
+.dark .card-hover-lift:hover {
+  box-shadow: 0 8px 30px hsl(var(--primary) / 0.08);
 }

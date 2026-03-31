@@ -24,6 +24,16 @@ const categoryTextColors: Record<string, string> = {
   ai: "text-node-ai",
 };
 
+const categoryHeaderBg: Record<string, string> = {
+  trigger: "from-node-trigger/20 to-transparent",
+  message: "from-node-message/20 to-transparent",
+  logic: "from-node-logic/20 to-transparent",
+  input: "from-node-input/20 to-transparent",
+  database: "from-node-database/20 to-transparent",
+  automation: "from-node-automation/20 to-transparent",
+  ai: "from-node-ai/20 to-transparent",
+};
+
 export function NodeConfigPanel({ node, onClose, onUpdate, onDelete }: NodeConfigPanelProps) {
   if (!node) return null;
 
@@ -32,31 +42,34 @@ export function NodeConfigPanel({ node, onClose, onUpdate, onDelete }: NodeConfi
   const Icon = config?.icon;
 
   return (
-    <div className="w-72 bg-card border-l border-border flex flex-col h-full animate-slide-in-right">
-      <div className="p-3 border-b border-border flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          {Icon && <Icon className={`h-4 w-4 ${categoryTextColors[data.category]}`} />}
-          <h3 className="font-display font-semibold text-xs">Configurar Bloco</h3>
+    <div className="w-72 bg-card/80 backdrop-blur-sm border-l border-border flex flex-col h-full animate-slide-in-right">
+      {/* Header with gradient */}
+      <div className={`p-3 border-b border-border bg-gradient-to-b ${categoryHeaderBg[data.category] || ""}`}>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            {Icon && <Icon className={`h-4 w-4 ${categoryTextColors[data.category]}`} />}
+            <h3 className="font-display font-semibold text-xs">Configurar Bloco</h3>
+          </div>
+          <Button variant="ghost" size="icon" className="h-6 w-6" onClick={onClose}>
+            <X className="h-3.5 w-3.5" />
+          </Button>
         </div>
-        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={onClose}>
-          <X className="h-3.5 w-3.5" />
-        </Button>
       </div>
 
       <div className="flex-1 overflow-y-auto p-3 space-y-4">
         <div className="space-y-2">
-          <Label className="text-[11px]">Nome do Bloco</Label>
+          <Label className="text-[11px] font-medium">Nome do Bloco</Label>
           <Input
-            className="h-8 text-xs bg-muted/50"
+            className="h-8 text-xs"
             value={data.label}
             onChange={(e) => onUpdate(node.id, { label: e.target.value })}
           />
         </div>
 
         <div className="space-y-2">
-          <Label className="text-[11px]">Descrição</Label>
+          <Label className="text-[11px] font-medium">Descrição</Label>
           <Input
-            className="h-8 text-xs bg-muted/50"
+            className="h-8 text-xs"
             value={data.description || ""}
             onChange={(e) => onUpdate(node.id, { description: e.target.value })}
           />
@@ -65,9 +78,9 @@ export function NodeConfigPanel({ node, onClose, onUpdate, onDelete }: NodeConfi
         {/* Message nodes */}
         {data.category === "message" && (
           <div className="space-y-2">
-            <Label className="text-[11px]">Mensagem</Label>
+            <Label className="text-[11px] font-medium">Mensagem</Label>
             <Textarea
-              className="text-xs bg-muted/50 min-h-[80px]"
+              className="text-xs min-h-[80px]"
               placeholder="Digite a mensagem para enviar..."
               value={data.config?.message || ""}
               onChange={(e) =>
@@ -83,9 +96,9 @@ export function NodeConfigPanel({ node, onClose, onUpdate, onDelete }: NodeConfi
         {/* Logic nodes */}
         {data.category === "logic" && (
           <div className="space-y-2">
-            <Label className="text-[11px]">Condição</Label>
+            <Label className="text-[11px] font-medium">Condição</Label>
             <Input
-              className="h-8 text-xs bg-muted/50"
+              className="h-8 text-xs"
               placeholder="Ex: {{mensagem}} == 'sim'"
               value={data.config?.condition || ""}
               onChange={(e) =>
@@ -98,10 +111,10 @@ export function NodeConfigPanel({ node, onClose, onUpdate, onDelete }: NodeConfi
         {/* Delay node */}
         {data.nodeType === "delay" && (
           <div className="space-y-2">
-            <Label className="text-[11px]">Tempo (segundos)</Label>
+            <Label className="text-[11px] font-medium">Tempo (segundos)</Label>
             <Input
               type="number"
-              className="h-8 text-xs bg-muted/50"
+              className="h-8 text-xs"
               value={data.config?.seconds || 5}
               onChange={(e) =>
                 onUpdate(node.id, {
@@ -113,10 +126,10 @@ export function NodeConfigPanel({ node, onClose, onUpdate, onDelete }: NodeConfi
         )}
 
         <div className="pt-4 border-t border-border">
-          <div className="text-[10px] text-muted-foreground space-y-1">
-            <p><span className="font-medium">Tipo:</span> {config?.label}</p>
-            <p><span className="font-medium">Categoria:</span> {data.category}</p>
-            <p><span className="font-medium">ID:</span> {node.id}</p>
+          <div className="text-[10px] text-muted-foreground space-y-1.5">
+            <p><span className="font-medium text-foreground/70">Tipo:</span> {config?.label}</p>
+            <p><span className="font-medium text-foreground/70">Categoria:</span> {data.category}</p>
+            <p><span className="font-medium text-foreground/70">ID:</span> {node.id}</p>
           </div>
         </div>
       </div>
@@ -125,7 +138,7 @@ export function NodeConfigPanel({ node, onClose, onUpdate, onDelete }: NodeConfi
         <Button
           variant="outline"
           size="sm"
-          className="w-full text-destructive hover:text-destructive hover:bg-destructive/10"
+          className="w-full text-destructive hover:text-destructive-foreground hover:bg-destructive/90 border-destructive/30"
           onClick={() => onDelete(node.id)}
         >
           <Trash2 className="h-3.5 w-3.5 mr-1" /> Remover Bloco

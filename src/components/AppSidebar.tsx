@@ -51,18 +51,18 @@ export function AppSidebar() {
   const isActive = (path: string) => location.pathname === path;
 
   return (
-    <Sidebar collapsible="icon" className="border-r-0">
+    <Sidebar collapsible="icon" className="border-r border-sidebar-border">
       <SidebarHeader className="p-4">
         <div className="flex items-center gap-3">
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground font-display font-bold text-sm">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-accent text-primary-foreground font-display font-bold text-sm shadow-glow-sm">
             LV
           </div>
           {!collapsed && (
             <div className="flex flex-col">
-              <span className="font-display font-bold text-sm text-sidebar-primary-foreground">
+              <span className="font-display font-bold text-sm text-foreground">
                 LocaVeículos
               </span>
-              <span className="text-[10px] text-sidebar-foreground/60">
+              <span className="text-[10px] text-muted-foreground">
                 Gestão de Locadora
               </span>
             </div>
@@ -72,7 +72,7 @@ export function AppSidebar() {
 
       <SidebarContent className="px-2">
         <SidebarGroup>
-          <SidebarGroupLabel className="text-sidebar-foreground/40 text-[10px] uppercase tracking-widest font-medium">
+          <SidebarGroupLabel className="text-muted-foreground/60 text-[10px] uppercase tracking-widest font-medium">
             Principal
           </SidebarGroupLabel>
           <SidebarGroupContent>
@@ -87,8 +87,8 @@ export function AppSidebar() {
                     <NavLink
                       to={item.url}
                       end={item.url === "/"}
-                      className="transition-colors"
-                      activeClassName="bg-sidebar-accent text-sidebar-primary font-medium"
+                      className="transition-all duration-200 rounded-lg"
+                      activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-medium border-l-2 border-sidebar-primary"
                     >
                       <item.icon className="h-4 w-4" />
                       {!collapsed && <span>{item.title}</span>}
@@ -101,7 +101,7 @@ export function AppSidebar() {
         </SidebarGroup>
 
         <SidebarGroup>
-          <SidebarGroupLabel className="text-sidebar-foreground/40 text-[10px] uppercase tracking-widest font-medium">
+          <SidebarGroupLabel className="text-muted-foreground/60 text-[10px] uppercase tracking-widest font-medium">
             Chatbot
           </SidebarGroupLabel>
           <SidebarGroupContent>
@@ -115,8 +115,8 @@ export function AppSidebar() {
                   >
                     <NavLink
                       to={item.url}
-                      className="transition-colors"
-                      activeClassName="bg-sidebar-accent text-sidebar-primary font-medium"
+                      className="transition-all duration-200 rounded-lg"
+                      activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-medium border-l-2 border-sidebar-primary"
                     >
                       <item.icon className="h-4 w-4" />
                       {!collapsed && <span>{item.title}</span>}
@@ -129,7 +129,7 @@ export function AppSidebar() {
         </SidebarGroup>
 
         <SidebarGroup>
-          <SidebarGroupLabel className="text-sidebar-foreground/40 text-[10px] uppercase tracking-widest font-medium">
+          <SidebarGroupLabel className="text-muted-foreground/60 text-[10px] uppercase tracking-widest font-medium">
             Configuração
           </SidebarGroupLabel>
           <SidebarGroupContent>
@@ -143,8 +143,8 @@ export function AppSidebar() {
                   >
                     <NavLink
                       to={item.url}
-                      className="transition-colors"
-                      activeClassName="bg-sidebar-accent text-sidebar-primary font-medium"
+                      className="transition-all duration-200 rounded-lg"
+                      activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-medium border-l-2 border-sidebar-primary"
                     >
                       <item.icon className="h-4 w-4" />
                       {!collapsed && <span>{item.title}</span>}
@@ -160,7 +160,7 @@ export function AppSidebar() {
       <SidebarFooter className="p-2">
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton tooltip="Sair" className="text-sidebar-foreground/60 hover:text-destructive">
+            <SidebarMenuButton tooltip="Sair" className="text-muted-foreground hover:text-destructive">
               <LogOut className="h-4 w-4" />
               {!collapsed && <span>Sair</span>}
             </SidebarMenuButton>
