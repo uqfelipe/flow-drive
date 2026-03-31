@@ -65,9 +65,17 @@ async function handleGetOrCreate() {
   };
 
   console.log("Creating instance:", instanceName);
+  const createHeaders: Record<string, string> = {
+    "Content-Type": "application/json",
+  };
+  if (PROXY_APIKEY) {
+    createHeaders["apikey"] = PROXY_APIKEY;
+    createHeaders["Authorization"] = `Bearer ${PROXY_APIKEY}`;
+  }
+
   const createRes = await fetch(CREATE_URL, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: createHeaders,
     body: JSON.stringify(createPayload),
   });
 
