@@ -74,7 +74,7 @@ export function useWhatsAppChats() {
           return c;
         });
     },
-    refetchInterval: 10000,
+    refetchInterval: 4000,
   });
 }
 
