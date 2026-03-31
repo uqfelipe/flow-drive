@@ -154,7 +154,7 @@ export function useChatMessages(phone: string | null) {
       return normalized.sort((a, b) => a.timestamp - b.timestamp);
     },
     enabled: !!phone,
-    refetchInterval: 2000,
+    refetchInterval: 8000, // Fallback only — Realtime handles instant updates
   });
 }
 
