@@ -81,7 +81,7 @@ export default function Customers() {
                     <div>
                       <p className="font-medium text-sm">{customer.name}</p>
                       <div className="flex items-center gap-3 text-[11px] text-muted-foreground">
-                        <span className="flex items-center gap-1"><Phone className="h-3 w-3" />{customer.phone}</span>
+                        <span className="flex items-center gap-1"><Phone className="h-3 w-3" />{customer.phone.startsWith("+") ? customer.phone : `+${customer.phone}`}</span>
                         <span className="flex items-center gap-1"><FileText className="h-3 w-3" />{customer.cpf}</span>
                       </div>
                     </div>
