@@ -656,9 +656,12 @@ export default function Conversations() {
   // Audio recording states
   const [isRecording, setIsRecording] = useState(false);
   const [recordingTime, setRecordingTime] = useState(0);
+  const [audioPreview, setAudioPreview] = useState<{ url: string; base64: string } | null>(null);
+  const [isPlayingPreview, setIsPlayingPreview] = useState(false);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const recordingTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const previewAudioRef = useRef<HTMLAudioElement | null>(null);
 
   const formatRecordingTime = (seconds: number) => {
     const m = Math.floor(seconds / 60).toString().padStart(2, "0");
@@ -667,6 +670,11 @@ export default function Conversations() {
   };
 
   const startRecording = async () => {
+    // Discard any previous preview
+    if (audioPreview) {
+      URL.revokeObjectURL(audioPreview.url);
+      setAudioPreview(null);
+    }
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       const mimeType = MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
@@ -701,30 +709,67 @@ export default function Conversations() {
     setRecordingTime(0);
   };
 
-  const stopAndSendRecording = () => {
-    if (!mediaRecorderRef.current || !selectedPhone) return;
+  const stopRecordingForPreview = () => {
+    if (!mediaRecorderRef.current) return;
     const recorder = mediaRecorderRef.current;
     recorder.onstop = () => {
       const blob = new Blob(audioChunksRef.current, { type: recorder.mimeType });
       recorder.stream.getTracks().forEach((t) => t.stop());
+      const objectUrl = URL.createObjectURL(blob);
       const reader = new FileReader();
       reader.onloadend = () => {
-        const base64 = reader.result as string;
-        sendMediaMutation.mutate({
-          phone: selectedPhone,
-          type: "audio",
-          fileUrl: base64,
-          text: "",
-        });
+        setAudioPreview({ url: objectUrl, base64: reader.result as string });
       };
       reader.readAsDataURL(blob);
       if (recordingTimerRef.current) clearInterval(recordingTimerRef.current);
       mediaRecorderRef.current = null;
       audioChunksRef.current = [];
       setIsRecording(false);
-      setRecordingTime(0);
     };
     recorder.stop();
+  };
+
+  const discardPreview = () => {
+    if (previewAudioRef.current) {
+      previewAudioRef.current.pause();
+      previewAudioRef.current = null;
+    }
+    if (audioPreview) URL.revokeObjectURL(audioPreview.url);
+    setAudioPreview(null);
+    setIsPlayingPreview(false);
+    setRecordingTime(0);
+  };
+
+  const togglePreviewPlayback = () => {
+    if (!audioPreview) return;
+    if (isPlayingPreview && previewAudioRef.current) {
+      previewAudioRef.current.pause();
+      setIsPlayingPreview(false);
+      return;
+    }
+    const audio = new Audio(audioPreview.url);
+    audio.onended = () => setIsPlayingPreview(false);
+    audio.play();
+    previewAudioRef.current = audio;
+    setIsPlayingPreview(true);
+  };
+
+  const sendRecordedAudio = () => {
+    if (!audioPreview || !selectedPhone) return;
+    if (previewAudioRef.current) {
+      previewAudioRef.current.pause();
+      previewAudioRef.current = null;
+    }
+    sendMediaMutation.mutate({
+      phone: selectedPhone,
+      type: "audio",
+      fileUrl: audioPreview.base64,
+      text: "",
+    });
+    URL.revokeObjectURL(audioPreview.url);
+    setAudioPreview(null);
+    setIsPlayingPreview(false);
+    setRecordingTime(0);
   };
 
   const openLightbox = async (phone: string, fallbackImg?: string) => {
