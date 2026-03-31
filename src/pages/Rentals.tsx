@@ -25,13 +25,23 @@ const paymentStatusMap: Record<string, { label: string; className: string }> = {
 
 export default function Rentals() {
   const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
   const [formOpen, setFormOpen] = useState(false);
   const { data: rentals, isLoading } = useRentals();
 
-  const filtered = (rentals ?? []).filter((r) => {
+  const allRentals = rentals ?? [];
+
+  const statusCounts = allRentals.reduce<Record<string, number>>((acc, r) => {
+    acc[r.rental_status] = (acc[r.rental_status] || 0) + 1;
+    return acc;
+  }, {});
+
+  const filtered = allRentals.filter((r) => {
     const q = search.toLowerCase();
-    return (r.customers?.name ?? "").toLowerCase().includes(q) ||
+    const matchesSearch = (r.customers?.name ?? "").toLowerCase().includes(q) ||
       (r.vehicles ? `${r.vehicles.brand} ${r.vehicles.model}` : "").toLowerCase().includes(q);
+    const matchesStatus = statusFilter === "all" || r.rental_status === statusFilter;
+    return matchesSearch && matchesStatus;
   });
 
   const fmt = (v: number) => `R$ ${v.toLocaleString("pt-BR", { minimumFractionDigits: 0 })}`;
