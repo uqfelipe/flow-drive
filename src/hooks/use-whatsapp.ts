@@ -38,7 +38,12 @@ export function useWhatsApp(): UseWhatsAppReturn {
     const { data, error: fnError } = await supabase.functions.invoke("whatsapp-manage", {
       body: { action },
     });
-    if (fnError) throw new Error(fnError.message || "Erro na função");
+    if (fnError) {
+      const message = typeof fnError.context === "string" && fnError.context
+        ? fnError.context
+        : fnError.message || "Erro na função";
+      throw new Error(message);
+    }
     return data;
   }, []);
 

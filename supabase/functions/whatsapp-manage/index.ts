@@ -65,27 +65,7 @@ async function handleGetOrCreate() {
   };
 
   console.log("Creating instance:", instanceName);
-  const createHeaders: Record<string, string> = {
-    "Content-Type": "application/json",
-  };
-  if (PROXY_APIKEY) {
-    createHeaders["apikey"] = PROXY_APIKEY;
-    createHeaders["Authorization"] = `Bearer ${PROXY_APIKEY}`;
-  }
-
-  const createRes = await fetch(CREATE_URL, {
-    method: "POST",
-    headers: createHeaders,
-    body: JSON.stringify(createPayload),
-  });
-
-  if (!createRes.ok) {
-    const errText = await createRes.text();
-    console.error("Create instance failed:", createRes.status, errText);
-    throw new Error(`Falha ao criar instância: ${createRes.status}`);
-  }
-
-  const createJson = await createRes.json();
+  const createJson = await createInstanceViaProxy(createPayload);
   console.log("Create response:", JSON.stringify(createJson));
 
   const serverUrl = createJson.server_url;
@@ -251,6 +231,113 @@ async function handleDelete() {
 function sanitize(inst: Record<string, unknown>) {
   const { instance_token, token, ...safe } = inst;
   return safe;
+}
+
+async function createInstanceViaProxy(createPayload: Record<string, string>) {
+  const queryString = new URLSearchParams(createPayload).toString();
+
+  const attemptConfigs = [
+    {
+      label: "POST json + apikey + bearer",
+      method: "POST",
+      url: CREATE_URL,
+      headers: buildProxyHeaders({ includeApikey: true, includeBearer: true }),
+      body: JSON.stringify(createPayload),
+    },
+    {
+      label: "POST json + apikey",
+      method: "POST",
+      url: CREATE_URL,
+      headers: buildProxyHeaders({ includeApikey: true, includeBearer: false }),
+      body: JSON.stringify(createPayload),
+    },
+    {
+      label: "POST json + bearer",
+      method: "POST",
+      url: CREATE_URL,
+      headers: buildProxyHeaders({ includeApikey: false, includeBearer: true }),
+      body: JSON.stringify(createPayload),
+    },
+    {
+      label: "POST json only",
+      method: "POST",
+      url: CREATE_URL,
+      headers: buildProxyHeaders({ includeApikey: false, includeBearer: false }),
+      body: JSON.stringify(createPayload),
+    },
+    {
+      label: "GET query + apikey + bearer",
+      method: "GET",
+      url: `${CREATE_URL}${CREATE_URL.includes("?") ? "&" : "?"}${queryString}`,
+      headers: buildProxyHeaders({ includeApikey: true, includeBearer: true }),
+    },
+    {
+      label: "GET query + apikey",
+      method: "GET",
+      url: `${CREATE_URL}${CREATE_URL.includes("?") ? "&" : "?"}${queryString}`,
+      headers: buildProxyHeaders({ includeApikey: true, includeBearer: false }),
+    },
+    {
+      label: "GET query + bearer",
+      method: "GET",
+      url: `${CREATE_URL}${CREATE_URL.includes("?") ? "&" : "?"}${queryString}`,
+      headers: buildProxyHeaders({ includeApikey: false, includeBearer: true }),
+    },
+    {
+      label: "GET query only",
+      method: "GET",
+      url: `${CREATE_URL}${CREATE_URL.includes("?") ? "&" : "?"}${queryString}`,
+      headers: buildProxyHeaders({ includeApikey: false, includeBearer: false }),
+    },
+  ];
+
+  let lastStatus = 500;
+  let lastText = "";
+
+  for (const attempt of attemptConfigs) {
+    console.log(`Create instance attempt: ${attempt.label}`);
+    const res = await fetch(attempt.url, {
+      method: attempt.method,
+      headers: attempt.headers,
+      body: attempt.method === "GET" ? undefined : attempt.body,
+    });
+
+    const text = await res.text();
+    if (res.ok) {
+      try {
+        return JSON.parse(text);
+      } catch {
+        throw new Error("Resposta JSON inválida do proxy de criação");
+      }
+    }
+
+    console.error(`Create instance failed [${attempt.label}]:`, res.status, text);
+    lastStatus = res.status;
+    lastText = text;
+
+    if (res.status !== 405) {
+      break;
+    }
+  }
+
+  throw new Error(`Falha ao criar instância: ${lastStatus}${lastText ? ` - ${lastText}` : ""}`);
+}
+
+function buildProxyHeaders({ includeApikey, includeBearer }: { includeApikey: boolean; includeBearer: boolean }) {
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+  };
+
+  if (PROXY_APIKEY && includeApikey) {
+    headers.apikey = PROXY_APIKEY;
+    headers["x-api-key"] = PROXY_APIKEY;
+  }
+
+  if (PROXY_APIKEY && includeBearer) {
+    headers.Authorization = `Bearer ${PROXY_APIKEY}`;
+  }
+
+  return headers;
 }
 
 function json(data: unknown, status = 200) {
