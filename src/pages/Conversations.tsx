@@ -574,7 +574,6 @@ export default function Conversations() {
                       value={text}
                       onChange={(e) => setText(e.target.value)}
                       onKeyDown={handleKeyDown}
-                      disabled={sendMutation.isPending}
                     />
                   </div>
                   {text.trim() ? (
@@ -586,11 +585,7 @@ export default function Conversations() {
                       <Button
                         size="icon"
                         onClick={handleSend}
-                        disabled={sendMutation.isPending}
-                        className={cn(
-                          "shrink-0 h-11 w-11 rounded-2xl shadow-md shadow-primary/20 transition-all",
-                          sendMutation.isPending && "opacity-60 animate-pulse"
-                        )}
+                        className="shrink-0 h-11 w-11 rounded-2xl shadow-md shadow-primary/20 transition-all"
                       >
                         <Send className="h-4 w-4" />
                       </Button>
