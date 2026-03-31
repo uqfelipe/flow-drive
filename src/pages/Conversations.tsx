@@ -107,7 +107,23 @@ export default function Conversations() {
   const [selectedChat, setSelectedChat] = useState<WhatsAppChat | null>(null);
   const [text, setText] = useState("");
   const [lightboxImg, setLightboxImg] = useState<string | null>(null);
+  const [lightboxLoading, setLightboxLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const openLightbox = async (phone: string, fallbackImg?: string) => {
+    setLightboxImg(fallbackImg || null);
+    setLightboxLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("whatsapp-chat", {
+        body: { action: "get-profile-pic", phone },
+      });
+      if (!error && data?.image) {
+        setLightboxImg(data.image);
+      }
+    } catch {} finally {
+      setLightboxLoading(false);
+    }
+  };
 
   const { data: chats, isLoading: chatsLoading } = useWhatsAppChats();
   const selectedPhone = selectedChat ? phoneFromChatId(selectedChat.wa_chatid) : null;
