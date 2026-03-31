@@ -6,7 +6,6 @@ const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const adminClient = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
 
 Deno.serve(async (req) => {
-  // Webhook is called by external API — no CORS needed, no auth
   if (req.method !== "POST") {
     return new Response(JSON.stringify({ error: "Method not allowed" }), { status: 405 });
   }
@@ -20,8 +19,45 @@ Deno.serve(async (req) => {
     }
 
     const body = await req.json().catch(() => ({}));
-    console.log("Webhook received for user:", userId, "body:", JSON.stringify(body));
+    const eventType = body.EventType ?? body.event ?? "";
 
+    // Handle ChatPresence events (typing indicator)
+    if (eventType === "ChatPresence" || eventType === "chatPresence" || eventType === "presence") {
+      const chatId = body.chatid ?? body.chat?.wa_chatid ?? body.from ?? "";
+      const state = (body.state ?? body.State ?? body.presence ?? "").toLowerCase();
+      const isTyping = state === "composing" || state === "recording";
+      const isOnline = isTyping || state === "available" || state === "online";
+
+      console.log("ChatPresence event:", JSON.stringify({ chatId, state, isTyping, isOnline }));
+
+      if (chatId) {
+        await adminClient
+          .from("presence_cache")
+          .upsert(
+            {
+              chat_id: chatId,
+              is_typing: isTyping,
+              is_online: isOnline,
+              updated_at: new Date().toISOString(),
+            },
+            { onConflict: "chat_id" }
+          );
+      }
+
+      return new Response(JSON.stringify({ ok: true }), {
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
+    // Log message events (existing behavior)
+    if (eventType === "messages" || eventType === "message") {
+      const msgType = body.message?.messageType ?? body.message?.type ?? "unknown";
+      console.log(`Webhook received for user: ${userId}/${eventType}/${msgType} body: ${JSON.stringify(body)}`);
+    } else {
+      console.log(`Webhook received for user: ${userId} event: ${eventType}`);
+    }
+
+    // Handle connection/disconnection events
     const isConnected =
       body.event === "connection" ||
       body.status === "CONNECTED" ||
@@ -42,7 +78,6 @@ Deno.serve(async (req) => {
           updated_at: new Date().toISOString(),
         })
         .eq("user_id", userId);
-
       console.log("Updated to connected for user:", userId);
     } else if (isDisconnected) {
       await adminClient
@@ -53,7 +88,6 @@ Deno.serve(async (req) => {
           updated_at: new Date().toISOString(),
         })
         .eq("user_id", userId);
-
       console.log("Updated to disconnected for user:", userId);
     }
 
