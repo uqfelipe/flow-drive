@@ -55,12 +55,12 @@ export interface PresenceData {
   lastSeen?: number;
 }
 
-export function usePresence(phone: string | null) {
+export function usePresence(phone: string | null, chatLid?: string) {
   return useQuery<PresenceData>({
     queryKey: ["whatsapp-presence", phone],
     queryFn: async () => {
       if (!phone) return { isOnline: false, isTyping: false };
-      const data = await chatAction("check-presence", { phone });
+      const data = await chatAction("check-presence", { phone, chatLid: chatLid || "" });
       return {
         isOnline: data?.isOnline ?? false,
         isTyping: data?.isTyping ?? data?.composing ?? false,
@@ -68,7 +68,7 @@ export function usePresence(phone: string | null) {
       };
     },
     enabled: !!phone,
-    refetchInterval: 3000,
+    refetchInterval: 2000,
   });
 }
 
