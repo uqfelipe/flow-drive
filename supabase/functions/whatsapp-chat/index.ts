@@ -130,7 +130,26 @@ Deno.serve(async (req) => {
 
     if (action === "mark-read") {
       if (!phone) return json({ error: "phone required" }, 400);
-      await apiCall(inst.server_url, inst.instance_token, "/chat/read", { number: phone });
+      const chatid = phone.includes("@") ? phone : `${phone}@s.whatsapp.net`;
+
+      // 1. Persistir no banco (garantido)
+      const supabaseAdmin = createClient(
+        Deno.env.get("SUPABASE_URL")!,
+        Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+      );
+      await supabaseAdmin.from("chat_read_status")
+        .upsert(
+          { chat_id: chatid, read_at: new Date().toISOString() },
+          { onConflict: "chat_id" }
+        );
+
+      // 2. Tentar API WhatsApp (best-effort, não bloqueia)
+      try {
+        await apiCall(inst.server_url, inst.instance_token, "/chat/read", { number: phone });
+      } catch (_e) {
+        // Ignorar — persistência local já garantida
+      }
+
       return json({ success: true });
     }
 

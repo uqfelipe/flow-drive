@@ -47,16 +47,32 @@ export function useWhatsAppChats() {
         .maybeSingle();
       const ownNumber = inst?.instance_name ?? "";
 
-      const data = await chatAction("list-chats");
-      const chats = data?.chats ?? [];
-      return chats.filter((c: any) => {
-        const chatId = c.wa_chatid ?? "";
-        // Hide Meta AI contact
-        if (chatId.startsWith("13135550002")) return false;
-        // Hide own connected number
-        if (ownNumber && chatId.startsWith(ownNumber)) return false;
-        return true;
-      });
+      const [chatData, readStatusResult] = await Promise.all([
+        chatAction("list-chats"),
+        supabase.from("chat_read_status").select("chat_id, read_at"),
+      ]);
+
+      const chats = chatData?.chats ?? [];
+      const readStatuses = readStatusResult.data ?? [];
+
+      return chats
+        .filter((c: any) => {
+          const chatId = c.wa_chatid ?? "";
+          if (chatId.startsWith("13135550002")) return false;
+          if (ownNumber && chatId.startsWith(ownNumber)) return false;
+          return true;
+        })
+        .map((c: any) => {
+          const rs = readStatuses.find((r: any) => r.chat_id === c.wa_chatid);
+          if (rs) {
+            const readAtSec = new Date(rs.read_at).getTime() / 1000;
+            const lastMsgTs = c.wa_lastMsgTimestamp ?? 0;
+            if (readAtSec >= lastMsgTs) {
+              return { ...c, wa_unreadCount: 0 };
+            }
+          }
+          return c;
+        });
     },
     refetchInterval: 10000,
   });
