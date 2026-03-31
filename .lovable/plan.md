@@ -1,29 +1,45 @@
 
 
-# Fix: Comparação de timestamps com unidades diferentes
+# Fix: Prévia da última mensagem não aparecendo na lista de conversas
 
-## Problema raiz
+## Problema
 
-Na linha 68-70 de `use-chat.ts`:
-```typescript
-const readAtSec = new Date(rs.read_at).getTime() / 1000;  // → 1774990648 (segundos)
-const lastMsgTs = c.wa_lastMsgTimestamp ?? 0;               // → 1774986655000 (milissegundos)
-if (readAtSec >= lastMsgTs) // 1774990648 >= 1774986655000 → SEMPRE FALSE
-```
-
-A API retorna `wa_lastMsgTimestamp` em **milissegundos** (13 dígitos). O código converte `read_at` para segundos dividindo por 1000. Resultado: a comparação nunca é verdadeira, então o `wa_unreadCount` nunca é zerado após reload.
+Na linha 341-345 de `Conversations.tsx`, quando `wa_lastMsg` é um objeto, o código tenta extrair `.text` ou `.caption`. Se nenhum desses campos existir (ex: mensagem de áudio, imagem sem caption, ou estrutura diferente da esperada), o resultado é string vazia — e nada aparece.
 
 ## Solução
 
-**`src/hooks/use-chat.ts`** — comparar ambos em milissegundos (remover a divisão por 1000):
+**`src/pages/Conversations.tsx`** — melhorar a função de extração da prévia para cobrir mais formatos:
 
 ```typescript
-const readAtMs = new Date(rs.read_at).getTime();        // milissegundos
-const lastMsgTs = c.wa_lastMsgTimestamp ?? 0;            // milissegundos (da API)
-if (readAtMs >= lastMsgTs) {
-  return { ...c, wa_unreadCount: 0 };
+function chatPreview(msg: any): string {
+  if (!msg) return "";
+  if (typeof msg === "string") return msg;
+  if (typeof msg !== "object") return String(msg);
+  
+  // Try common fields
+  const text = msg.text ?? msg.caption ?? msg.body ?? msg.conversation ?? "";
+  if (text) return text;
+  
+  // Media fallbacks
+  if (msg.mimetype?.startsWith("image") || msg.imageMessage) return "📷 Imagem";
+  if (msg.mimetype?.startsWith("video") || msg.videoMessage) return "🎥 Vídeo";
+  if (msg.mimetype?.startsWith("audio") || msg.audioMessage) return "🎵 Áudio";
+  if (msg.documentMessage || msg.fileName) return `📄 ${msg.fileName || "Documento"}`;
+  if (msg.stickerMessage) return "🏷️ Sticker";
+  if (msg.contactMessage) return "👤 Contato";
+  if (msg.locationMessage) return "📍 Localização";
+  
+  // Last resort: stringify and check
+  const str = JSON.stringify(msg);
+  if (str.length > 2 && str.length < 100) return str;
+  return "[mídia]";
 }
 ```
 
-Uma única linha alterada. Nenhum outro arquivo precisa mudar.
+Substituir as linhas 341-345 por:
+```typescript
+{chatPreview(chat.wa_lastMsg) || formatPhone(phoneFromChatId(chat.wa_chatid))}
+```
+
+**Arquivo alterado:** apenas `src/pages/Conversations.tsx` — uma nova função helper + 1 linha na renderização.
 
