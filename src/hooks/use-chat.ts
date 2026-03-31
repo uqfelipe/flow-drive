@@ -65,7 +65,7 @@ export function useWhatsAppChats() {
         .map((c: any) => {
           const rs = readStatuses.find((r: any) => r.chat_id === c.wa_chatid);
           if (rs) {
-            const readAtSec = new Date(rs.read_at).getTime() / 1000;
+            const readAtMs = new Date(rs.read_at).getTime();
             const lastMsgTs = c.wa_lastMsgTimestamp ?? 0;
             if (readAtSec >= lastMsgTs) {
               return { ...c, wa_unreadCount: 0 };
