@@ -1253,7 +1253,7 @@ export default function Conversations() {
                                 )}
 
                                 <div className={cn(
-                                  "flex mb-0.5",
+                                  "flex mb-0.5 group/msg",
                                   msg.fromMe ? "justify-end" : "justify-start"
                                 )}>
                                   {/* Stickers rendered without bubble */}
@@ -1275,30 +1275,88 @@ export default function Conversations() {
                                       </div>
                                     </div>
                                   ) : (
-                                    <div className={cn(
-                                      "relative max-w-[70%] px-3 py-2 text-[13px] leading-[1.45] break-words",
-                                      msg.fromMe
-                                        ? "bg-gradient-to-br from-primary to-primary/90 text-primary-foreground rounded-2xl rounded-br-md shadow-md shadow-primary/10"
-                                        : "bg-card text-card-foreground border border-border/50 rounded-2xl rounded-bl-md shadow-sm"
-                                    )}>
+                                    <div className="relative flex items-start gap-1">
+                                      {/* Delete dropdown - before bubble for fromMe */}
+                                      {msg.fromMe && (
+                                        <DropdownMenu>
+                                          <DropdownMenuTrigger asChild>
+                                            <button className="opacity-0 group-hover/msg:opacity-100 transition-opacity mt-2 p-1 rounded-full hover:bg-accent text-muted-foreground">
+                                              <ChevronDown className="h-3.5 w-3.5" />
+                                            </button>
+                                          </DropdownMenuTrigger>
+                                          <DropdownMenuContent align="end" className="min-w-[160px]">
+                                            <DropdownMenuItem
+                                              className="text-destructive focus:text-destructive cursor-pointer"
+                                              onClick={() => {
+                                                if (!selectedPhone) return;
+                                                deleteMessageMutation.mutate({
+                                                  messageId: msg.id,
+                                                  remoteJid: msg.chatid || `${selectedPhone}@s.whatsapp.net`,
+                                                  fromMe: msg.fromMe,
+                                                  phone: selectedPhone,
+                                                });
+                                              }}
+                                            >
+                                              <Trash2 className="h-4 w-4 mr-2" />
+                                              Apagar para todos
+                                            </DropdownMenuItem>
+                                          </DropdownMenuContent>
+                                        </DropdownMenu>
+                                      )}
 
-                                      {/* Media content */}
-                                      {renderMediaContent(msg, extracted)}
-
-                                      {/* Timestamp & status */}
                                       <div className={cn(
-                                        "flex items-center justify-end gap-1 mt-1",
-                                        msg.fromMe ? "text-primary-foreground/50" : "text-muted-foreground/60"
+                                        "relative max-w-[70%] px-3 py-2 text-[13px] leading-[1.45] break-words",
+                                        msg.fromMe
+                                          ? "bg-gradient-to-br from-primary to-primary/90 text-primary-foreground rounded-2xl rounded-br-md shadow-md shadow-primary/10"
+                                          : "bg-card text-card-foreground border border-border/50 rounded-2xl rounded-bl-md shadow-sm"
                                       )}>
-                                        <span className="text-[10px]">{formatMsgTime(msg.timestamp)}</span>
-                                        {msg.fromMe && (
-                                          msg.status === "read" || msg.status === "played"
-                                            ? <CheckCheck className="h-3 w-3" style={{ color: "hsl(199, 89%, 70%)" }} />
-                                            : msg.status === "delivered"
-                                              ? <CheckCheck className="h-3 w-3" />
-                                              : <Check className="h-3 w-3" />
-                                        )}
+
+                                        {/* Media content */}
+                                        {renderMediaContent(msg, extracted)}
+
+                                        {/* Timestamp & status */}
+                                        <div className={cn(
+                                          "flex items-center justify-end gap-1 mt-1",
+                                          msg.fromMe ? "text-primary-foreground/50" : "text-muted-foreground/60"
+                                        )}>
+                                          <span className="text-[10px]">{formatMsgTime(msg.timestamp)}</span>
+                                          {msg.fromMe && (
+                                            msg.status === "read" || msg.status === "played"
+                                              ? <CheckCheck className="h-3 w-3" style={{ color: "hsl(199, 89%, 70%)" }} />
+                                              : msg.status === "delivered"
+                                                ? <CheckCheck className="h-3 w-3" />
+                                                : <Check className="h-3 w-3" />
+                                          )}
+                                        </div>
                                       </div>
+
+                                      {/* Delete dropdown - after bubble for received */}
+                                      {!msg.fromMe && (
+                                        <DropdownMenu>
+                                          <DropdownMenuTrigger asChild>
+                                            <button className="opacity-0 group-hover/msg:opacity-100 transition-opacity mt-2 p-1 rounded-full hover:bg-accent text-muted-foreground">
+                                              <ChevronDown className="h-3.5 w-3.5" />
+                                            </button>
+                                          </DropdownMenuTrigger>
+                                          <DropdownMenuContent align="start" className="min-w-[160px]">
+                                            <DropdownMenuItem
+                                              className="text-destructive focus:text-destructive cursor-pointer"
+                                              onClick={() => {
+                                                if (!selectedPhone) return;
+                                                deleteMessageMutation.mutate({
+                                                  messageId: msg.id,
+                                                  remoteJid: msg.chatid || `${selectedPhone}@s.whatsapp.net`,
+                                                  fromMe: msg.fromMe,
+                                                  phone: selectedPhone,
+                                                });
+                                              }}
+                                            >
+                                              <Trash2 className="h-4 w-4 mr-2" />
+                                              Apagar para todos
+                                            </DropdownMenuItem>
+                                          </DropdownMenuContent>
+                                        </DropdownMenu>
+                                      )}
                                     </div>
                                   )}
                                 </div>
