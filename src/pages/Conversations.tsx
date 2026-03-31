@@ -280,6 +280,7 @@ function MediaImage({ url, caption, fromMe, onClickImage, thumbnail, messageId }
 
 function MediaVideo({ url, caption, fromMe, thumbnail, messageId }: { url: string; caption?: string; fromMe: boolean; thumbnail?: string; messageId?: string }) {
   const [playableUrl, setPlayableUrl] = useState<string>(() => {
+    if (url && url.startsWith("data:video/")) return url;
     if (messageId && mediaUrlCache.has(messageId)) return mediaUrlCache.get(messageId)!;
     if (url && !url.includes(".enc")) return url;
     return "";
