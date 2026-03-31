@@ -209,7 +209,13 @@ export default function Conversations() {
                               : "bg-card border border-border rounded-bl-md"
                           )}
                         >
-                          <p className="whitespace-pre-wrap">{msg.content}</p>
+                          <p className="whitespace-pre-wrap">
+                            {typeof msg.content === "string"
+                              ? msg.content
+                              : typeof msg.content === "object" && msg.content !== null
+                                ? (msg.content as any).text ?? (msg.content as any).caption ?? "[mídia]"
+                                : String(msg.content ?? "")}
+                          </p>
                           <p className={cn(
                             "text-[9px] mt-1",
                             msg.fromMe ? "text-success-foreground/70 text-right" : "text-muted-foreground text-right"
