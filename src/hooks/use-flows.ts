@@ -8,8 +8,8 @@ export interface FlowRow {
   description: string | null;
   status: string;
   version: number;
-  nodes: Node[];
-  edges: Edge[];
+  nodes: unknown[];
+  edges: unknown[];
   created_at: string;
   updated_at: string;
 }
