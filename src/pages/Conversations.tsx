@@ -686,18 +686,20 @@ export default function Conversations() {
 
   // ─── Render a message bubble's media content ───
   const renderMediaContent = (msg: WhatsAppMessage, extracted: ExtractedContent) => {
-    const { type, text: msgText, fileUrl, fileName, latitude, longitude, contactName } = extracted;
+    const { type, text: msgText, fileUrl, fileName, latitude, longitude, contactName, thumbnail } = extracted;
 
     switch (type) {
-      case "image":
-        if (fileUrl) {
-          return <MediaImage url={fileUrl} caption={msgText} fromMe={msg.fromMe} onClickImage={openImgLightbox} />;
+      case "image": {
+        const rawMsgId = msg.id?.includes(":") ? msg.id.split(":").pop() : msg.id;
+        if (fileUrl || thumbnail) {
+          return <MediaImage url={fileUrl || ""} caption={msgText} fromMe={msg.fromMe} onClickImage={openImgLightbox} thumbnail={thumbnail} messageId={rawMsgId} />;
         }
         return (
           <div className={cn("flex items-center gap-1.5 text-[11px] font-medium", msg.fromMe ? "text-primary-foreground/70" : "text-muted-foreground")}>
             <Image className="h-3 w-3" /> {msgText || "📷 Imagem"}
           </div>
         );
+      }
 
       case "video":
         if (fileUrl) {
