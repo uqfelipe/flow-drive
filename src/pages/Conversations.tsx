@@ -628,15 +628,14 @@ export default function Conversations() {
         );
 
       case "audio":
-      case "ptt":
-        if (fileUrl) {
-          return <MediaAudio url={fileUrl} isPtt={type === "ptt"} fromMe={msg.fromMe} />;
-        }
-        return (
-          <div className={cn("flex items-center gap-1.5 text-[11px] font-medium", msg.fromMe ? "text-primary-foreground/70" : "text-muted-foreground")}>
-            <Mic className="h-3 w-3" /> {msgText || "🎵 Áudio"}
-          </div>
-        );
+      case "ptt": {
+        // Extract duration hint from content.seconds
+        const c = typeof msg.content === "object" && msg.content !== null ? msg.content as any : null;
+        const durationHint = c?.seconds || 0;
+        // Extract the raw message ID (without owner prefix)
+        const rawMsgId = msg.id?.includes(":") ? msg.id.split(":").pop() : msg.id;
+        return <MediaAudio url={fileUrl || ""} isPtt={type === "ptt"} fromMe={msg.fromMe} messageId={rawMsgId} durationHint={durationHint} />;
+      }
 
       case "document":
         if (fileUrl) {
