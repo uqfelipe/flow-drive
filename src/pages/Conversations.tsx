@@ -12,7 +12,7 @@ import {
 import {
   Search, Send, MessageSquare, ArrowLeft, Phone, Image, FileText,
   Smile, Check, CheckCheck, Mic, Paperclip, MoreVertical, Video, X,
-  MapPin, User, Download, Play, Pause, File, ExternalLink
+  MapPin, User, Download, Play, Pause, File, ExternalLink, Loader2
 } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 import { useWhatsAppChats, useChatMessages, useSendMessage, useSendImage, useSendMedia, usePresence, useRealtimeMessages, useMarkAsRead, type WhatsAppChat, type WhatsAppMessage } from "@/hooks/use-chat";
