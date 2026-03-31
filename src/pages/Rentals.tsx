@@ -47,7 +47,7 @@ export default function Rentals() {
           </div>
           <div className="flex items-center gap-2">
             <Button variant="outline" size="sm"><Filter className="h-4 w-4 mr-1" /> Filtrar</Button>
-            <Button size="sm"><Plus className="h-4 w-4 mr-1" /> Nova Reserva</Button>
+            <Button size="sm" onClick={() => setFormOpen(true)}><Plus className="h-4 w-4 mr-1" /> Nova Reserva</Button>
           </div>
         </div>
 
