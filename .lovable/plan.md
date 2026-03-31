@@ -1,83 +1,32 @@
 
 
-# Redesign do Flow Builder no estilo Typebot
+# Exibir videos no chat com suporte a base64/encrypted
 
-## Visao geral
+## Problema
+Videos recebidos no WhatsApp chegam com URLs criptografadas (`.enc`) e nao reproduzem. O componente `MediaVideo` atual tenta usar a URL diretamente sem tratar criptografia nem thumbnails.
 
-Transformar o flow builder atual (nodes compactos com icone+label) em um editor visual no estilo Typebot, onde cada node e um "grupo/card" que contem **multiplos blocos empilhados** dentro dele, com visual limpo, fundo branco/claro, bordas suaves e handles laterais (direita).
+## Solucao
+Aplicar a mesma logica ja usada em `MediaImage` e `MediaAudio`: mostrar thumbnail base64, download sob demanda ao clicar em play.
 
-## Principais diferencas visuais (referencia vs atual)
+## Alteracoes em `src/pages/Conversations.tsx`
 
-| Aspecto | Atual | Typebot (desejado) |
-|---------|-------|---------------------|
-| Nodes | Compactos, icone+label, 180-220px | Cards grandes com titulo no topo e blocos internos empilhados |
-| Palette | Categorias colapsaveis com drag | Grid 2 colunas por categoria (Bubbles, Inputs, Logic, Integrations) |
-| Handles | Topo/base, circulares pequenos | Lado direito, azuis, por bloco interno |
-| Background | Dots escuros | Grid claro ou dots claros |
-| Cores | Gradiente por categoria | Branco/cinza claro, icones coloridos por tipo |
-| Node interno | Um bloco = um node | Um "grupo" contem varios blocos (messages, inputs, collects) |
+### 1. Extrair thumbnail para videos
+Na funcao `extractContent`, adicionar `thumbnail: resolveThumbnail()` ao retorno do tipo video (linha 127).
 
-## Reorganizacao de categorias (estilo Typebot)
+### 2. Reescrever `MediaVideo`
+Substituir o componente simples por um com logica de download sob demanda:
+- Props: `url`, `caption`, `fromMe`, `thumbnail`, `messageId`
+- Se URL criptografada (`.enc`): mostrar thumbnail como preview com icone de Play sobreposto
+- Ao clicar no play: chamar `download-media` via Edge Function, cachear resultado em `mediaUrlCache`
+- Apos download: renderizar `<video>` com controles normais e URL decriptada
+- Se URL normal (nao `.enc`): renderizar `<video controls>` diretamente
+- Spinner de loading durante download
 
-- **Bubbles**: Text, Image, Video, Embed (corresponde a `message`)
-- **Inputs**: Text, Number, Email, Website, Date, Phone, Button, Payment, Rating, File (corresponde a `input`)
-- **Logic**: Set variable, Condition, Redirect, Code, Typebot (corresponde a `logic`)
-- **Integrations**: corresponde a `database` + `automation` + `ai`
+### 3. Passar thumbnail e messageId ao MediaVideo
+Na renderizacao do case "video" (linha 698-706): passar `thumbnail` e `messageId` (extraido do `msg.id`).
 
-## Arquivos alterados
-
-### 1. `src/components/flow-builder/nodeTypes.ts`
-- Reorganizar categorias para Bubbles, Inputs, Logic, Integrations
-- Atualizar `FlowNodeCategory` em `types/index.ts`
-- Adicionar novos tipos genericos (Text input, Number input, Email input, etc.)
-- Manter tipos existentes do sistema de locadora como sub-opcoes
-
-### 2. `src/types/index.ts`
-- Atualizar `FlowNodeCategory` para incluir `'bubble' | 'input' | 'logic' | 'integration'`
-- Adicionar interface `FlowGroupData` para nodes que contem multiplos blocos internos
-
-### 3. `src/components/flow-builder/FlowNode.tsx` (rewrite completo)
-- Node estilo card: fundo branco/card, bordas cinza claro, rounded-lg
-- Header com titulo editavel e icone de play
-- Lista de blocos internos empilhados (cada um com icone, texto e handle source na direita)
-- Handle target na esquerda do card
-- Blocos com icones coloridos (laranja para bubbles/collect, azul para handles)
-- Suporte a "Collect [Variable]" com badge colorido (laranja)
-
-### 4. `src/components/flow-builder/NodePalette.tsx` (rewrite)
-- Layout grid 2 colunas por categoria
-- Categorias: Bubbles, Inputs, Logic, Integrations
-- Icone de cadeado no topo (lock icon decorativo)
-- Itens como botoes com icone + label, sem grip handle
-- Visual limpo, fundo branco
-
-### 5. `src/pages/FlowBuilder.tsx`
-- Remover toolbar superior (simplificar)
-- Background mais claro (grid ou dots claros)
-- Edge style: cinza/azul suave, curvo (bezier), sem animacao
-- Remover MiniMap (Typebot nao tem)
-- Manter Controls simples
-
-### 6. `src/components/flow-builder/NodeConfigPanel.tsx`
-- Adaptar para editar blocos internos do grupo
-- Permitir adicionar/remover blocos dentro de um grupo
-
-### 7. `tailwind.config.ts`
-- Ajustar cores dos nodes para paleta mais suave (laranja, azul, verde)
-
-## Fluxo do usuario
-
-1. Arrasta um tipo de bloco da palette para o canvas
-2. Cria um "grupo" automaticamente com aquele bloco dentro
-3. Pode adicionar mais blocos ao grupo clicando "+" dentro do card
-4. Conecta grupos arrastando dos handles azuis na direita de cada bloco
-5. Cada grupo tem titulo editavel no header
-
-## Resultado esperado
-
-- Visual identico ao Typebot: cards brancos com blocos empilhados
-- Palette com grid 2 colunas organizado por Bubbles/Inputs/Logic/Integrations
-- Handles azuis na lateral direita dos blocos
-- Edges curvos e suaves
-- Background limpo com grid sutil
+## Resultado
+- Videos com URL normal: reproduzem normalmente com `<video controls>`
+- Videos com URL `.enc`: mostram thumbnail base64 com botao Play; clique baixa e reproduz
+- Mesma UX ja estabelecida para imagens e audios
 
