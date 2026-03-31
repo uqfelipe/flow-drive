@@ -168,12 +168,19 @@ export default function Conversations() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedPhone]);
 
-  const filtered = (chats ?? []).filter((c) => {
-    const q = search.toLowerCase();
-    const name = chatName(c).toLowerCase();
-    const phone = phoneFromChatId(c.wa_chatid);
-    return name.includes(q) || phone.includes(search);
-  });
+  const filtered = (chats ?? [])
+    .filter((c) => {
+      const q = search.toLowerCase();
+      const name = chatName(c).toLowerCase();
+      const phone = phoneFromChatId(c.wa_chatid);
+      return name.includes(q) || phone.includes(search);
+    })
+    .sort((a, b) => {
+      const aUnread = (a.wa_unreadCount ?? 0) > 0 ? 1 : 0;
+      const bUnread = (b.wa_unreadCount ?? 0) > 0 ? 1 : 0;
+      if (aUnread !== bUnread) return bUnread - aUnread;
+      return (b.wa_lastMsgTimestamp ?? 0) - (a.wa_lastMsgTimestamp ?? 0);
+    });
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
