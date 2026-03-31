@@ -1120,7 +1120,7 @@ export default function Conversations() {
                             const isSticker = extracted.type === "sticker" && extracted.fileUrl;
 
                             return (
-                              <div key={msg.id}>
+                              <div key={msg.id} id={`msg-${msg.id}`}>
                                 {showDate && (
                                   <div className="flex justify-center my-5">
                                     <span className="bg-card/95 backdrop-blur-md text-muted-foreground/80 text-[10px] uppercase tracking-wider px-4 py-1.5 rounded-full border border-border/30 shadow-sm font-semibold">
