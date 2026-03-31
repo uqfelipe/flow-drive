@@ -89,6 +89,7 @@ interface ExtractedContent {
   longitude?: number;
   contactName?: string;
   contactPhone?: string;
+  thumbnail?: string;
 }
 
 function extractContent(msg: WhatsAppMessage): ExtractedContent {
