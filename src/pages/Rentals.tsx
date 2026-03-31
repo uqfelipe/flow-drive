@@ -25,6 +25,7 @@ const paymentStatusMap: Record<string, { label: string; className: string }> = {
 
 export default function Rentals() {
   const [search, setSearch] = useState("");
+  const [formOpen, setFormOpen] = useState(false);
   const { data: rentals, isLoading } = useRentals();
 
   const filtered = (rentals ?? []).filter((r) => {
