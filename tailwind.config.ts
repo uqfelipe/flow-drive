@@ -89,6 +89,15 @@ export default {
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
       },
+      boxShadow: {
+        'glow-sm': '0 0 10px -3px hsl(var(--primary) / 0.3)',
+        'glow': '0 0 20px -5px hsl(var(--primary) / 0.3)',
+        'glow-lg': '0 0 30px -5px hsl(var(--primary) / 0.4)',
+        'card-light': '0 1px 3px hsl(var(--foreground) / 0.04), 0 4px 12px hsl(var(--foreground) / 0.03)',
+        'card-hover': '0 4px 20px hsl(var(--foreground) / 0.08), 0 1px 3px hsl(var(--foreground) / 0.04)',
+        'node': '0 2px 10px hsl(var(--foreground) / 0.06)',
+        'node-hover': '0 4px 20px hsl(var(--primary) / 0.15)',
+      },
       keyframes: {
         "accordion-down": {
           from: { height: "0" },

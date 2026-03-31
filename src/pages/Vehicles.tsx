@@ -17,11 +17,11 @@ const mockVehicles: Vehicle[] = [
 ];
 
 const statusConfig: Record<VehicleStatus, { label: string; className: string }> = {
-  available: { label: "Disponível", className: "bg-success/10 text-success border-success/20" },
-  reserved: { label: "Reservado", className: "bg-warning/10 text-warning border-warning/20" },
-  rented: { label: "Alugado", className: "bg-primary/10 text-primary border-primary/20" },
+  available: { label: "Disponível", className: "bg-success/10 text-success border-success/30" },
+  reserved: { label: "Reservado", className: "bg-warning/10 text-warning border-warning/30" },
+  rented: { label: "Alugado", className: "bg-primary/10 text-primary border-primary/30" },
   maintenance: { label: "Manutenção", className: "bg-muted text-muted-foreground border-border" },
-  inactive: { label: "Inativo", className: "bg-destructive/10 text-destructive border-destructive/20" },
+  inactive: { label: "Inativo", className: "bg-destructive/10 text-destructive border-destructive/30" },
 };
 
 export default function Vehicles() {
@@ -41,7 +41,7 @@ export default function Vehicles() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
               placeholder="Buscar veículo, marca ou placa..."
-              className="pl-9 bg-card"
+              className="pl-9"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
@@ -50,7 +50,7 @@ export default function Vehicles() {
             <Button variant="outline" size="sm">
               <Filter className="h-4 w-4 mr-1" /> Filtrar
             </Button>
-            <Button size="sm">
+            <Button size="sm" className="shadow-glow-sm">
               <Plus className="h-4 w-4 mr-1" /> Novo Veículo
             </Button>
           </div>
@@ -60,11 +60,11 @@ export default function Vehicles() {
           {filtered.map((vehicle) => (
             <Card
               key={vehicle.id}
-              className="bg-card border-border hover:border-primary/30 transition-all cursor-pointer group"
+              className="card-hover-lift border-border/60 overflow-hidden cursor-pointer group"
             >
               <CardContent className="p-0">
-                <div className="h-40 bg-muted flex items-center justify-center rounded-t-lg">
-                  <Car className="h-12 w-12 text-muted-foreground/30 group-hover:text-primary/30 transition-colors" />
+                <div className="h-40 bg-muted/50 flex items-center justify-center">
+                  <Car className="h-12 w-12 text-muted-foreground/20 group-hover:text-primary/30 transition-colors duration-300" />
                 </div>
                 <div className="p-4 space-y-3">
                   <div className="flex items-start justify-between">
@@ -78,7 +78,7 @@ export default function Vehicles() {
                       {statusConfig[vehicle.status].label}
                     </Badge>
                   </div>
-                  <div className="flex items-center justify-between pt-2 border-t border-border">
+                  <div className="flex items-center justify-between pt-2 border-t border-border/60">
                     <div className="text-center">
                       <p className="text-[10px] text-muted-foreground">Diária</p>
                       <p className="text-xs font-semibold">R$ {vehicle.daily_rate}</p>

@@ -37,6 +37,8 @@ const customNodeTypes = {
   flowNode: FlowNode,
 };
 
+const edgeStyle = { stroke: "hsl(265 89% 78%)", strokeWidth: 2 };
+
 // Initial demo flow
 const initialNodes: Node[] = [
   {
@@ -114,11 +116,11 @@ const initialNodes: Node[] = [
 ];
 
 const initialEdges: Edge[] = [
-  { id: "e1-2", source: "1", target: "2", animated: true, style: { stroke: "hsl(217 91% 60%)", strokeWidth: 2 } },
-  { id: "e2-3", source: "2", target: "3", animated: true, style: { stroke: "hsl(217 91% 60%)", strokeWidth: 2 } },
-  { id: "e3-4", source: "3", target: "4", animated: true, style: { stroke: "hsl(217 91% 60%)", strokeWidth: 2 } },
-  { id: "e4-5", source: "4", target: "5", animated: true, style: { stroke: "hsl(142 71% 45%)", strokeWidth: 2 } },
-  { id: "e4-6", source: "4", sourceHandle: "false", target: "6", style: { stroke: "hsl(0 72% 51%)", strokeWidth: 2 } },
+  { id: "e1-2", source: "1", target: "2", animated: true, style: edgeStyle },
+  { id: "e2-3", source: "2", target: "3", animated: true, style: edgeStyle },
+  { id: "e3-4", source: "3", target: "4", animated: true, style: edgeStyle },
+  { id: "e4-5", source: "4", target: "5", animated: true, style: { stroke: "hsl(135 94% 65%)", strokeWidth: 2 } },
+  { id: "e4-6", source: "4", sourceHandle: "false", target: "6", style: { stroke: "hsl(0 100% 67%)", strokeWidth: 2 } },
 ];
 
 let nodeId = 7;
@@ -134,7 +136,7 @@ function FlowBuilderContent() {
     (params: Connection) =>
       setEdges((eds) =>
         addEdge(
-          { ...params, animated: true, style: { stroke: "hsl(217 91% 60%)", strokeWidth: 2 } },
+          { ...params, animated: true, style: edgeStyle },
           eds
         )
       ),
@@ -219,14 +221,14 @@ function FlowBuilderContent() {
     <AdminLayout title="Construtor de Fluxos" subtitle="Monte automações visuais para o chatbot">
       <div className="flex flex-col h-[calc(100vh-3.5rem)]">
         {/* Toolbar */}
-        <div className="flex items-center justify-between px-4 py-2 border-b border-border bg-card/50">
+        <div className="flex items-center justify-between px-4 py-2 border-b border-border bg-card/60 backdrop-blur-sm">
           <div className="flex items-center gap-3">
             <Workflow className="h-4 w-4 text-primary" />
             <div className="flex items-center gap-2">
               <span className="font-display font-semibold text-sm">Atendimento Inicial</span>
               <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
             </div>
-            <Badge variant="outline" className="bg-success/10 text-success border-success/20 text-[10px]">
+            <Badge variant="outline" className="bg-success/10 text-success border-success/30 text-[10px]">
               Ativo
             </Badge>
           </div>
@@ -240,7 +242,7 @@ function FlowBuilderContent() {
             <Button variant="outline" size="sm" className="h-7 text-xs">
               <ToggleLeft className="h-3 w-3 mr-1" /> Ativar/Desativar
             </Button>
-            <Button size="sm" className="h-7 text-xs">
+            <Button size="sm" className="h-7 text-xs shadow-glow-sm">
               <Save className="h-3 w-3 mr-1" /> Salvar
             </Button>
           </div>
@@ -266,16 +268,15 @@ function FlowBuilderContent() {
               className="bg-background"
               defaultEdgeOptions={{
                 animated: true,
-                style: { stroke: "hsl(217 91% 60%)", strokeWidth: 2 },
+                style: edgeStyle,
               }}
             >
-              <Controls className="!bg-card !border-border !rounded-lg !shadow-lg [&>button]:!bg-card [&>button]:!border-border [&>button]:!text-foreground [&>button:hover]:!bg-muted" />
+              <Controls />
               <MiniMap
-                className="!bg-card !border-border !rounded-lg"
-                nodeColor="hsl(217 91% 60%)"
-                maskColor="hsl(220 20% 14% / 0.8)"
+                nodeColor="hsl(265 89% 78%)"
+                maskColor="hsl(232 14% 15% / 0.7)"
               />
-              <Background variant={BackgroundVariant.Dots} gap={20} size={1} color="hsl(220 10% 25%)" />
+              <Background variant={BackgroundVariant.Dots} gap={24} size={1} color="hsl(var(--muted-foreground) / 0.15)" />
             </ReactFlow>
           </div>
 
