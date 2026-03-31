@@ -1002,9 +1002,8 @@ export default function Conversations() {
               <div className="h-[68px] border-b border-border/50 flex items-center justify-between px-4 bg-card/90 backdrop-blur-sm">
                 <div className="flex items-center gap-3">
                   <button
-                    className="p-2 hover:bg-accent rounded-xl transition-colors text-muted-foreground hover:text-foreground"
+                    className="md:hidden p-2 hover:bg-accent rounded-xl transition-colors"
                     onClick={() => setSelectedChat(null)}
-                    title="Voltar para conversas"
                   >
                     <ArrowLeft className="h-5 w-5" />
                   </button>
