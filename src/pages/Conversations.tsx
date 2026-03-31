@@ -117,6 +117,17 @@ function extractContent(msg: WhatsAppMessage): ExtractedContent {
     return "";
   };
 
+  // Base64 video detection (data:video/* in content string or object fields)
+  if (typeof content === "string" && content.startsWith("data:video/")) {
+    return { text: "", type: "video", fileUrl: content, mimetype: "" };
+  }
+  if (c?.data?.startsWith?.("data:video/")) {
+    return { text: resolveText(), type: "video", fileUrl: c.data, mimetype: resolveMimetype() };
+  }
+  if (c?.base64?.startsWith?.("data:video/")) {
+    return { text: resolveText(), type: "video", fileUrl: c.base64, mimetype: resolveMimetype() };
+  }
+
   // Image
   if (msgType.includes("image") || c?.mimetype?.startsWith("image")) {
     return { text: resolveText(), type: "image", fileUrl: resolveFileUrl(), mimetype: resolveMimetype(), thumbnail: resolveThumbnail() };
