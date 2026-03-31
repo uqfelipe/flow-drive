@@ -62,6 +62,36 @@ export function VehicleFormDialog({ open, onOpenChange, vehicle }: Props) {
   const [images, setImages] = useState<string[]>([]);
   const [uploading, setUploading] = useState(false);
 
+  // Ctrl+V paste support
+  useEffect(() => {
+    if (!open) return;
+    const handlePaste = async (e: ClipboardEvent) => {
+      const items = e.clipboardData?.items;
+      if (!items) return;
+      const imageFiles: File[] = [];
+      for (const item of Array.from(items)) {
+        if (item.type.startsWith("image/")) {
+          const file = item.getAsFile();
+          if (file) imageFiles.push(file);
+        }
+      }
+      if (imageFiles.length === 0) return;
+      e.preventDefault();
+      setUploading(true);
+      try {
+        const urls = await Promise.all(imageFiles.map(uploadToImgbb));
+        setImages((prev) => [...prev, ...urls]);
+        toast({ title: `${urls.length} imagem(ns) colada(s)` });
+      } catch (err: any) {
+        toast({ title: "Erro no upload", description: err.message, variant: "destructive" });
+      } finally {
+        setUploading(false);
+      }
+    };
+    document.addEventListener("paste", handlePaste);
+    return () => document.removeEventListener("paste", handlePaste);
+  }, [open]);
+
   useEffect(() => {
     if (vehicle) {
       setForm({
