@@ -233,6 +233,82 @@ function sanitize(inst: Record<string, unknown>) {
   return safe;
 }
 
+async function createInstanceViaProxy(createPayload: Record<string, string>) {
+  const attemptConfigs = [
+    {
+      label: "POST body + apikey + bearer",
+      method: "POST",
+      headers: buildProxyHeaders({ includeApikey: true, includeBearer: true }),
+      body: JSON.stringify(createPayload),
+    },
+    {
+      label: "POST body + apikey",
+      method: "POST",
+      headers: buildProxyHeaders({ includeApikey: true, includeBearer: false }),
+      body: JSON.stringify(createPayload),
+    },
+    {
+      label: "POST body + bearer",
+      method: "POST",
+      headers: buildProxyHeaders({ includeApikey: false, includeBearer: true }),
+      body: JSON.stringify(createPayload),
+    },
+    {
+      label: "POST body only",
+      method: "POST",
+      headers: buildProxyHeaders({ includeApikey: false, includeBearer: false }),
+      body: JSON.stringify(createPayload),
+    },
+  ];
+
+  let lastStatus = 500;
+  let lastText = "";
+
+  for (const attempt of attemptConfigs) {
+    console.log(`Create instance attempt: ${attempt.label}`);
+    const res = await fetch(CREATE_URL, {
+      method: attempt.method,
+      headers: attempt.headers,
+      body: attempt.body,
+    });
+
+    const text = await res.text();
+    if (res.ok) {
+      try {
+        return JSON.parse(text);
+      } catch {
+        throw new Error("Resposta JSON inválida do proxy de criação");
+      }
+    }
+
+    console.error(`Create instance failed [${attempt.label}]:`, res.status, text);
+    lastStatus = res.status;
+    lastText = text;
+
+    if (res.status !== 405) {
+      break;
+    }
+  }
+
+  throw new Error(`Falha ao criar instância: ${lastStatus}${lastText ? ` - ${lastText}` : ""}`);
+}
+
+function buildProxyHeaders({ includeApikey, includeBearer }: { includeApikey: boolean; includeBearer: boolean }) {
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+  };
+
+  if (PROXY_APIKEY && includeApikey) {
+    headers.apikey = PROXY_APIKEY;
+  }
+
+  if (PROXY_APIKEY && includeBearer) {
+    headers.Authorization = `Bearer ${PROXY_APIKEY}`;
+  }
+
+  return headers;
+}
+
 function json(data: unknown, status = 200) {
   return new Response(JSON.stringify(data), {
     status,
