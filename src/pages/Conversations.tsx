@@ -12,7 +12,7 @@ import {
 import {
   Search, Send, MessageSquare, ArrowLeft, Phone, Image, FileText,
   Smile, Check, CheckCheck, Mic, Paperclip, MoreVertical, Video, X,
-  MapPin, User, Download, Play, Pause, File, ExternalLink
+  MapPin, User, Download, Play, Pause, File, ExternalLink, Loader2
 } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 import { useWhatsAppChats, useChatMessages, useSendMessage, useSendImage, useSendMedia, usePresence, useRealtimeMessages, useMarkAsRead, type WhatsAppChat, type WhatsAppMessage } from "@/hooks/use-chat";
@@ -89,6 +89,7 @@ interface ExtractedContent {
   longitude?: number;
   contactName?: string;
   contactPhone?: string;
+  thumbnail?: string;
 }
 
 function extractContent(msg: WhatsAppMessage): ExtractedContent {
@@ -110,9 +111,15 @@ function extractContent(msg: WhatsAppMessage): ExtractedContent {
   const resolveFileName = () => topFileName || c?.fileName || c?.title || "";
   const resolveMimetype = () => topMimetype || c?.mimetype || "";
 
+  // Base64 thumbnail helper
+  const resolveThumbnail = () => {
+    if (c?.JPEGThumbnail) return `data:image/jpeg;base64,${c.JPEGThumbnail}`;
+    return "";
+  };
+
   // Image
   if (msgType.includes("image") || c?.mimetype?.startsWith("image")) {
-    return { text: resolveText(), type: "image", fileUrl: resolveFileUrl(), mimetype: resolveMimetype() };
+    return { text: resolveText(), type: "image", fileUrl: resolveFileUrl(), mimetype: resolveMimetype(), thumbnail: resolveThumbnail() };
   }
 
   // Video
@@ -193,16 +200,68 @@ function formatDateSeparator(ts: number) {
 
 // ─── Media Bubble Components ───
 
-function MediaImage({ url, caption, fromMe, onClickImage }: { url: string; caption?: string; fromMe: boolean; onClickImage: (url: string) => void }) {
+function MediaImage({ url, caption, fromMe, onClickImage, thumbnail, messageId }: { url: string; caption?: string; fromMe: boolean; onClickImage: (url: string) => void; thumbnail?: string; messageId?: string }) {
+  const [displayUrl, setDisplayUrl] = useState(() => {
+    if (messageId && mediaUrlCache.has(messageId)) return mediaUrlCache.get(messageId)!;
+    // If URL is encrypted (.enc), use thumbnail; otherwise use URL directly
+    if (url && url.includes(".enc")) return thumbnail || "";
+    return url || thumbnail || "";
+  });
+  const [isDownloading, setIsDownloading] = useState(false);
+
+  const isEncrypted = url && url.includes(".enc") && !mediaUrlCache.has(messageId || "");
+
+  const handleClick = async () => {
+    // If we already have a good URL, open lightbox
+    if (!isEncrypted || mediaUrlCache.has(messageId || "")) {
+      onClickImage(displayUrl);
+      return;
+    }
+    // Download decrypted version
+    if (!messageId) return;
+    setIsDownloading(true);
+    try {
+      const { data } = await supabase.functions.invoke("whatsapp-chat", {
+        body: { action: "download-media", phone: messageId },
+      });
+      if (data?.fileURL) {
+        mediaUrlCache.set(messageId, data.fileURL);
+        setDisplayUrl(data.fileURL);
+        onClickImage(data.fileURL);
+      }
+    } catch (e) {
+      console.error("Failed to download image:", e);
+    } finally {
+      setIsDownloading(false);
+    }
+  };
+
   return (
-    <div className="space-y-1">
-      <img
-        src={url}
-        alt="Imagem"
-        loading="lazy"
-        onClick={() => onClickImage(url)}
-        className="rounded-xl max-w-[280px] w-full h-auto cursor-pointer hover:opacity-90 transition-opacity"
-      />
+    <div className="space-y-1 relative">
+      {displayUrl ? (
+        <img
+          src={displayUrl}
+          alt="Imagem"
+          loading="lazy"
+          onClick={handleClick}
+          className={cn(
+            "rounded-xl max-w-[280px] w-full h-auto cursor-pointer hover:opacity-90 transition-opacity",
+            isEncrypted && "blur-[1px]"
+          )}
+        />
+      ) : (
+        <div
+          onClick={handleClick}
+          className="rounded-xl max-w-[280px] w-full h-[150px] bg-muted/30 flex items-center justify-center cursor-pointer hover:bg-muted/50 transition-colors"
+        >
+          <Image className="h-8 w-8 text-muted-foreground" />
+        </div>
+      )}
+      {isDownloading && (
+        <div className="absolute inset-0 flex items-center justify-center bg-black/30 rounded-xl">
+          <Loader2 className="h-6 w-6 animate-spin text-white" />
+        </div>
+      )}
       {caption && <p className="whitespace-pre-wrap text-[13px]">{caption}</p>}
     </div>
   );
@@ -627,18 +686,20 @@ export default function Conversations() {
 
   // ─── Render a message bubble's media content ───
   const renderMediaContent = (msg: WhatsAppMessage, extracted: ExtractedContent) => {
-    const { type, text: msgText, fileUrl, fileName, latitude, longitude, contactName } = extracted;
+    const { type, text: msgText, fileUrl, fileName, latitude, longitude, contactName, thumbnail } = extracted;
 
     switch (type) {
-      case "image":
-        if (fileUrl) {
-          return <MediaImage url={fileUrl} caption={msgText} fromMe={msg.fromMe} onClickImage={openImgLightbox} />;
+      case "image": {
+        const rawMsgId = msg.id?.includes(":") ? msg.id.split(":").pop() : msg.id;
+        if (fileUrl || thumbnail) {
+          return <MediaImage url={fileUrl || ""} caption={msgText} fromMe={msg.fromMe} onClickImage={openImgLightbox} thumbnail={thumbnail} messageId={rawMsgId} />;
         }
         return (
           <div className={cn("flex items-center gap-1.5 text-[11px] font-medium", msg.fromMe ? "text-primary-foreground/70" : "text-muted-foreground")}>
             <Image className="h-3 w-3" /> {msgText || "📷 Imagem"}
           </div>
         );
+      }
 
       case "video":
         if (fileUrl) {
