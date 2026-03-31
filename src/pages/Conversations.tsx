@@ -138,6 +138,7 @@ export default function Conversations() {
   };
 
   return (
+    <>
     <AdminLayout title="Conversas" subtitle="Chat via WhatsApp">
       <div className="flex h-[calc(100vh-80px)] overflow-hidden rounded-xl border border-border shadow-lg mx-1 mb-1">
         {/* ─── Left panel ─── */}
