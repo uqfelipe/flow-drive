@@ -182,7 +182,7 @@ export function useChatMessages(phone: string | null) {
       return normalized.sort((a, b) => a.timestamp - b.timestamp);
     },
     enabled: !!phone,
-    refetchInterval: 8000, // Fallback only — Realtime handles instant updates
+    refetchInterval: 3000,
   });
 }
 
