@@ -200,16 +200,68 @@ function formatDateSeparator(ts: number) {
 
 // ─── Media Bubble Components ───
 
-function MediaImage({ url, caption, fromMe, onClickImage }: { url: string; caption?: string; fromMe: boolean; onClickImage: (url: string) => void }) {
+function MediaImage({ url, caption, fromMe, onClickImage, thumbnail, messageId }: { url: string; caption?: string; fromMe: boolean; onClickImage: (url: string) => void; thumbnail?: string; messageId?: string }) {
+  const [displayUrl, setDisplayUrl] = useState(() => {
+    if (messageId && mediaUrlCache.has(messageId)) return mediaUrlCache.get(messageId)!;
+    // If URL is encrypted (.enc), use thumbnail; otherwise use URL directly
+    if (url && url.includes(".enc")) return thumbnail || "";
+    return url || thumbnail || "";
+  });
+  const [isDownloading, setIsDownloading] = useState(false);
+
+  const isEncrypted = url && url.includes(".enc") && !mediaUrlCache.has(messageId || "");
+
+  const handleClick = async () => {
+    // If we already have a good URL, open lightbox
+    if (!isEncrypted || mediaUrlCache.has(messageId || "")) {
+      onClickImage(displayUrl);
+      return;
+    }
+    // Download decrypted version
+    if (!messageId) return;
+    setIsDownloading(true);
+    try {
+      const { data } = await supabase.functions.invoke("whatsapp-chat", {
+        body: { action: "download-media", phone: messageId },
+      });
+      if (data?.fileURL) {
+        mediaUrlCache.set(messageId, data.fileURL);
+        setDisplayUrl(data.fileURL);
+        onClickImage(data.fileURL);
+      }
+    } catch (e) {
+      console.error("Failed to download image:", e);
+    } finally {
+      setIsDownloading(false);
+    }
+  };
+
   return (
-    <div className="space-y-1">
-      <img
-        src={url}
-        alt="Imagem"
-        loading="lazy"
-        onClick={() => onClickImage(url)}
-        className="rounded-xl max-w-[280px] w-full h-auto cursor-pointer hover:opacity-90 transition-opacity"
-      />
+    <div className="space-y-1 relative">
+      {displayUrl ? (
+        <img
+          src={displayUrl}
+          alt="Imagem"
+          loading="lazy"
+          onClick={handleClick}
+          className={cn(
+            "rounded-xl max-w-[280px] w-full h-auto cursor-pointer hover:opacity-90 transition-opacity",
+            isEncrypted && "blur-[1px]"
+          )}
+        />
+      ) : (
+        <div
+          onClick={handleClick}
+          className="rounded-xl max-w-[280px] w-full h-[150px] bg-muted/30 flex items-center justify-center cursor-pointer hover:bg-muted/50 transition-colors"
+        >
+          <Image className="h-8 w-8 text-muted-foreground" />
+        </div>
+      )}
+      {isDownloading && (
+        <div className="absolute inset-0 flex items-center justify-center bg-black/30 rounded-xl">
+          <Loader2 className="h-6 w-6 animate-spin text-white" />
+        </div>
+      )}
       {caption && <p className="whitespace-pre-wrap text-[13px]">{caption}</p>}
     </div>
   );
