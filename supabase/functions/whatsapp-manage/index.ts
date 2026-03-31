@@ -65,27 +65,7 @@ async function handleGetOrCreate() {
   };
 
   console.log("Creating instance:", instanceName);
-  const createHeaders: Record<string, string> = {
-    "Content-Type": "application/json",
-  };
-  if (PROXY_APIKEY) {
-    createHeaders["apikey"] = PROXY_APIKEY;
-    createHeaders["Authorization"] = `Bearer ${PROXY_APIKEY}`;
-  }
-
-  const createRes = await fetch(CREATE_URL, {
-    method: "POST",
-    headers: createHeaders,
-    body: JSON.stringify(createPayload),
-  });
-
-  if (!createRes.ok) {
-    const errText = await createRes.text();
-    console.error("Create instance failed:", createRes.status, errText);
-    throw new Error(`Falha ao criar instância: ${createRes.status}`);
-  }
-
-  const createJson = await createRes.json();
+  const createJson = await createInstanceViaProxy(createPayload);
   console.log("Create response:", JSON.stringify(createJson));
 
   const serverUrl = createJson.server_url;
