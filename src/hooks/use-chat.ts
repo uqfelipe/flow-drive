@@ -46,8 +46,41 @@ export function useWhatsAppChats() {
         return !chatId.startsWith("13135550002");
       });
     },
-    refetchInterval: 5000,
+    refetchInterval: 10000, // Fallback only — Realtime handles instant updates
   });
+}
+
+/**
+ * Subscribe to Supabase Realtime on message_signals table.
+ * When webhook inserts/updates a signal, instantly refetch messages and chats.
+ */
+export function useRealtimeMessages() {
+  const qc = useQueryClient();
+
+  useEffect(() => {
+    const channel = supabase
+      .channel("message-signals")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "message_signals" },
+        (payload: any) => {
+          // Instantly refetch messages for the affected chat
+          const chatId = payload.new?.chat_id ?? "";
+          if (chatId) {
+            // Extract phone from chatId (e.g. "553398417049@s.whatsapp.net" -> "553398417049")
+            const phone = chatId.replace(/@.*$/, "");
+            qc.invalidateQueries({ queryKey: ["whatsapp-messages", phone] });
+          }
+          // Also refresh chat list
+          qc.invalidateQueries({ queryKey: ["whatsapp-chats"] });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [qc]);
 }
 
 export interface PresenceData {
