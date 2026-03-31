@@ -30,6 +30,7 @@ export interface WhatsAppMessage {
   timestamp: number;
   type: string;
   status?: string;
+  fileURL?: string;
 }
 
 export function useWhatsAppChats() {
