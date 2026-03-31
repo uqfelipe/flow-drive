@@ -12,7 +12,7 @@ import {
 import {
   Search, Send, MessageSquare, ArrowLeft, Phone, Image, FileText,
   Smile, Check, CheckCheck, Mic, Paperclip, MoreVertical, Video, X,
-  MapPin, User, Download, Play, File, ExternalLink
+  MapPin, User, Download, Play, Pause, File, ExternalLink
 } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 import { useWhatsAppChats, useChatMessages, useSendMessage, useSendImage, useSendMedia, usePresence, useRealtimeMessages, useMarkAsRead, type WhatsAppChat, type WhatsAppMessage } from "@/hooks/use-chat";
@@ -222,17 +222,96 @@ function MediaVideo({ url, caption, fromMe }: { url: string; caption?: string; f
 }
 
 function MediaAudio({ url, isPtt, fromMe }: { url: string; isPtt: boolean; fromMe: boolean }) {
+  const audioRef = useRef<HTMLAudioElement>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
+
+  const fmtTime = (s: number) => {
+    const m = Math.floor(s / 60);
+    const sec = Math.floor(s % 60);
+    return `${m}:${sec.toString().padStart(2, "0")}`;
+  };
+
+  const togglePlay = () => {
+    const a = audioRef.current;
+    if (!a) return;
+    if (isPlaying) { a.pause(); } else { a.play(); }
+  };
+
+  // Waveform bars pattern
+  const bars = [3, 6, 4, 8, 5, 9, 3, 7, 4, 6, 8, 3, 5, 7, 4, 9, 6, 3, 7, 5, 8, 4, 6, 3, 7, 5, 9, 4];
+  const progress = duration > 0 ? currentTime / duration : 0;
+  const activeIndex = Math.floor(progress * bars.length);
+
   return (
-    <div className={cn("flex items-center gap-2 min-w-[200px]", isPtt && "min-w-[240px]")}>
-      {isPtt && (
-        <div className={cn(
-          "h-8 w-8 rounded-full flex items-center justify-center shrink-0",
-          fromMe ? "bg-primary-foreground/20" : "bg-primary/15"
-        )}>
-          <Mic className="h-4 w-4" />
+    <div className={cn(
+      "flex items-center gap-2 min-w-[250px] max-w-[320px] py-1",
+    )}>
+      {/* Play/Pause button */}
+      <button
+        onClick={togglePlay}
+        className={cn(
+          "h-10 w-10 rounded-full flex items-center justify-center shrink-0 transition-colors",
+          fromMe
+            ? "bg-primary-foreground/20 hover:bg-primary-foreground/30 text-primary-foreground"
+            : "bg-primary/15 hover:bg-primary/25 text-primary"
+        )}
+      >
+        {isPlaying ? (
+          <Pause className="h-5 w-5 fill-current" />
+        ) : (
+          <Play className="h-5 w-5 fill-current ml-0.5" />
+        )}
+      </button>
+
+      {/* Waveform + duration */}
+      <div className="flex-1 flex flex-col gap-1">
+        <div className="flex items-end gap-[2px] h-[28px]">
+          {bars.map((h, i) => (
+            <div
+              key={i}
+              className={cn(
+                "w-[3px] rounded-full transition-colors",
+                i <= activeIndex
+                  ? fromMe ? "bg-primary-foreground/90" : "bg-primary"
+                  : fromMe ? "bg-primary-foreground/30" : "bg-muted-foreground/30"
+              )}
+              style={{ height: `${h * 3}px` }}
+            />
+          ))}
         </div>
-      )}
-      <audio src={url} controls preload="metadata" className="h-8 w-full max-w-[240px] [&::-webkit-media-controls-panel]:bg-transparent" />
+        <div className="flex items-center justify-between">
+          <span className={cn(
+            "text-[11px]",
+            fromMe ? "text-primary-foreground/70" : "text-muted-foreground"
+          )}>
+            {isPlaying || currentTime > 0 ? fmtTime(currentTime) : fmtTime(duration)}
+          </span>
+          {isPtt && (
+            <Mic className={cn(
+              "h-3.5 w-3.5",
+              fromMe ? "text-primary-foreground/70" : "text-primary"
+            )} />
+          )}
+        </div>
+      </div>
+
+      {/* Hidden audio element */}
+      <audio
+        ref={audioRef}
+        src={url}
+        preload="metadata"
+        onLoadedMetadata={() => {
+          if (audioRef.current) setDuration(audioRef.current.duration);
+        }}
+        onTimeUpdate={() => {
+          if (audioRef.current) setCurrentTime(audioRef.current.currentTime);
+        }}
+        onPlay={() => setIsPlaying(true)}
+        onPause={() => setIsPlaying(false)}
+        onEnded={() => { setIsPlaying(false); setCurrentTime(0); }}
+      />
     </div>
   );
 }
