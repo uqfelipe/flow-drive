@@ -656,9 +656,12 @@ export default function Conversations() {
   // Audio recording states
   const [isRecording, setIsRecording] = useState(false);
   const [recordingTime, setRecordingTime] = useState(0);
+  const [audioPreview, setAudioPreview] = useState<{ url: string; base64: string } | null>(null);
+  const [isPlayingPreview, setIsPlayingPreview] = useState(false);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const recordingTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const previewAudioRef = useRef<HTMLAudioElement | null>(null);
 
   const formatRecordingTime = (seconds: number) => {
     const m = Math.floor(seconds / 60).toString().padStart(2, "0");
@@ -667,6 +670,11 @@ export default function Conversations() {
   };
 
   const startRecording = async () => {
+    // Discard any previous preview
+    if (audioPreview) {
+      URL.revokeObjectURL(audioPreview.url);
+      setAudioPreview(null);
+    }
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       const mimeType = MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
@@ -701,30 +709,67 @@ export default function Conversations() {
     setRecordingTime(0);
   };
 
-  const stopAndSendRecording = () => {
-    if (!mediaRecorderRef.current || !selectedPhone) return;
+  const stopRecordingForPreview = () => {
+    if (!mediaRecorderRef.current) return;
     const recorder = mediaRecorderRef.current;
     recorder.onstop = () => {
       const blob = new Blob(audioChunksRef.current, { type: recorder.mimeType });
       recorder.stream.getTracks().forEach((t) => t.stop());
+      const objectUrl = URL.createObjectURL(blob);
       const reader = new FileReader();
       reader.onloadend = () => {
-        const base64 = reader.result as string;
-        sendMediaMutation.mutate({
-          phone: selectedPhone,
-          type: "audio",
-          fileUrl: base64,
-          text: "",
-        });
+        setAudioPreview({ url: objectUrl, base64: reader.result as string });
       };
       reader.readAsDataURL(blob);
       if (recordingTimerRef.current) clearInterval(recordingTimerRef.current);
       mediaRecorderRef.current = null;
       audioChunksRef.current = [];
       setIsRecording(false);
-      setRecordingTime(0);
     };
     recorder.stop();
+  };
+
+  const discardPreview = () => {
+    if (previewAudioRef.current) {
+      previewAudioRef.current.pause();
+      previewAudioRef.current = null;
+    }
+    if (audioPreview) URL.revokeObjectURL(audioPreview.url);
+    setAudioPreview(null);
+    setIsPlayingPreview(false);
+    setRecordingTime(0);
+  };
+
+  const togglePreviewPlayback = () => {
+    if (!audioPreview) return;
+    if (isPlayingPreview && previewAudioRef.current) {
+      previewAudioRef.current.pause();
+      setIsPlayingPreview(false);
+      return;
+    }
+    const audio = new Audio(audioPreview.url);
+    audio.onended = () => setIsPlayingPreview(false);
+    audio.play();
+    previewAudioRef.current = audio;
+    setIsPlayingPreview(true);
+  };
+
+  const sendRecordedAudio = () => {
+    if (!audioPreview || !selectedPhone) return;
+    if (previewAudioRef.current) {
+      previewAudioRef.current.pause();
+      previewAudioRef.current = null;
+    }
+    sendMediaMutation.mutate({
+      phone: selectedPhone,
+      type: "audio",
+      fileUrl: audioPreview.base64,
+      text: "",
+    });
+    URL.revokeObjectURL(audioPreview.url);
+    setAudioPreview(null);
+    setIsPlayingPreview(false);
+    setRecordingTime(0);
   };
 
   const openLightbox = async (phone: string, fallbackImg?: string) => {
@@ -1327,6 +1372,53 @@ export default function Conversations() {
                         <span className="text-sm font-mono text-foreground">{formatRecordingTime(recordingTime)}</span>
                         <span className="text-xs text-muted-foreground">Gravando...</span>
                       </div>
+                      <Button
+                        size="icon"
+                        variant="secondary"
+                        onClick={stopRecordingForPreview}
+                        className="shrink-0 h-11 w-11 rounded-2xl"
+                      >
+                        <Square className="h-4 w-4" />
+                      </Button>
+                    </motion.div>
+                  ) : audioPreview ? (
+                    <motion.div
+                      key="preview"
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: 10 }}
+                      transition={{ duration: 0.2 }}
+                      className="flex items-center gap-3"
+                    >
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={discardPreview}
+                        className="shrink-0 h-11 w-11 rounded-2xl text-destructive hover:text-destructive hover:bg-destructive/10"
+                      >
+                        <Trash2 className="h-5 w-5" />
+                      </Button>
+                      <div className="flex-1 flex items-center gap-3 px-4 h-11 rounded-2xl bg-background/80 border border-border/50">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 rounded-full shrink-0"
+                          onClick={togglePreviewPlayback}
+                        >
+                          {isPlayingPreview ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
+                        </Button>
+                        <span className="text-sm text-foreground">{formatRecordingTime(recordingTime)}</span>
+                        <span className="text-xs text-muted-foreground">Áudio gravado</span>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="ml-auto text-xs text-muted-foreground hover:text-foreground"
+                          onClick={() => { discardPreview(); startRecording(); }}
+                        >
+                          <Mic className="h-3.5 w-3.5 mr-1" />
+                          Re-gravar
+                        </Button>
+                      </div>
                       <motion.div
                         initial={{ scale: 0, rotate: -90 }}
                         animate={{ scale: 1, rotate: 0 }}
@@ -1334,7 +1426,8 @@ export default function Conversations() {
                       >
                         <Button
                           size="icon"
-                          onClick={stopAndSendRecording}
+                          onClick={sendRecordedAudio}
+                          disabled={sendMediaMutation.isPending}
                           className="shrink-0 h-11 w-11 rounded-2xl shadow-md shadow-primary/20 transition-all"
                         >
                           <Send className="h-4 w-4" />
