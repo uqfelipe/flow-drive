@@ -55,20 +55,32 @@ export interface PresenceData {
   lastSeen?: number;
 }
 
-export function usePresence(phone: string | null, chatLid?: string) {
+export function usePresence(phone: string | null) {
   return useQuery<PresenceData>({
     queryKey: ["whatsapp-presence", phone],
     queryFn: async () => {
       if (!phone) return { isOnline: false, isTyping: false };
-      const data = await chatAction("check-presence", { phone, chatLid: chatLid || "" });
-      return {
-        isOnline: data?.isOnline ?? false,
-        isTyping: data?.isTyping ?? data?.composing ?? false,
-        lastSeen: data?.lastSeen ?? 0,
-      };
+      const chatid = phone.includes("@") ? phone : `${phone}@s.whatsapp.net`;
+      // Query presence_cache directly from Supabase for fastest response
+      const { data: row } = await supabase
+        .from("presence_cache")
+        .select("is_typing, is_online, updated_at")
+        .eq("chat_id", chatid)
+        .maybeSingle();
+      
+      let isTyping = false;
+      let isOnline = false;
+      if (row) {
+        const age = Date.now() - new Date(row.updated_at).getTime();
+        if (age < 15000) {
+          isTyping = row.is_typing;
+          isOnline = row.is_online;
+        }
+      }
+      return { isOnline, isTyping };
     },
     enabled: !!phone,
-    refetchInterval: 2000,
+    refetchInterval: 1500,
   });
 }
 

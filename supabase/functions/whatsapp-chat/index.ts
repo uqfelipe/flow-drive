@@ -101,20 +101,28 @@ Deno.serve(async (req) => {
       if (!phone) return json({ error: "phone required" }, 400);
       const chatid = phone.includes("@") ? phone : `${phone}@s.whatsapp.net`;
       try {
-        let data: any = null;
-        // Try with chatLid first (format @lid) if available
-        if (chatLid) {
-          try {
-            data = await apiCall(inst.server_url, inst.instance_token, "/chat/presence", { chatid: chatLid });
-            console.log("presence chatLid response:", JSON.stringify(data));
-          } catch (_) { /* ignore, fallback below */ }
+        // Query presence_cache table for typing/online status
+        const supabase = createClient(
+          Deno.env.get("SUPABASE_URL")!,
+          Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+        );
+        const { data: row } = await supabase
+          .from("presence_cache")
+          .select("is_typing, is_online, updated_at")
+          .eq("chat_id", chatid)
+          .maybeSingle();
+
+        // Consider presence stale after 15 seconds
+        let isTyping = false;
+        let isOnline = false;
+        if (row) {
+          const age = Date.now() - new Date(row.updated_at).getTime();
+          if (age < 15000) {
+            isTyping = row.is_typing;
+            isOnline = row.is_online;
+          }
         }
-        // Fallback to @s.whatsapp.net format
-        if (!data?.isOnline && !data?.composing && !data?.isTyping) {
-          data = await apiCall(inst.server_url, inst.instance_token, "/chat/presence", { chatid });
-          console.log("presence chatid response:", JSON.stringify(data));
-        }
-        return json({ isOnline: !!data?.isOnline, isTyping: !!data?.composing || !!data?.isTyping });
+        return json({ isOnline, isTyping });
       } catch (_e) {
         return json({ isOnline: false, isTyping: false });
       }

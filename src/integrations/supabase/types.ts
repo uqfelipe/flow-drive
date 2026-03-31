@@ -244,6 +244,30 @@ export type Database = {
           },
         ]
       }
+      presence_cache: {
+        Row: {
+          chat_id: string
+          id: string
+          is_online: boolean
+          is_typing: boolean
+          updated_at: string
+        }
+        Insert: {
+          chat_id: string
+          id?: string
+          is_online?: boolean
+          is_typing?: boolean
+          updated_at?: string
+        }
+        Update: {
+          chat_id?: string
+          id?: string
+          is_online?: boolean
+          is_typing?: boolean
+          updated_at?: string
+        }
+        Relationships: []
+      }
       rentals: {
         Row: {
           created_at: string
