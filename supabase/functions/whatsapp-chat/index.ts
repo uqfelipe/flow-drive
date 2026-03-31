@@ -101,11 +101,9 @@ Deno.serve(async (req) => {
       if (!phone) return json({ error: "phone required" }, 400);
       const chatid = phone.includes("@") ? phone : `${phone}@s.whatsapp.net`;
       try {
-        const data = await apiCall(inst.server_url, inst.instance_token, "/chat/presence", {
-          chatid,
-        });
-        return json(data);
-      } catch {
+        const data = await apiCall(inst.server_url, inst.instance_token, "/chat/presence", { chatid });
+        return json({ isOnline: !!data?.isOnline, isTyping: !!data?.composing || !!data?.isTyping });
+      } catch (_e) {
         return json({ isOnline: false, isTyping: false });
       }
     }
