@@ -69,7 +69,8 @@ export function useWhatsAppChats() {
           if (rs) {
             const readAtMs = new Date(rs.read_at).getTime();
             const lastMsgTs = c.wa_lastMsgTimestamp ?? 0;
-            if (readAtMs >= lastMsgTs) {
+            const lastMsgMs = lastMsgTs < 10000000000 ? lastMsgTs * 1000 : lastMsgTs;
+            if (readAtMs >= lastMsgMs) {
               return { ...c, wa_unreadCount: 0 };
             }
           }
