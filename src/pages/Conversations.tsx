@@ -1041,9 +1041,35 @@ export default function Conversations() {
                   <Button variant="ghost" size="icon" className="h-9 w-9 rounded-xl text-muted-foreground hover:text-foreground">
                     <Video className="h-4 w-4" />
                   </Button>
-                  <Button variant="ghost" size="icon" className="h-9 w-9 rounded-xl text-muted-foreground hover:text-foreground">
-                    <Phone className="h-4 w-4" />
-                  </Button>
+                  <Popover open={calendarOpen} onOpenChange={setCalendarOpen}>
+                    <PopoverTrigger asChild>
+                      <Button variant="ghost" size="icon" className="h-9 w-9 rounded-xl text-muted-foreground hover:text-foreground">
+                        <CalendarIcon className="h-4 w-4" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="end">
+                      <Calendar
+                        mode="single"
+                        onSelect={(date) => {
+                          if (!date || !messages?.length) return;
+                          setCalendarOpen(false);
+                          const startOfDay = new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime() / 1000;
+                          const endOfDay = startOfDay + 86400;
+                          const target = messages.find((m) => m.timestamp >= startOfDay && m.timestamp < endOfDay);
+                          if (target) {
+                            const el = document.getElementById(`msg-${target.id}`);
+                            if (el) {
+                              el.scrollIntoView({ behavior: "smooth", block: "center" });
+                              el.classList.add("ring-2", "ring-primary/50", "rounded-2xl");
+                              setTimeout(() => el.classList.remove("ring-2", "ring-primary/50", "rounded-2xl"), 2000);
+                            }
+                          }
+                        }}
+                        className={cn("p-3 pointer-events-auto")}
+                        initialFocus
+                      />
+                    </PopoverContent>
+                  </Popover>
                   <Button variant="ghost" size="icon" className="h-9 w-9 rounded-xl text-muted-foreground hover:text-foreground">
                     <MoreVertical className="h-4 w-4" />
                   </Button>
