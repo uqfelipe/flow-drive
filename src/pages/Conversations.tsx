@@ -624,7 +624,58 @@ export default function Conversations() {
           </motion.div>
         </motion.div>
       )}
-    </AnimatePresence>
+    {/* Send image dialog */}
+    <Dialog open={imageDialogOpen} onOpenChange={setImageDialogOpen}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Enviar Imagem</DialogTitle>
+          <DialogDescription>Cole a URL da imagem que deseja enviar.</DialogDescription>
+        </DialogHeader>
+        <div className="space-y-3 py-2">
+          <Input
+            placeholder="https://exemplo.com/imagem.jpg"
+            value={imageUrl}
+            onChange={(e) => setImageUrl(e.target.value)}
+          />
+          {imageUrl && (
+            <img
+              src={imageUrl}
+              alt="Preview"
+              className="rounded-xl max-h-48 w-auto object-contain mx-auto"
+              onError={(e) => (e.currentTarget.style.display = "none")}
+            />
+          )}
+          <Input
+            placeholder="Legenda (opcional)"
+            value={imageCaption}
+            onChange={(e) => setImageCaption(e.target.value)}
+          />
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => { setImageDialogOpen(false); setImageUrl(""); setImageCaption(""); }}>
+            Cancelar
+          </Button>
+          <Button
+            disabled={!imageUrl.trim() || !selectedPhone || sendImageMutation.isPending}
+            onClick={() => {
+              if (!selectedPhone || !imageUrl.trim()) return;
+              sendImageMutation.mutate(
+                { phone: selectedPhone, imageUrl: imageUrl.trim(), text: imageCaption.trim() },
+                {
+                  onSuccess: () => {
+                    setImageDialogOpen(false);
+                    setImageUrl("");
+                    setImageCaption("");
+                  },
+                }
+              );
+            }}
+          >
+            {sendImageMutation.isPending ? "Enviando..." : "Enviar"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
     </>
   );
 }
