@@ -1,29 +1,42 @@
 
 
-# Suporte a videos base64 inline no chat
+# Gravação de áudio para envio no chat
 
-## Alteracoes em `src/pages/Conversations.tsx`
+## O que será feito
+Adicionar um botão de gravação de áudio na área de input do chat. Ao pressionar/clicar no microfone, o navegador captura áudio via `MediaRecorder API`, converte para base64 e envia como áudio PTT (push-to-talk) via a action `send-media` já existente (tipo `audio`).
 
-### 1. `extractContent` — detectar base64 video no conteudo
-Antes do check de video por `msgType` (linha ~126), adicionar deteccao de strings `data:video/` no conteudo raw (string ou campo do objeto). Se encontrado, retornar tipo `video` com `fileUrl` sendo a propria string base64.
+## Fluxo do usuário
+1. Sem texto digitado, o botão de microfone aparece (já existe visualmente)
+2. Clique no mic → inicia gravação, UI muda para modo gravação (timer + botão cancelar + botão enviar)
+3. Clique em enviar → para gravação, converte blob para base64 data URL, envia via `useSendMedia` com type `audio`
+4. Clique em cancelar → descarta gravação
 
-### 2. `MediaVideo` — inicializar `playableUrl` com base64
-No estado inicial do `playableUrl` (linha 271-274), adicionar check: se `url` comeca com `data:video/`, usar diretamente como playable (sem precisar download).
+## Alterações
 
-### Logica resumida
-```
-// extractContent: detectar base64
-if (typeof content === "string" && content.startsWith("data:video/"))
-  → return { type: "video", fileUrl: content, text: "" }
+### `src/pages/Conversations.tsx`
 
-// Tambem checar c?.data ou c?.base64 se for objeto
+**1. Novos estados e refs para gravação:**
+- `isRecording`, `recordingTime`, `mediaRecorderRef`, `audioChunksRef`, `recordingTimerRef`
 
-// MediaVideo init:
-if (url.startsWith("data:video/")) → playableUrl = url
-```
+**2. Funções de gravação:**
+- `startRecording()`: pede permissão do mic via `navigator.mediaDevices.getUserMedia`, cria `MediaRecorder` (webm/ogg), coleta chunks, inicia timer
+- `stopRecording()`: para o recorder, monta blob, converte para base64 data URL, envia via `sendMediaMutation` com type=`audio`
+- `cancelRecording()`: para o recorder, limpa estado
 
-## Arquivos alterados
-| Arquivo | O que muda |
-|---------|-----------|
-| `src/pages/Conversations.tsx` | 2 pontos: extractContent + MediaVideo init |
+**3. UI do modo gravação (substituir input area quando `isRecording`):**
+- Indicador vermelho pulsante + timer (MM:SS)
+- Botão de cancelar (lixeira/X)
+- Botão de enviar (send)
+- Animação suave com framer-motion
+
+**4. Botão mic existente (linha 1266-1272):**
+- Adicionar `onClick={startRecording}` ao botão de mic que já existe
+
+### Edge function — sem alteração
+A action `send-media` já suporta type `audio` e aceita base64 data URLs no campo `file`.
+
+## Resultado
+- Gravação nativa do navegador, sem dependências externas
+- Visual integrado ao tema dark premium existente
+- Envio como áudio que aparece reproduzível no WhatsApp do destinatário
 
