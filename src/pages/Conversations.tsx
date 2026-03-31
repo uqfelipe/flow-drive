@@ -525,6 +525,25 @@ export default function Conversations() {
                               </div>
                             );
                           })}
+                          {/* Typing indicator */}
+                          <AnimatePresence>
+                            {presence?.isTyping && (
+                              <motion.div
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, y: 10 }}
+                                className="flex justify-start px-2 py-1"
+                              >
+                                <div className="bg-muted rounded-2xl rounded-bl-md px-4 py-2.5 shadow-sm">
+                                  <div className="flex items-center gap-1">
+                                    <span className="h-2 w-2 rounded-full bg-muted-foreground/50 animate-bounce" style={{ animationDelay: "0ms" }} />
+                                    <span className="h-2 w-2 rounded-full bg-muted-foreground/50 animate-bounce" style={{ animationDelay: "150ms" }} />
+                                    <span className="h-2 w-2 rounded-full bg-muted-foreground/50 animate-bounce" style={{ animationDelay: "300ms" }} />
+                                  </div>
+                                </div>
+                              </motion.div>
+                            )}
+                          </AnimatePresence>
                           <div ref={messagesEndRef} />
                         </motion.div>
                       </AnimatePresence>
