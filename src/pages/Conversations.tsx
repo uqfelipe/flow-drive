@@ -16,9 +16,9 @@ import { Calendar } from "@/components/ui/calendar";
 import {
   Search, Send, MessageSquare, ArrowLeft, CalendarIcon, Image, FileText, ChevronDown,
   Smile, Check, CheckCheck, Mic, Paperclip, MoreVertical, Video, X,
-  MapPin, User, Download, Play, Pause, File, ExternalLink, Loader2
+  MapPin, User, Download, Play, Pause, File, ExternalLink, Loader2, Trash2, Square
 } from "lucide-react";
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { useWhatsAppChats, useChatMessages, useSendMessage, useSendImage, useSendMedia, usePresence, useRealtimeMessages, useMarkAsRead, type WhatsAppChat, type WhatsAppMessage } from "@/hooks/use-chat";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription
@@ -653,6 +653,80 @@ export default function Conversations() {
   const [calendarOpen, setCalendarOpen] = useState(false);
   const lastHandledIncomingRef = useRef<string | null>(null);
 
+  // Audio recording states
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordingTime, setRecordingTime] = useState(0);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
+  const recordingTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const formatRecordingTime = (seconds: number) => {
+    const m = Math.floor(seconds / 60).toString().padStart(2, "0");
+    const s = (seconds % 60).toString().padStart(2, "0");
+    return `${m}:${s}`;
+  };
+
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mimeType = MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
+        ? "audio/webm;codecs=opus"
+        : MediaRecorder.isTypeSupported("audio/ogg;codecs=opus")
+        ? "audio/ogg;codecs=opus"
+        : "audio/webm";
+      const recorder = new MediaRecorder(stream, { mimeType });
+      audioChunksRef.current = [];
+      recorder.ondataavailable = (e) => {
+        if (e.data.size > 0) audioChunksRef.current.push(e.data);
+      };
+      recorder.start();
+      mediaRecorderRef.current = recorder;
+      setIsRecording(true);
+      setRecordingTime(0);
+      recordingTimerRef.current = setInterval(() => setRecordingTime((t) => t + 1), 1000);
+    } catch {
+      // Permission denied or no mic
+    }
+  };
+
+  const cancelRecording = () => {
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
+      mediaRecorderRef.current.stop();
+      mediaRecorderRef.current.stream.getTracks().forEach((t) => t.stop());
+    }
+    if (recordingTimerRef.current) clearInterval(recordingTimerRef.current);
+    mediaRecorderRef.current = null;
+    audioChunksRef.current = [];
+    setIsRecording(false);
+    setRecordingTime(0);
+  };
+
+  const stopAndSendRecording = () => {
+    if (!mediaRecorderRef.current || !selectedPhone) return;
+    const recorder = mediaRecorderRef.current;
+    recorder.onstop = () => {
+      const blob = new Blob(audioChunksRef.current, { type: recorder.mimeType });
+      recorder.stream.getTracks().forEach((t) => t.stop());
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const base64 = reader.result as string;
+        sendMediaMutation.mutate({
+          phone: selectedPhone,
+          type: "audio",
+          fileUrl: base64,
+          text: "",
+        });
+      };
+      reader.readAsDataURL(blob);
+      if (recordingTimerRef.current) clearInterval(recordingTimerRef.current);
+      mediaRecorderRef.current = null;
+      audioChunksRef.current = [];
+      setIsRecording(false);
+      setRecordingTime(0);
+    };
+    recorder.stop();
+  };
+
   const openLightbox = async (phone: string, fallbackImg?: string) => {
     setLightboxImg(fallbackImg || null);
     setLightboxLoading(true);
@@ -1227,51 +1301,102 @@ export default function Conversations() {
 
               {/* ─── Input area ─── */}
               <div className="border-t border-border/50 px-4 md:px-8 lg:px-16 py-3 bg-card/90 backdrop-blur-sm">
-                <div className="flex items-center gap-2">
-                  <Button variant="ghost" size="icon" className="h-10 w-10 rounded-xl shrink-0 text-muted-foreground hover:text-foreground">
-                    <Smile className="h-5 w-5" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-10 w-10 rounded-xl shrink-0 text-muted-foreground hover:text-foreground"
-                    onClick={() => setMediaDialogOpen(true)}
-                  >
-                    <Paperclip className="h-5 w-5" />
-                  </Button>
-                  <div className="flex-1 relative">
-                    <Input
-                      placeholder="Digite uma mensagem..."
-                      className="bg-background/80 backdrop-blur-sm h-11 text-sm rounded-2xl border-border/50 focus-visible:ring-primary/30 focus-visible:border-primary/30"
-                      value={text}
-                      onChange={(e) => setText(e.target.value)}
-                      onKeyDown={handleKeyDown}
-                    />
-                  </div>
-                  {text.trim() ? (
+                <AnimatePresence mode="wait">
+                  {isRecording ? (
                     <motion.div
-                      initial={{ scale: 0, rotate: -90 }}
-                      animate={{ scale: 1, rotate: 0 }}
-                      transition={{ type: "spring", stiffness: 400, damping: 15 }}
+                      key="recording"
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: 10 }}
+                      transition={{ duration: 0.2 }}
+                      className="flex items-center gap-3"
                     >
                       <Button
+                        variant="ghost"
                         size="icon"
-                        onClick={handleSend}
-                        className="shrink-0 h-11 w-11 rounded-2xl shadow-md shadow-primary/20 transition-all"
+                        onClick={cancelRecording}
+                        className="shrink-0 h-11 w-11 rounded-2xl text-destructive hover:text-destructive hover:bg-destructive/10"
                       >
-                        <Send className="h-4 w-4" />
+                        <Trash2 className="h-5 w-5" />
                       </Button>
+                      <div className="flex-1 flex items-center gap-3 px-4 h-11 rounded-2xl bg-background/80 border border-border/50">
+                        <span className="relative flex h-3 w-3">
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-destructive opacity-75" />
+                          <span className="relative inline-flex rounded-full h-3 w-3 bg-destructive" />
+                        </span>
+                        <span className="text-sm font-mono text-foreground">{formatRecordingTime(recordingTime)}</span>
+                        <span className="text-xs text-muted-foreground">Gravando...</span>
+                      </div>
+                      <motion.div
+                        initial={{ scale: 0, rotate: -90 }}
+                        animate={{ scale: 1, rotate: 0 }}
+                        transition={{ type: "spring", stiffness: 400, damping: 15 }}
+                      >
+                        <Button
+                          size="icon"
+                          onClick={stopAndSendRecording}
+                          className="shrink-0 h-11 w-11 rounded-2xl shadow-md shadow-primary/20 transition-all"
+                        >
+                          <Send className="h-4 w-4" />
+                        </Button>
+                      </motion.div>
                     </motion.div>
                   ) : (
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="shrink-0 h-11 w-11 rounded-2xl text-muted-foreground hover:text-foreground"
+                    <motion.div
+                      key="input"
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: 10 }}
+                      transition={{ duration: 0.2 }}
+                      className="flex items-center gap-2"
                     >
-                      <Mic className="h-5 w-5" />
-                    </Button>
+                      <Button variant="ghost" size="icon" className="h-10 w-10 rounded-xl shrink-0 text-muted-foreground hover:text-foreground">
+                        <Smile className="h-5 w-5" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-10 w-10 rounded-xl shrink-0 text-muted-foreground hover:text-foreground"
+                        onClick={() => setMediaDialogOpen(true)}
+                      >
+                        <Paperclip className="h-5 w-5" />
+                      </Button>
+                      <div className="flex-1 relative">
+                        <Input
+                          placeholder="Digite uma mensagem..."
+                          className="bg-background/80 backdrop-blur-sm h-11 text-sm rounded-2xl border-border/50 focus-visible:ring-primary/30 focus-visible:border-primary/30"
+                          value={text}
+                          onChange={(e) => setText(e.target.value)}
+                          onKeyDown={handleKeyDown}
+                        />
+                      </div>
+                      {text.trim() ? (
+                        <motion.div
+                          initial={{ scale: 0, rotate: -90 }}
+                          animate={{ scale: 1, rotate: 0 }}
+                          transition={{ type: "spring", stiffness: 400, damping: 15 }}
+                        >
+                          <Button
+                            size="icon"
+                            onClick={handleSend}
+                            className="shrink-0 h-11 w-11 rounded-2xl shadow-md shadow-primary/20 transition-all"
+                          >
+                            <Send className="h-4 w-4" />
+                          </Button>
+                        </motion.div>
+                      ) : (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="shrink-0 h-11 w-11 rounded-2xl text-muted-foreground hover:text-foreground"
+                          onClick={startRecording}
+                        >
+                          <Mic className="h-5 w-5" />
+                        </Button>
+                      )}
+                    </motion.div>
                   )}
-                </div>
+                </AnimatePresence>
               </div>
             </>
           )}
