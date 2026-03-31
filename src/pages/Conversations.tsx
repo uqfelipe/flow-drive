@@ -230,6 +230,7 @@ function MediaAudio({ url, isPtt, fromMe, messageId, durationHint }: { url: stri
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(durationHint || 0);
+  const [playbackRate, setPlaybackRate] = useState(1);
   const [playableUrl, setPlayableUrl] = useState<string>(() => {
     if (messageId && mediaUrlCache.has(messageId)) return mediaUrlCache.get(messageId)!;
     // Only use url if it's not an encrypted WhatsApp CDN URL
