@@ -122,6 +122,9 @@ export default function Conversations() {
   const [text, setText] = useState("");
   const [lightboxImg, setLightboxImg] = useState<string | null>(null);
   const [lightboxLoading, setLightboxLoading] = useState(false);
+  const [imageDialogOpen, setImageDialogOpen] = useState(false);
+  const [imageUrl, setImageUrl] = useState("");
+  const [imageCaption, setImageCaption] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const openLightbox = async (phone: string, fallbackImg?: string) => {
@@ -139,10 +142,16 @@ export default function Conversations() {
     }
   };
 
+  const openImgLightbox = (url: string) => {
+    setLightboxImg(url);
+    setLightboxLoading(false);
+  };
+
   const { data: chats, isLoading: chatsLoading } = useWhatsAppChats();
   const selectedPhone = selectedChat ? phoneFromChatId(selectedChat.wa_chatid) : null;
   const { data: messages, isLoading: msgsLoading } = useChatMessages(selectedPhone);
   const sendMutation = useSendMessage();
+  const sendImageMutation = useSendImage();
 
   const filtered = (chats ?? []).filter((c) => {
     const q = search.toLowerCase();
