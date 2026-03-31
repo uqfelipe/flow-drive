@@ -7,11 +7,15 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue
+} from "@/components/ui/select";
+import {
   Search, Send, MessageSquare, ArrowLeft, Phone, Image, FileText,
-  Smile, Check, CheckCheck, Mic, Paperclip, MoreVertical, Video, X
+  Smile, Check, CheckCheck, Mic, Paperclip, MoreVertical, Video, X,
+  MapPin, User, Download, Play, File, ExternalLink
 } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
-import { useWhatsAppChats, useChatMessages, useSendMessage, useSendImage, usePresence, useRealtimeMessages, useMarkAsRead, type WhatsAppChat, type WhatsAppMessage } from "@/hooks/use-chat";
+import { useWhatsAppChats, useChatMessages, useSendMessage, useSendImage, useSendMedia, usePresence, useRealtimeMessages, useMarkAsRead, type WhatsAppChat, type WhatsAppMessage } from "@/hooks/use-chat";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription
 } from "@/components/ui/dialog";
@@ -50,7 +54,6 @@ function phoneFromChatId(chatid: string) {
 }
 
 function smartTimestamp(ts: number): Date {
-  // Auto-detect: >10 digits = ms, otherwise seconds
   if (ts > 9999999999) return new Date(ts);
   return new Date(ts * 1000);
 }
@@ -76,36 +79,88 @@ function formatMsgTime(ts?: number) {
   return d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
 }
 
-function extractContent(msg: WhatsAppMessage): { text: string; type: "text" | "image" | "document" | "audio" | "video" | "sticker" | "other"; imageUrl?: string } {
+interface ExtractedContent {
+  text: string;
+  type: "text" | "image" | "video" | "audio" | "ptt" | "document" | "sticker" | "location" | "contact" | "other";
+  fileUrl?: string;
+  fileName?: string;
+  mimetype?: string;
+  latitude?: number;
+  longitude?: number;
+  contactName?: string;
+  contactPhone?: string;
+}
+
+function extractContent(msg: WhatsAppMessage): ExtractedContent {
   const content = msg.content;
-  const fileUrl = (msg as any).fileURL || (msg as any).fileUrl;
-  const topText = (msg as any).text; // top-level text from API
+  const fileUrl = msg.fileURL || "";
+  const topText = msg.text || "";
   const msgType = (msg.type ?? "").toLowerCase();
+  const topFileName = msg.fileName || "";
+  const topMimetype = msg.mimetype || "";
 
+  // Parse content object
+  let c: any = null;
   if (typeof content === "object" && content !== null) {
-    const c = content as any;
-    const imgUrl = fileUrl || c.url || c.fileURL || c.fileUrl;
-
-    if (c.mimetype?.startsWith("image") || msgType.includes("image")) {
-      return { text: c.caption || c.text || topText || "", type: "image", imageUrl: imgUrl };
-    }
-    if (c.caption && imgUrl) return { text: c.caption, type: "image", imageUrl: imgUrl };
-    if (c.text) return { text: c.text, type: "text" };
-    if (c.fileName) return { text: `📄 ${c.fileName}`, type: "document" };
-    if (c.mimetype?.startsWith("video")) return { text: c.caption || "🎥 Vídeo", type: "video" };
-    if (c.mimetype?.startsWith("audio")) return { text: "🎵 Áudio", type: "audio" };
-    if (c.title) return { text: c.title, type: "other" };
+    c = content;
   }
+
+  const resolveFileUrl = () => fileUrl || c?.url || c?.fileURL || c?.fileUrl || "";
+  const resolveText = () => c?.caption || c?.text || topText || "";
+  const resolveFileName = () => topFileName || c?.fileName || c?.title || "";
+  const resolveMimetype = () => topMimetype || c?.mimetype || "";
+
+  // Image
+  if (msgType.includes("image") || c?.mimetype?.startsWith("image")) {
+    return { text: resolveText(), type: "image", fileUrl: resolveFileUrl(), mimetype: resolveMimetype() };
+  }
+
+  // Video
+  if (msgType.includes("video") || c?.mimetype?.startsWith("video")) {
+    return { text: resolveText(), type: "video", fileUrl: resolveFileUrl(), mimetype: resolveMimetype() };
+  }
+
+  // Audio / PTT (voice note)
+  if (msgType === "ptt" || msgType === "myaudio" || msgType.includes("audio") || c?.mimetype?.startsWith("audio")) {
+    const aType = (msgType === "ptt" || msgType === "myaudio") ? "ptt" as const : "audio" as const;
+    return { text: resolveText(), type: aType, fileUrl: resolveFileUrl(), mimetype: resolveMimetype() };
+  }
+
+  // Document
+  if (msgType.includes("document") || c?.mimetype?.includes("pdf") || c?.mimetype?.includes("document") || c?.fileName) {
+    return { text: resolveText(), type: "document", fileUrl: resolveFileUrl(), fileName: resolveFileName(), mimetype: resolveMimetype() };
+  }
+
+  // Sticker
+  if (msgType.includes("sticker")) {
+    return { text: "", type: "sticker", fileUrl: resolveFileUrl() };
+  }
+
+  // Location
+  if (msgType.includes("location") || c?.degreesLatitude || c?.latitude) {
+    const lat = c?.degreesLatitude || c?.latitude || 0;
+    const lng = c?.degreesLongitude || c?.longitude || 0;
+    return { text: c?.name || c?.address || resolveText(), type: "location", latitude: lat, longitude: lng };
+  }
+
+  // Contact (vCard)
+  if (msgType.includes("contact") || c?.vcard || c?.displayName) {
+    return { text: "", type: "contact", contactName: c?.displayName || c?.name || "", contactPhone: c?.vcard || "" };
+  }
+
+  // If content has caption + fileUrl → likely media
+  if (c?.caption && resolveFileUrl()) {
+    return { text: c.caption, type: "image", fileUrl: resolveFileUrl() };
+  }
+
+  // Text from content object
+  if (c?.text) return { text: c.text, type: "text" };
+  if (c?.conversation) return { text: c.conversation, type: "text" };
 
   // Fallback to top-level text
   const displayText = (typeof content === "string" ? content : "") || topText || "";
-
-  if (msgType.includes("image")) return { text: displayText || "📷 Imagem", type: "image", imageUrl: fileUrl };
-  if (msgType.includes("video")) return { text: displayText || "🎥 Vídeo", type: "video" };
-  if (msgType.includes("audio") || msgType.includes("ptt")) return { text: displayText || "🎵 Áudio", type: "audio" };
-  if (msgType.includes("document")) return { text: displayText || "📄 Documento", type: "document" };
-  if (msgType.includes("sticker")) return { text: displayText || "🏷️ Sticker", type: "sticker" };
   if (displayText) return { text: displayText, type: "text" };
+
   return { text: "[mídia]", type: "other" };
 }
 
@@ -135,6 +190,152 @@ function formatDateSeparator(ts: number) {
   return d.toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric" });
 }
 
+// ─── Media Bubble Components ───
+
+function MediaImage({ url, caption, fromMe, onClickImage }: { url: string; caption?: string; fromMe: boolean; onClickImage: (url: string) => void }) {
+  return (
+    <div className="space-y-1">
+      <img
+        src={url}
+        alt="Imagem"
+        loading="lazy"
+        onClick={() => onClickImage(url)}
+        className="rounded-xl max-w-[280px] w-full h-auto cursor-pointer hover:opacity-90 transition-opacity"
+      />
+      {caption && <p className="whitespace-pre-wrap text-[13px]">{caption}</p>}
+    </div>
+  );
+}
+
+function MediaVideo({ url, caption, fromMe }: { url: string; caption?: string; fromMe: boolean }) {
+  return (
+    <div className="space-y-1">
+      <video
+        src={url}
+        controls
+        preload="metadata"
+        className="rounded-xl max-w-[300px] w-full h-auto"
+      />
+      {caption && <p className="whitespace-pre-wrap text-[13px]">{caption}</p>}
+    </div>
+  );
+}
+
+function MediaAudio({ url, isPtt, fromMe }: { url: string; isPtt: boolean; fromMe: boolean }) {
+  return (
+    <div className={cn("flex items-center gap-2 min-w-[200px]", isPtt && "min-w-[240px]")}>
+      {isPtt && (
+        <div className={cn(
+          "h-8 w-8 rounded-full flex items-center justify-center shrink-0",
+          fromMe ? "bg-primary-foreground/20" : "bg-primary/15"
+        )}>
+          <Mic className="h-4 w-4" />
+        </div>
+      )}
+      <audio src={url} controls preload="metadata" className="h-8 w-full max-w-[240px] [&::-webkit-media-controls-panel]:bg-transparent" />
+    </div>
+  );
+}
+
+function MediaDocument({ url, fileName, fromMe }: { url: string; fileName?: string; fromMe: boolean }) {
+  const displayName = fileName || "Documento";
+  const ext = displayName.split(".").pop()?.toUpperCase() || "DOC";
+  return (
+    <a
+      href={url}
+      target="_blank"
+      rel="noopener noreferrer"
+      className={cn(
+        "flex items-center gap-3 p-3 rounded-xl border transition-colors min-w-[220px]",
+        fromMe
+          ? "border-primary-foreground/20 hover:bg-primary-foreground/10"
+          : "border-border/50 bg-muted/30 hover:bg-muted/60"
+      )}
+    >
+      <div className={cn(
+        "h-10 w-10 rounded-lg flex items-center justify-center shrink-0",
+        fromMe ? "bg-primary-foreground/20" : "bg-primary/15"
+      )}>
+        <FileText className="h-5 w-5" />
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-[12px] font-medium truncate">{displayName}</p>
+        <p className={cn("text-[10px]", fromMe ? "text-primary-foreground/60" : "text-muted-foreground")}>
+          {ext}
+        </p>
+      </div>
+      <Download className="h-4 w-4 shrink-0 opacity-60" />
+    </a>
+  );
+}
+
+function MediaSticker({ url }: { url: string }) {
+  return (
+    <img
+      src={url}
+      alt="Sticker"
+      loading="lazy"
+      className="max-w-[150px] max-h-[150px] object-contain"
+    />
+  );
+}
+
+function MediaLocation({ latitude, longitude, name, fromMe }: { latitude: number; longitude: number; name?: string; fromMe: boolean }) {
+  const mapsUrl = `https://www.google.com/maps?q=${latitude},${longitude}`;
+  const staticMapUrl = `https://maps.googleapis.com/maps/api/staticmap?center=${latitude},${longitude}&zoom=15&size=280x150&markers=${latitude},${longitude}`;
+  return (
+    <a
+      href={mapsUrl}
+      target="_blank"
+      rel="noopener noreferrer"
+      className={cn(
+        "flex items-center gap-3 p-3 rounded-xl border transition-colors min-w-[200px]",
+        fromMe
+          ? "border-primary-foreground/20 hover:bg-primary-foreground/10"
+          : "border-border/50 bg-muted/30 hover:bg-muted/60"
+      )}
+    >
+      <div className={cn(
+        "h-10 w-10 rounded-lg flex items-center justify-center shrink-0",
+        fromMe ? "bg-primary-foreground/20" : "bg-primary/15"
+      )}>
+        <MapPin className="h-5 w-5" />
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-[12px] font-medium">{name || "📍 Localização"}</p>
+        <p className={cn("text-[10px]", fromMe ? "text-primary-foreground/60" : "text-muted-foreground")}>
+          {latitude.toFixed(4)}, {longitude.toFixed(4)}
+        </p>
+      </div>
+      <ExternalLink className="h-4 w-4 shrink-0 opacity-60" />
+    </a>
+  );
+}
+
+function MediaContact({ contactName, fromMe }: { contactName?: string; fromMe: boolean }) {
+  return (
+    <div className={cn(
+      "flex items-center gap-3 p-3 rounded-xl border min-w-[200px]",
+      fromMe
+        ? "border-primary-foreground/20"
+        : "border-border/50 bg-muted/30"
+    )}>
+      <div className={cn(
+        "h-10 w-10 rounded-full flex items-center justify-center shrink-0",
+        fromMe ? "bg-primary-foreground/20" : "bg-primary/15"
+      )}>
+        <User className="h-5 w-5" />
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-[12px] font-medium">{contactName || "Contato"}</p>
+        <p className={cn("text-[10px]", fromMe ? "text-primary-foreground/60" : "text-muted-foreground")}>
+          👤 Cartão de contato
+        </p>
+      </div>
+    </div>
+  );
+}
+
 // WhatsApp-style chat background SVG pattern
 const chatBgPattern = `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%239C92AC' fill-opacity='0.03'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`;
 
@@ -144,9 +345,11 @@ export default function Conversations() {
   const [text, setText] = useState("");
   const [lightboxImg, setLightboxImg] = useState<string | null>(null);
   const [lightboxLoading, setLightboxLoading] = useState(false);
-  const [imageDialogOpen, setImageDialogOpen] = useState(false);
-  const [imageUrl, setImageUrl] = useState("");
-  const [imageCaption, setImageCaption] = useState("");
+  const [mediaDialogOpen, setMediaDialogOpen] = useState(false);
+  const [mediaUrl, setMediaUrl] = useState("");
+  const [mediaCaption, setMediaCaption] = useState("");
+  const [mediaType, setMediaType] = useState<string>("image");
+  const [mediaDocName, setMediaDocName] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const lastHandledIncomingRef = useRef<string | null>(null);
 
@@ -177,6 +380,7 @@ export default function Conversations() {
   const { data: presence } = usePresence(selectedPhone);
   const sendMutation = useSendMessage();
   const sendImageMutation = useSendImage();
+  const sendMediaMutation = useSendMedia();
   const markAsRead = useMarkAsRead();
   const lastMessageId = messages?.[messages.length - 1]?.id;
 
@@ -238,6 +442,106 @@ export default function Conversations() {
     }
   };
 
+  const handleSendMedia = () => {
+    if (!selectedPhone || !mediaUrl.trim()) return;
+    sendMediaMutation.mutate(
+      {
+        phone: selectedPhone,
+        type: mediaType,
+        fileUrl: mediaUrl.trim(),
+        text: mediaCaption.trim() || undefined,
+        docName: mediaDocName.trim() || undefined,
+      },
+      {
+        onSuccess: () => {
+          setMediaDialogOpen(false);
+          setMediaUrl("");
+          setMediaCaption("");
+          setMediaDocName("");
+          setMediaType("image");
+        },
+      }
+    );
+  };
+
+  // ─── Render a message bubble's media content ───
+  const renderMediaContent = (msg: WhatsAppMessage, extracted: ExtractedContent) => {
+    const { type, text: msgText, fileUrl, fileName, latitude, longitude, contactName } = extracted;
+
+    switch (type) {
+      case "image":
+        if (fileUrl) {
+          return <MediaImage url={fileUrl} caption={msgText} fromMe={msg.fromMe} onClickImage={openImgLightbox} />;
+        }
+        return (
+          <div className={cn("flex items-center gap-1.5 text-[11px] font-medium", msg.fromMe ? "text-primary-foreground/70" : "text-muted-foreground")}>
+            <Image className="h-3 w-3" /> {msgText || "📷 Imagem"}
+          </div>
+        );
+
+      case "video":
+        if (fileUrl) {
+          return <MediaVideo url={fileUrl} caption={msgText} fromMe={msg.fromMe} />;
+        }
+        return (
+          <div className={cn("flex items-center gap-1.5 text-[11px] font-medium", msg.fromMe ? "text-primary-foreground/70" : "text-muted-foreground")}>
+            <Video className="h-3 w-3" /> {msgText || "🎥 Vídeo"}
+          </div>
+        );
+
+      case "audio":
+      case "ptt":
+        if (fileUrl) {
+          return <MediaAudio url={fileUrl} isPtt={type === "ptt"} fromMe={msg.fromMe} />;
+        }
+        return (
+          <div className={cn("flex items-center gap-1.5 text-[11px] font-medium", msg.fromMe ? "text-primary-foreground/70" : "text-muted-foreground")}>
+            <Mic className="h-3 w-3" /> {msgText || "🎵 Áudio"}
+          </div>
+        );
+
+      case "document":
+        if (fileUrl) {
+          return (
+            <div className="space-y-1">
+              <MediaDocument url={fileUrl} fileName={fileName} fromMe={msg.fromMe} />
+              {msgText && <p className="whitespace-pre-wrap text-[13px]">{msgText}</p>}
+            </div>
+          );
+        }
+        return (
+          <div className={cn("flex items-center gap-1.5 text-[11px] font-medium", msg.fromMe ? "text-primary-foreground/70" : "text-muted-foreground")}>
+            <FileText className="h-3 w-3" /> {fileName || msgText || "📄 Documento"}
+          </div>
+        );
+
+      case "sticker":
+        if (fileUrl) {
+          return <MediaSticker url={fileUrl} />;
+        }
+        return <span className="text-2xl">🏷️</span>;
+
+      case "location":
+        if (latitude && longitude) {
+          return <MediaLocation latitude={latitude} longitude={longitude} name={msgText} fromMe={msg.fromMe} />;
+        }
+        return (
+          <div className={cn("flex items-center gap-1.5 text-[11px] font-medium", msg.fromMe ? "text-primary-foreground/70" : "text-muted-foreground")}>
+            <MapPin className="h-3 w-3" /> {msgText || "📍 Localização"}
+          </div>
+        );
+
+      case "contact":
+        return <MediaContact contactName={contactName || msgText} fromMe={msg.fromMe} />;
+
+      case "text":
+        return msgText ? <p className="whitespace-pre-wrap">{msgText}</p> : null;
+
+      default:
+        return msgText ? <p className="whitespace-pre-wrap">{msgText}</p> : <span className="text-[11px] opacity-60">[mídia]</span>;
+    }
+  };
+
   return (
     <>
     <AdminLayout title="Conversas" subtitle="Chat via WhatsApp">
@@ -294,7 +598,7 @@ export default function Conversations() {
               </div>
             ) : (
               <div className="p-1.5 space-y-0.5">
-                {filtered.map((chat, idx) => {
+                {filtered.map((chat) => {
                   const isActive = selectedChat?.wa_chatid === chat.wa_chatid;
                   const hasUnread = (chat.wa_unreadCount ?? 0) > 0;
                   return (
@@ -331,7 +635,6 @@ export default function Conversations() {
                             {getInitials(chatName(chat))}
                           </AvatarFallback>
                         </Avatar>
-                        {/* Online indicator */}
                         <span className={cn(
                           "absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-card",
                           hasUnread ? "bg-success" : "bg-muted-foreground/30"
@@ -454,7 +757,6 @@ export default function Conversations() {
 
               {/* ─── Messages area ─── */}
               <div className="flex-1 overflow-hidden relative">
-                {/* Background */}
                 <div className="absolute inset-0 bg-background" style={{ backgroundImage: chatBgPattern }} />
 
                 <ScrollArea className="h-full relative z-10">
@@ -487,8 +789,9 @@ export default function Conversations() {
                           className="space-y-0.5"
                         >
                           {(messages ?? []).map((msg, idx) => {
-                            const { text: msgText, type: msgType, imageUrl: msgImgUrl } = extractContent(msg);
+                            const extracted = extractContent(msg);
                             const showDate = shouldShowDateSeparator(messages!, idx);
+                            const isSticker = extracted.type === "sticker" && extracted.fileUrl;
 
                             return (
                               <div key={msg.id}>
@@ -504,75 +807,63 @@ export default function Conversations() {
                                   "flex mb-0.5",
                                   msg.fromMe ? "justify-end" : "justify-start"
                                 )}>
-                                  <div className={cn(
-                                    "relative max-w-[70%] px-3 py-2 text-[13px] leading-[1.45] break-words",
-                                    msg.fromMe
-                                      ? "bg-gradient-to-br from-primary to-primary/90 text-primary-foreground rounded-2xl rounded-br-md shadow-md shadow-primary/10"
-                                      : "bg-card text-card-foreground border border-border/50 rounded-2xl rounded-bl-md shadow-sm"
-                                  )}>
-                                    {/* Tail / triangle */}
-                                    <div className={cn(
-                                      "absolute top-0 w-3 h-3 overflow-hidden",
-                                      msg.fromMe ? "-right-1.5" : "-left-1.5"
-                                    )}>
+                                  {/* Stickers rendered without bubble */}
+                                  {isSticker ? (
+                                    <div className="relative max-w-[70%] px-1 py-1">
+                                      {renderMediaContent(msg, extracted)}
                                       <div className={cn(
-                                        "w-3 h-3 rotate-45 transform origin-center",
-                                        msg.fromMe
-                                          ? "bg-primary translate-x-[-50%]"
-                                          : "bg-card border-l border-t border-border/50 translate-x-[50%]"
-                                      )} />
-                                    </div>
-
-                                    {/* Inline image */}
-                                    {msgType === "image" && msgImgUrl && (
-                                      <img
-                                        src={msgImgUrl}
-                                        alt="Imagem"
-                                        loading="lazy"
-                                        onClick={() => openImgLightbox(msgImgUrl)}
-                                        className="rounded-xl max-w-[280px] w-full h-auto cursor-pointer hover:opacity-90 transition-opacity mb-1"
-                                      />
-                                    )}
-
-                                    {/* Media indicator for non-image types */}
-                                    {msgType !== "text" && msgType !== "image" && (
-                                      <div className={cn(
-                                        "flex items-center gap-1.5 mb-1 text-[11px] font-medium",
-                                        msg.fromMe ? "text-primary-foreground/70" : "text-muted-foreground"
+                                        "flex items-center justify-end gap-1 mt-0.5",
+                                        "text-muted-foreground/60"
                                       )}>
-                                        {msgType === "document" && <><FileText className="h-3 w-3" /> Documento</>}
-                                        {msgType === "audio" && <><Mic className="h-3 w-3" /> Áudio</>}
-                                        {msgType === "video" && <><Video className="h-3 w-3" /> Vídeo</>}
+                                        <span className="text-[10px]">{formatMsgTime(msg.timestamp)}</span>
+                                        {msg.fromMe && (
+                                          msg.status === "read" || msg.status === "played"
+                                            ? <CheckCheck className="h-3 w-3" style={{ color: "hsl(199, 89%, 70%)" }} />
+                                            : msg.status === "delivered"
+                                              ? <CheckCheck className="h-3 w-3" />
+                                              : <Check className="h-3 w-3" />
+                                        )}
                                       </div>
-                                    )}
-
-                                    {/* Image without URL — show indicator */}
-                                    {msgType === "image" && !msgImgUrl && (
-                                      <div className={cn(
-                                        "flex items-center gap-1.5 mb-1 text-[11px] font-medium",
-                                        msg.fromMe ? "text-primary-foreground/70" : "text-muted-foreground"
-                                      )}>
-                                        <Image className="h-3 w-3" /> Imagem
-                                      </div>
-                                    )}
-
-                                    {msgText && <p className="whitespace-pre-wrap">{msgText}</p>}
-
-                                    {/* Timestamp & status */}
-                                    <div className={cn(
-                                      "flex items-center justify-end gap-1 mt-1",
-                                      msg.fromMe ? "text-primary-foreground/50" : "text-muted-foreground/60"
-                                    )}>
-                                      <span className="text-[10px]">{formatMsgTime(msg.timestamp)}</span>
-                                      {msg.fromMe && (
-                                        msg.status === "read" || msg.status === "played"
-                                          ? <CheckCheck className="h-3 w-3" style={{ color: "hsl(199, 89%, 70%)" }} />
-                                          : msg.status === "delivered"
-                                            ? <CheckCheck className="h-3 w-3" />
-                                            : <Check className="h-3 w-3" />
-                                      )}
                                     </div>
-                                  </div>
+                                  ) : (
+                                    <div className={cn(
+                                      "relative max-w-[70%] px-3 py-2 text-[13px] leading-[1.45] break-words",
+                                      msg.fromMe
+                                        ? "bg-gradient-to-br from-primary to-primary/90 text-primary-foreground rounded-2xl rounded-br-md shadow-md shadow-primary/10"
+                                        : "bg-card text-card-foreground border border-border/50 rounded-2xl rounded-bl-md shadow-sm"
+                                    )}>
+                                      {/* Tail */}
+                                      <div className={cn(
+                                        "absolute top-0 w-3 h-3 overflow-hidden",
+                                        msg.fromMe ? "-right-1.5" : "-left-1.5"
+                                      )}>
+                                        <div className={cn(
+                                          "w-3 h-3 rotate-45 transform origin-center",
+                                          msg.fromMe
+                                            ? "bg-primary translate-x-[-50%]"
+                                            : "bg-card border-l border-t border-border/50 translate-x-[50%]"
+                                        )} />
+                                      </div>
+
+                                      {/* Media content */}
+                                      {renderMediaContent(msg, extracted)}
+
+                                      {/* Timestamp & status */}
+                                      <div className={cn(
+                                        "flex items-center justify-end gap-1 mt-1",
+                                        msg.fromMe ? "text-primary-foreground/50" : "text-muted-foreground/60"
+                                      )}>
+                                        <span className="text-[10px]">{formatMsgTime(msg.timestamp)}</span>
+                                        {msg.fromMe && (
+                                          msg.status === "read" || msg.status === "played"
+                                            ? <CheckCheck className="h-3 w-3" style={{ color: "hsl(199, 89%, 70%)" }} />
+                                            : msg.status === "delivered"
+                                              ? <CheckCheck className="h-3 w-3" />
+                                              : <Check className="h-3 w-3" />
+                                        )}
+                                      </div>
+                                    </div>
+                                  )}
                                 </div>
                               </div>
                             );
@@ -614,7 +905,7 @@ export default function Conversations() {
                     variant="ghost"
                     size="icon"
                     className="h-10 w-10 rounded-xl shrink-0 text-muted-foreground hover:text-foreground"
-                    onClick={() => setImageDialogOpen(true)}
+                    onClick={() => setMediaDialogOpen(true)}
                   >
                     <Paperclip className="h-5 w-5" />
                   </Button>
@@ -658,7 +949,7 @@ export default function Conversations() {
       </div>
     </AdminLayout>
 
-    {/* Lightbox overlay for profile picture */}
+    {/* Lightbox overlay */}
     <AnimatePresence>
       {lightboxImg && (
         <motion.div
@@ -689,7 +980,7 @@ export default function Conversations() {
             )}
             <img
               src={lightboxImg}
-              alt="Foto de perfil"
+              alt="Imagem"
               className="max-h-[80vh] max-w-[80vw] rounded-2xl shadow-2xl object-contain"
             />
           </motion.div>
@@ -697,54 +988,69 @@ export default function Conversations() {
       )}
     </AnimatePresence>
 
-    {/* Send image dialog */}
-    <Dialog open={imageDialogOpen} onOpenChange={setImageDialogOpen}>
+    {/* Send media dialog (unified) */}
+    <Dialog open={mediaDialogOpen} onOpenChange={setMediaDialogOpen}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Enviar Imagem</DialogTitle>
-          <DialogDescription>Cole a URL da imagem que deseja enviar.</DialogDescription>
+          <DialogTitle>Enviar Mídia</DialogTitle>
+          <DialogDescription>Selecione o tipo e cole a URL do arquivo.</DialogDescription>
         </DialogHeader>
         <div className="space-y-3 py-2">
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium text-muted-foreground">Tipo</label>
+            <Select value={mediaType} onValueChange={setMediaType}>
+              <SelectTrigger className="h-9">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="image">📷 Imagem</SelectItem>
+                <SelectItem value="video">🎥 Vídeo</SelectItem>
+                <SelectItem value="audio">🎵 Áudio</SelectItem>
+                <SelectItem value="document">📄 Documento</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
           <Input
-            placeholder="https://exemplo.com/imagem.jpg"
-            value={imageUrl}
-            onChange={(e) => setImageUrl(e.target.value)}
+            placeholder="https://exemplo.com/arquivo.jpg"
+            value={mediaUrl}
+            onChange={(e) => setMediaUrl(e.target.value)}
           />
-          {imageUrl && (
+
+          {/* Preview for images */}
+          {mediaType === "image" && mediaUrl && (
             <img
-              src={imageUrl}
+              src={mediaUrl}
               alt="Preview"
               className="rounded-xl max-h-48 w-auto object-contain mx-auto"
               onError={(e) => (e.currentTarget.style.display = "none")}
             />
           )}
+
+          {/* Document name field */}
+          {mediaType === "document" && (
+            <Input
+              placeholder="Nome do arquivo (ex: contrato.pdf)"
+              value={mediaDocName}
+              onChange={(e) => setMediaDocName(e.target.value)}
+            />
+          )}
+
           <Input
             placeholder="Legenda (opcional)"
-            value={imageCaption}
-            onChange={(e) => setImageCaption(e.target.value)}
+            value={mediaCaption}
+            onChange={(e) => setMediaCaption(e.target.value)}
           />
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={() => { setImageDialogOpen(false); setImageUrl(""); setImageCaption(""); }}>
+          <Button variant="outline" onClick={() => { setMediaDialogOpen(false); setMediaUrl(""); setMediaCaption(""); setMediaDocName(""); setMediaType("image"); }}>
             Cancelar
           </Button>
           <Button
-            disabled={!imageUrl.trim() || !selectedPhone || sendImageMutation.isPending}
-            onClick={() => {
-              if (!selectedPhone || !imageUrl.trim()) return;
-              sendImageMutation.mutate(
-                { phone: selectedPhone, imageUrl: imageUrl.trim(), text: imageCaption.trim() },
-                {
-                  onSuccess: () => {
-                    setImageDialogOpen(false);
-                    setImageUrl("");
-                    setImageCaption("");
-                  },
-                }
-              );
-            }}
+            disabled={!mediaUrl.trim() || !selectedPhone || sendMediaMutation.isPending}
+            onClick={handleSendMedia}
           >
-            {sendImageMutation.isPending ? "Enviando..." : "Enviar"}
+            {sendMediaMutation.isPending ? "Enviando..." : "Enviar"}
           </Button>
         </DialogFooter>
       </DialogContent>
