@@ -122,7 +122,8 @@ function extractContent(msg: WhatsAppMessage): ExtractedContent {
 
   // Audio / PTT (voice note)
   if (msgType === "ptt" || msgType === "myaudio" || msgType.includes("audio") || c?.mimetype?.startsWith("audio")) {
-    const aType = (msgType === "ptt" || msgType === "myaudio") ? "ptt" as const : "audio" as const;
+    const isPtt = msgType === "ptt" || msgType === "myaudio" || c?.PTT === true;
+    const aType = isPtt ? "ptt" as const : "audio" as const;
     return { text: resolveText(), type: aType, fileUrl: resolveFileUrl(), mimetype: resolveMimetype() };
   }
 
