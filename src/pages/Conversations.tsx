@@ -11,7 +11,10 @@ import {
   Smile, Check, CheckCheck, Mic, Paperclip, MoreVertical, Video, X
 } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
-import { useWhatsAppChats, useChatMessages, useSendMessage, type WhatsAppChat, type WhatsAppMessage } from "@/hooks/use-chat";
+import { useWhatsAppChats, useChatMessages, useSendMessage, useSendImage, type WhatsAppChat, type WhatsAppMessage } from "@/hooks/use-chat";
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription
+} from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 
