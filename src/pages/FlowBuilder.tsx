@@ -1,7 +1,8 @@
 import { useCallback, useRef, useState, useEffect } from "react";
 import {
   ReactFlow, addEdge, useNodesState, useEdgesState, Controls, Background, BackgroundVariant,
-  MiniMap, type Connection, type Edge, type Node, type OnSelectionChangeFunc, ReactFlowProvider,
+  type Connection, type Edge, type Node, type OnSelectionChangeFunc, ReactFlowProvider,
+  ConnectionLineType,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 
@@ -12,14 +13,19 @@ import FlowNode from "@/components/flow-builder/FlowNode";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Save, Play, Copy, ToggleLeft, ChevronDown, Workflow } from "lucide-react";
+import { Save, Workflow } from "lucide-react";
 import type { NodeTypeConfig } from "@/components/flow-builder/nodeTypes";
 import type { FlowNodeData } from "@/types";
 import { useFlows, useSaveFlow } from "@/hooks/use-flows";
 import { toast } from "sonner";
 
 const customNodeTypes = { flowNode: FlowNode };
-const edgeStyle = { stroke: "hsl(265 89% 78%)", strokeWidth: 2 };
+
+const defaultEdgeOptions = {
+  type: "smoothstep",
+  style: { stroke: "hsl(220 13% 80%)", strokeWidth: 2 },
+  animated: false,
+};
 
 let nodeIdCounter = 100;
 
@@ -36,7 +42,6 @@ function FlowBuilderContent() {
   const { data: flows, isLoading } = useFlows();
   const saveFlow = useSaveFlow();
 
-  // Load first flow
   useEffect(() => {
     if (flows && flows.length > 0 && !currentFlowId) {
       const flow = flows[0];
@@ -49,7 +54,7 @@ function FlowBuilderContent() {
   }, [flows, currentFlowId, setNodes, setEdges]);
 
   const onConnect = useCallback(
-    (params: Connection) => setEdges((eds) => addEdge({ ...params, animated: true, style: edgeStyle }, eds)),
+    (params: Connection) => setEdges((eds) => addEdge({ ...params, ...defaultEdgeOptions }, eds)),
     [setEdges]
   );
 
@@ -73,7 +78,14 @@ function FlowBuilderContent() {
         id: String(nodeIdCounter++),
         type: "flowNode",
         position,
-        data: { label: parsed.label, category: parsed.category, nodeType: parsed.type, config: parsed.defaultConfig || {}, description: parsed.description } satisfies FlowNodeData,
+        data: {
+          label: `Grupo ${nodeIdCounter}`,
+          category: parsed.category,
+          nodeType: parsed.type,
+          config: parsed.defaultConfig || {},
+          description: parsed.description,
+          blocks: [],
+        } satisfies FlowNodeData,
       };
       setNodes((nds) => nds.concat(newNode));
     },
@@ -115,25 +127,22 @@ function FlowBuilderContent() {
   return (
     <AdminLayout title="Construtor de Fluxos" subtitle="Monte automações visuais para o chatbot">
       <div className="flex flex-col h-[calc(100vh-3.5rem)]">
-        <div className="flex items-center justify-between px-4 py-2 border-b border-border bg-card/60 backdrop-blur-sm">
+        {/* Simplified toolbar */}
+        <div className="flex items-center justify-between px-4 py-2 border-b border-gray-200 dark:border-border bg-white dark:bg-card">
           <div className="flex items-center gap-3">
-            <Workflow className="h-4 w-4 text-primary" />
-            <div className="flex items-center gap-2">
-              <span className="font-display font-semibold text-sm">{currentFlowName}</span>
-              <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
-            </div>
-            <Badge variant="outline" className={currentFlowStatus === "active" ? "bg-success/10 text-success border-success/30 text-[10px]" : "bg-muted text-muted-foreground border-border text-[10px]"}>
+            <Workflow className="h-4 w-4 text-blue-500 dark:text-primary" />
+            <span className="font-display font-semibold text-sm text-gray-800 dark:text-foreground">{currentFlowName}</span>
+            <Badge variant="outline" className={
+              currentFlowStatus === "active"
+                ? "bg-emerald-50 text-emerald-600 border-emerald-200 dark:bg-success/10 dark:text-success dark:border-success/30 text-[10px]"
+                : "bg-gray-50 text-gray-500 border-gray-200 dark:bg-muted dark:text-muted-foreground dark:border-border text-[10px]"
+            }>
               {currentFlowStatus === "active" ? "Ativo" : currentFlowStatus === "draft" ? "Rascunho" : "Inativo"}
             </Badge>
           </div>
-          <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" className="h-7 text-xs"><Play className="h-3 w-3 mr-1" /> Testar</Button>
-            <Button variant="outline" size="sm" className="h-7 text-xs"><Copy className="h-3 w-3 mr-1" /> Duplicar</Button>
-            <Button variant="outline" size="sm" className="h-7 text-xs"><ToggleLeft className="h-3 w-3 mr-1" /> Ativar/Desativar</Button>
-            <Button size="sm" className="h-7 text-xs shadow-glow-sm" onClick={handleSave} disabled={saveFlow.isPending}>
-              <Save className="h-3 w-3 mr-1" /> Salvar
-            </Button>
-          </div>
+          <Button size="sm" className="h-8 text-xs" onClick={handleSave} disabled={saveFlow.isPending}>
+            <Save className="h-3.5 w-3.5 mr-1.5" /> Salvar
+          </Button>
         </div>
 
         <div className="flex flex-1 overflow-hidden">
@@ -145,12 +154,20 @@ function FlowBuilderContent() {
               onConnect={onConnect} onInit={setReactFlowInstance}
               onDrop={onDrop} onDragOver={onDragOver}
               onSelectionChange={onSelectionChange}
-              nodeTypes={customNodeTypes} fitView className="bg-background"
-              defaultEdgeOptions={{ animated: true, style: edgeStyle }}
+              nodeTypes={customNodeTypes} fitView
+              className="!bg-gray-50 dark:!bg-background"
+              defaultEdgeOptions={defaultEdgeOptions}
+              connectionLineType={ConnectionLineType.SmoothStep}
+              connectionLineStyle={{ stroke: "hsl(220 80% 60%)", strokeWidth: 2 }}
             >
-              <Controls />
-              <MiniMap nodeColor="hsl(265 89% 78%)" maskColor="hsl(232 14% 15% / 0.7)" />
-              <Background variant={BackgroundVariant.Dots} gap={24} size={1} color="hsl(var(--muted-foreground) / 0.15)" />
+              <Controls className="!rounded-xl" />
+              <Background
+                variant={BackgroundVariant.Dots}
+                gap={20}
+                size={1}
+                color="hsl(220 13% 82%)"
+                className="dark:!bg-background"
+              />
             </ReactFlow>
           </div>
           {selectedNode && (
