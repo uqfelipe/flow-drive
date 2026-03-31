@@ -1,58 +1,43 @@
 
 
-# Plano: Suporte para envio e visualização de imagens inline no chat
+# Fix: Envio e recebimento de mensagens no chat
 
-## O que será feito
+## Problemas identificados
 
-Permitir que imagens sejam exibidas inline nas bolhas de mensagem e que o usuário possa enviar imagens via URL pelo chat.
+Analisando as respostas da API uazapi nos network requests, encontrei 3 problemas principais:
 
-## 1. Edge Function — novo action `send-image`
+### 1. Timestamps em milissegundos tratados como segundos
+A API retorna `messageTimestamp` em **milissegundos** (ex: `1774985654288` — 13 digitos). Mas `formatMsgTime` e `formatTime` fazem `new Date(ts * 1000)`, multiplicando por 1000 novamente, resultando em datas absurdas.
 
-**Arquivo**: `supabase/functions/whatsapp-chat/index.ts`
+### 2. Campo `type` vs `messageType`
+O hook espera `msg.type` mas a API retorna `messageType` (ex: `"ExtendedTextMessage"`, `"Conversation"`). O `extractContent` nunca encontra o tipo correto.
 
-Adicionar action `send-image` que chama `POST /send/image` da uazapi:
-```typescript
-if (action === "send-image") {
-  const data = await apiCall(inst.server_url, inst.instance_token, "/send/image", {
-    number: phone,
-    file: imageUrl,  // URL da imagem
-    text: text || "", // caption opcional
-  });
-  return json(data);
-}
-```
+### 3. Status capitalizado
+A API retorna `"Sent"`, `"Delivered"`, `"Read"` mas o código compara com lowercase `"read"`, `"delivered"`. Os checks duplos (✓✓ azuis) nunca aparecem.
 
-Também extrair `imageUrl` do body do request junto com `phone`, `text`, `imageUrl`.
+## Alterações
 
-## 2. Hook — adicionar mutation de envio de imagem
+### `src/hooks/use-chat.ts`
+- Na query `useChatMessages`, mapear os campos da API para a interface correta:
+  - `messageTimestamp` → `timestamp` (converter ms para segundos: `/ 1000`)
+  - `messageType` → `type`
+  - `status` → lowercase
+  - Usar `msg.text` (top-level) como fallback para conteúdo
 
-**Arquivo**: `src/hooks/use-chat.ts`
-
-- Adicionar `useSendImage()` mutation que invoca `action: "send-image"` com `{ phone, imageUrl, text }`.
-
-## 3. Frontend — visualização inline de imagens
-
-**Arquivo**: `src/pages/Conversations.tsx`
-
-### Exibir imagens nas bolhas
-- Na renderização de mensagens, quando `msgType === "image"`, extrair a URL da imagem de `msg.fileURL` ou `(msg.content as any)?.url` ou `(msg.content as any)?.fileURL`.
-- Renderizar um `<img>` clicável dentro da bolha, com cantos arredondados e aspect-ratio automático.
-- Ao clicar na imagem, abrir no lightbox já existente (reutilizar `lightboxImg`).
-- Exibir caption (se houver) abaixo da imagem na bolha.
-
-### Enviar imagens
-- Tornar o botão de `Paperclip` funcional: ao clicar, abrir um prompt/dialog simples para colar URL de imagem + caption opcional.
-- Usar `useSendImage()` para enviar.
-- Alternativa mais simples: usar um `<input type="file">` hidden, converter para base64 data URI e enviar como `file` (a uazapi aceita base64).
-
-### Atualizar `WhatsAppMessage` interface
-- Adicionar `fileURL?: string` ao tipo.
-- Atualizar `extractContent` para retornar a URL da mídia quando disponível.
+### `src/pages/Conversations.tsx`
+- `formatTime`: o campo `wa_lastMsgTimestamp` da lista de chats também vem em ms — ajustar para detectar automaticamente (se > 10 digitos, já é ms, não multiplicar por 1000)
+- `extractContent`: também checar `(msg as any).text` no top-level como a API retorna
 
 ## Detalhes técnicos
 
-- A uazapi retorna `fileURL` nas mensagens com mídia — é a URL direta do arquivo
-- O endpoint `/send/image` aceita `file` como URL pública ou base64
-- O lightbox existente será reutilizado para visualização em tela cheia
-- Imagens terão `max-width: 280px` dentro das bolhas, com lazy loading
+Exemplo de resposta real da API:
+```text
+messageTimestamp: 1774985654288  (milissegundos)
+messageType: "ExtendedTextMessage"
+status: "Sent"
+text: "oooiii"  (campo top-level)
+content: { text: "oooiii", contextInfo: {} }
+```
+
+A normalização será feita no hook para manter o componente limpo.
 
