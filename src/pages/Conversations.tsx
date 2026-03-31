@@ -1372,6 +1372,53 @@ export default function Conversations() {
                         <span className="text-sm font-mono text-foreground">{formatRecordingTime(recordingTime)}</span>
                         <span className="text-xs text-muted-foreground">Gravando...</span>
                       </div>
+                      <Button
+                        size="icon"
+                        variant="secondary"
+                        onClick={stopRecordingForPreview}
+                        className="shrink-0 h-11 w-11 rounded-2xl"
+                      >
+                        <Square className="h-4 w-4" />
+                      </Button>
+                    </motion.div>
+                  ) : audioPreview ? (
+                    <motion.div
+                      key="preview"
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: 10 }}
+                      transition={{ duration: 0.2 }}
+                      className="flex items-center gap-3"
+                    >
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={discardPreview}
+                        className="shrink-0 h-11 w-11 rounded-2xl text-destructive hover:text-destructive hover:bg-destructive/10"
+                      >
+                        <Trash2 className="h-5 w-5" />
+                      </Button>
+                      <div className="flex-1 flex items-center gap-3 px-4 h-11 rounded-2xl bg-background/80 border border-border/50">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 rounded-full shrink-0"
+                          onClick={togglePreviewPlayback}
+                        >
+                          {isPlayingPreview ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
+                        </Button>
+                        <span className="text-sm text-foreground">{formatRecordingTime(recordingTime)}</span>
+                        <span className="text-xs text-muted-foreground">Áudio gravado</span>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="ml-auto text-xs text-muted-foreground hover:text-foreground"
+                          onClick={() => { discardPreview(); startRecording(); }}
+                        >
+                          <Mic className="h-3.5 w-3.5 mr-1" />
+                          Re-gravar
+                        </Button>
+                      </div>
                       <motion.div
                         initial={{ scale: 0, rotate: -90 }}
                         animate={{ scale: 1, rotate: 0 }}
@@ -1379,7 +1426,8 @@ export default function Conversations() {
                       >
                         <Button
                           size="icon"
-                          onClick={stopAndSendRecording}
+                          onClick={sendRecordedAudio}
+                          disabled={sendMediaMutation.isPending}
                           className="shrink-0 h-11 w-11 rounded-2xl shadow-md shadow-primary/20 transition-all"
                         >
                           <Send className="h-4 w-4" />
