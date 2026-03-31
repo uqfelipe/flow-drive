@@ -354,12 +354,20 @@ export default function Conversations() {
                           </span>
                         </div>
                         <div className="flex items-center justify-between gap-2 mt-0.5">
-                          <p className={cn(
-                            "text-[11px] truncate leading-relaxed",
-                            hasUnread ? "text-foreground/70 font-medium" : "text-muted-foreground/70"
-                          )}>
-                            {chatPreview(chat.wa_lastMsg) || formatPhone(phoneFromChatId(chat.wa_chatid))}
-                          </p>
+                          {(() => {
+                            const preview = chatPreviewData(chat.wa_lastMsg);
+                            return (
+                              <p className={cn(
+                                "text-[11px] truncate leading-relaxed flex items-center gap-0.5",
+                                hasUnread ? "text-foreground/70 font-medium" : "text-muted-foreground/70"
+                              )}>
+                                {preview.fromMe && (
+                                  <CheckCheck className="h-3 w-3 shrink-0 text-blue-400" />
+                                )}
+                                <span className="truncate">{preview.text || formatPhone(phoneFromChatId(chat.wa_chatid))}</span>
+                              </p>
+                            );
+                          })()}
                           {hasUnread && !isActive && (
                             <span className="bg-success text-success-foreground text-[10px] font-bold rounded-full h-[18px] min-w-[18px] flex items-center justify-center px-1 shrink-0">
                               {chat.wa_unreadCount}
