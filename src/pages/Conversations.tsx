@@ -520,5 +520,40 @@ export default function Conversations() {
         </div>
       </div>
     </AdminLayout>
+
+    {/* Lightbox overlay for profile picture */}
+    <AnimatePresence>
+      {lightboxImg && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm"
+          onClick={() => setLightboxImg(null)}
+        >
+          <motion.div
+            initial={{ scale: 0.7, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0.7, opacity: 0 }}
+            transition={{ type: "spring", damping: 25, stiffness: 300 }}
+            className="relative"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              onClick={() => setLightboxImg(null)}
+              className="absolute -top-3 -right-3 z-10 rounded-full bg-card p-1.5 shadow-lg border border-border hover:bg-muted transition-colors"
+            >
+              <X className="h-5 w-5" />
+            </button>
+            <img
+              src={lightboxImg}
+              alt="Foto de perfil"
+              className="max-h-[80vh] max-w-[80vw] rounded-2xl shadow-2xl object-contain"
+            />
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+    </>
   );
 }
