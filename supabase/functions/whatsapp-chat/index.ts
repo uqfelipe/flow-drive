@@ -45,7 +45,7 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
   try {
-    const { action, phone, text, imageUrl, chatLid, type, fileUrl, docName } = await req.json();
+    const { action, phone, text, imageUrl, chatLid, type, fileUrl, docName, messageId: msgId, remoteJid, fromMe } = await req.json();
     const inst = await getInstance();
 
     if (action === "list-chats") {
