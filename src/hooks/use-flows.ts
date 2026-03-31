@@ -75,10 +75,10 @@ export function useSaveFlow() {
 export function useCreateFlow() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (flow: { name: string; description?: string; nodes?: Node[]; edges?: Edge[] }) => {
+  mutationFn: async (flow: { name: string; description?: string; nodes?: unknown[]; edges?: unknown[] }) => {
       const { data, error } = await supabase
         .from("chatbot_flows")
-        .insert({ ...flow, nodes: flow.nodes || [], edges: flow.edges || [] })
+        .insert([{ name: flow.name, description: flow.description || '', nodes: (flow.nodes || []) as any, edges: (flow.edges || []) as any }])
         .select()
         .single();
       if (error) throw error;

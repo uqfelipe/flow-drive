@@ -43,7 +43,7 @@ export function useCreateRental() {
       payment_status?: string;
       origin?: string;
     }) => {
-      const { data, error } = await supabase.from("rentals").insert(rental).select().single();
+      const { data, error } = await supabase.from("rentals").insert([rental as any]).select().single();
       if (error) throw error;
       return data;
     },
