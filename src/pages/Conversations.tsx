@@ -650,6 +650,7 @@ export default function Conversations() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const [showScrollBtn, setShowScrollBtn] = useState(false);
+  const [calendarOpen, setCalendarOpen] = useState(false);
   const lastHandledIncomingRef = useRef<string | null>(null);
 
   const openLightbox = async (phone: string, fallbackImg?: string) => {
