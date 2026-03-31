@@ -610,18 +610,12 @@ export default function Conversations() {
       return;
     }
 
-    if (!messages?.length) {
-      markAsRead.mutate(selectedPhone);
-      return;
-    }
+    const key = messages?.length
+      ? `${selectedPhone}:${messages[messages.length - 1].id}`
+      : `${selectedPhone}:empty`;
 
-    const lastMessage = messages[messages.length - 1];
-    if (lastMessage.fromMe) return;
-
-    const incomingKey = `${selectedPhone}:${lastMessage.id}`;
-    if (lastHandledIncomingRef.current === incomingKey) return;
-
-    lastHandledIncomingRef.current = incomingKey;
+    if (lastHandledIncomingRef.current === key) return;
+    lastHandledIncomingRef.current = key;
     markAsRead.mutate(selectedPhone);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedPhone, messages]);
