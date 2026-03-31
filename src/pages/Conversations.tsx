@@ -10,11 +10,15 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue
 } from "@/components/ui/select";
 import {
-  Search, Send, MessageSquare, ArrowLeft, Phone, Image, FileText, ChevronDown,
+  Popover, PopoverContent, PopoverTrigger
+} from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import {
+  Search, Send, MessageSquare, ArrowLeft, CalendarIcon, Image, FileText, ChevronDown,
   Smile, Check, CheckCheck, Mic, Paperclip, MoreVertical, Video, X,
   MapPin, User, Download, Play, Pause, File, ExternalLink, Loader2
 } from "lucide-react";
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { useWhatsAppChats, useChatMessages, useSendMessage, useSendImage, useSendMedia, usePresence, useRealtimeMessages, useMarkAsRead, type WhatsAppChat, type WhatsAppMessage } from "@/hooks/use-chat";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription
