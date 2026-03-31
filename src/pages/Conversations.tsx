@@ -211,7 +211,7 @@ export default function Conversations() {
                           "h-12 w-12 shrink-0 transition-all duration-200",
                           isActive && "ring-2 ring-primary/40 ring-offset-2 ring-offset-card"
                         )}>
-                          {chat.wa_profilePicUrl && <AvatarImage src={chat.wa_profilePicUrl} />}
+                          {(chat.image || chat.imagePreview || chat.wa_profilePicUrl) && <AvatarImage src={chat.image || chat.imagePreview || chat.wa_profilePicUrl} />}
                           <AvatarFallback className={cn(
                             "text-xs font-bold transition-colors",
                             isActive
@@ -311,7 +311,7 @@ export default function Conversations() {
                     <ArrowLeft className="h-5 w-5" />
                   </button>
                   <Avatar className="h-10 w-10 ring-2 ring-primary/20 ring-offset-2 ring-offset-card">
-                    {selectedChat.wa_profilePicUrl && <AvatarImage src={selectedChat.wa_profilePicUrl} />}
+                    {(selectedChat.image || selectedChat.imagePreview || selectedChat.wa_profilePicUrl) && <AvatarImage src={selectedChat.image || selectedChat.imagePreview || selectedChat.wa_profilePicUrl} />}
                     <AvatarFallback className="bg-primary/15 text-primary text-xs font-bold">
                       {getInitials(chatName(selectedChat))}
                     </AvatarFallback>

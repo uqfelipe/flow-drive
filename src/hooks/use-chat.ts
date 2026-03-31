@@ -18,6 +18,8 @@ export interface WhatsAppChat {
   wa_lastMsg?: string;
   wa_profilePicUrl?: string;
   wa_unreadCount?: number;
+  image?: string;
+  imagePreview?: string;
 }
 
 export interface WhatsAppMessage {
