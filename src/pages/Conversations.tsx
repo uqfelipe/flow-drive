@@ -105,6 +105,7 @@ export default function Conversations() {
   const [search, setSearch] = useState("");
   const [selectedChat, setSelectedChat] = useState<WhatsAppChat | null>(null);
   const [text, setText] = useState("");
+  const [lightboxImg, setLightboxImg] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const { data: chats, isLoading: chatsLoading } = useWhatsAppChats();
