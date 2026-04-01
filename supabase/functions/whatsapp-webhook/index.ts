@@ -483,6 +483,52 @@ function handleMenuSelection(
   return { nextNodeId: null, selectedOption: null };
 }
 
+type IncomingWebhookMessage = {
+  id: string;
+  chatId: string;
+  phone: string;
+  text: string;
+  fromMe: boolean;
+};
+
+function extractIncomingMessages(body: any): IncomingWebhookMessage[] {
+  const rawMessages = [
+    ...(Array.isArray(body.messages) ? body.messages : []),
+    ...(Array.isArray(body.data?.messages) ? body.data.messages : []),
+    ...(body.message ? [body.message] : []),
+    ...(body.data?.message ? [body.data.message] : []),
+  ].filter(Boolean);
+
+  const uniqueMessages = new Map<string, IncomingWebhookMessage>();
+
+  for (const msg of rawMessages) {
+    const chatId = (msg.chatid ?? msg.chat ?? msg.key?.remoteJid ?? msg.from ?? body.chatid ?? body.from ?? "").toString();
+    const text = (
+      msg.body ??
+      msg.text ??
+      msg.conversation ??
+      msg.message?.conversation ??
+      msg.message?.extendedTextMessage?.text ??
+      ""
+    ).toString().trim();
+    const fromMe = Boolean(msg.fromMe ?? msg.key?.fromMe ?? false);
+    const phone = chatId.replace(/@.*$/, "");
+    const id = (msg.id ?? msg.key?.id ?? `${chatId}:${text}:${fromMe}`).toString();
+
+    if (!chatId) continue;
+
+    uniqueMessages.set(id, {
+      id,
+      chatId,
+      phone,
+      text,
+      fromMe,
+    });
+  }
+
+  return Array.from(uniqueMessages.values());
+}
+
 // ── Main webhook handler ─────────────────────────────────────────────
 Deno.serve(async (req) => {
   if (req.method !== "POST") {
@@ -519,32 +565,33 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ ok: true }), { headers: { "Content-Type": "application/json" } });
     }
 
-    // Handle message events
-    const hasMessage = body.message || body.messages || body.data?.message;
-    const isMessageEvent = eventType.includes("message") || eventType === "" && hasMessage;
+    // Handle message events (single or batched)
+    const hasMessage = body.message || body.messages || body.data?.message || body.data?.messages;
+    const isMessageEvent = eventType === "message" || eventType === "messages" || (!!hasMessage && eventType === "");
     
     if (isMessageEvent || hasMessage) {
-      const msg = body.message || body.messages?.[0] || body.data?.message || {};
-      const chatId = msg.chatid ?? msg.chat ?? msg.key?.remoteJid ?? body.chatid ?? body.from ?? "";
-      const messageText = msg.body ?? msg.text ?? msg.conversation ?? msg.message?.conversation ?? msg.message?.extendedTextMessage?.text ?? "";
-      const fromMe = msg.fromMe ?? msg.key?.fromMe ?? false;
-      const phone = chatId.replace("@s.whatsapp.net", "").replace("@c.us", "");
-      
-      console.log(`[WEBHOOK] Message: phone=${phone}, fromMe=${fromMe}, text="${messageText}"`);
+      const incomingMessages = extractIncomingMessages(body);
+      console.log(`[WEBHOOK] extracted_messages=${incomingMessages.length}`);
 
-      if (chatId) {
+      const backgroundTasks = incomingMessages.map(async ({ chatId, phone, text, fromMe }) => {
+        console.log(`[WEBHOOK] Message: phone=${phone}, fromMe=${fromMe}, text="${text}"`);
+
         await adminClient.from("message_signals").upsert(
           { chat_id: chatId, updated_at: new Date().toISOString() },
           { onConflict: "chat_id" }
         );
-      }
 
-      if (!fromMe && messageText && phone) {
-        // Fire-and-forget: don't block the webhook response
-        // This allows multiple users to be processed concurrently
-        processIncomingMessage(phone, messageText).catch(err =>
-          console.error("[AUTO-REPLY] Background error:", err)
-        );
+        if (!fromMe && text && phone) {
+          await processIncomingMessage(phone, text);
+        }
+      });
+
+      const edgeRuntime = (globalThis as typeof globalThis & {
+        EdgeRuntime?: { waitUntil?: (promise: Promise<unknown>) => void };
+      }).EdgeRuntime;
+
+      if (backgroundTasks.length > 0) {
+        edgeRuntime?.waitUntil?.(Promise.allSettled(backgroundTasks));
       }
     }
 
