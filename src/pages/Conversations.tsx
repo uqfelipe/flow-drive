@@ -35,8 +35,10 @@ function getInitials(name?: string) {
   return name.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase();
 }
 
-function chatName(chat: WhatsAppChat) {
-  return chat.wa_contactName || chat.wa_name || chat.name || chat.wa_chatid?.replace("@s.whatsapp.net", "") || "—";
+function chatName(chat: WhatsAppChat, customerMap?: Record<string, string>) {
+  const phone = chat.wa_chatid?.replace(/@.*$/, "") ?? "";
+  if (customerMap && phone && customerMap[phone]) return customerMap[phone];
+  return chat.wa_contactName || chat.wa_name || chat.name || phone || "—";
 }
 
 function chatPreview(msg: any): string {
