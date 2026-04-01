@@ -5,6 +5,15 @@ const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
 const adminClient = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
 
+// Supported node types by the engine
+const SUPPORTED_NODE_TYPES = new Set([
+  "message", "send_link", "pix", "copy_paste",
+  "delay", "set_variable", "condition",
+  "menu_text", "menu_buttons",
+  "capture_text", "capture_name", "capture_email", "capture_phone", "capture_cpf", "capture_number", "wait",
+  "transfer_human", "end",
+]);
+
 // ── WhatsApp API helper ──────────────────────────────────────────────
 async function getWhatsAppInstance() {
   const { data, error } = await adminClient
@@ -25,9 +34,11 @@ async function sendWhatsAppText(inst: { server_url: string; instance_token: stri
   });
   if (!res.ok) {
     const t = await res.text();
-    console.error("sendWhatsAppText error:", t);
+    console.error(`[SEND] FAILED status=${res.status} body=${t}`);
+    throw new Error(`sendWhatsAppText failed: ${res.status} - ${t}`);
   }
-  return res.ok;
+  console.log(`[SEND] OK to=${phone} text="${text.substring(0, 80)}"`);
+  return true;
 }
 
 // ── Flow engine ──────────────────────────────────────────────────────
@@ -84,7 +95,7 @@ async function processFlow(
       if (nt.startsWith("capture_") || nt === "wait") {
         const varName = currentNode.data.config?.variable || nt.replace("capture_", "");
         vars[varName] = incomingText;
-        console.log(`Captured ${varName} = ${incomingText}`);
+        console.log(`[FLOW] Captured ${varName} = "${incomingText}"`);
         
         // Move to next node
         nodeId = findNextNodeId(flowEdges, nodeId);
@@ -97,25 +108,35 @@ async function processFlow(
   while (nodeId && safety < 20) {
     safety++;
     const node = nodesMap.get(nodeId);
-    if (!node) break;
+    if (!node) { console.log(`[FLOW] Node ${nodeId} not found, stopping`); break; }
     
     const nt = node.data.nodeType;
-    console.log(`Processing node: ${nodeId} (${nt})`);
+    console.log(`[FLOW] Processing node=${nodeId} type=${nt} label="${node.data.label}"`);
+
+    // Skip unsupported node types
+    if (!SUPPORTED_NODE_TYPES.has(nt)) {
+      console.log(`[FLOW] Unsupported node type "${nt}", skipping to next`);
+      nodeId = findNextNodeId(flowEdges, nodeId);
+      continue;
+    }
     
     // Message node — send text and continue
     if (nt === "message" || nt === "send_link" || nt === "pix" || nt === "copy_paste") {
       const msg = node.data.config?.message || node.data.config?.text || node.data.config?.url || node.data.config?.pixKey || "";
       if (msg) {
         const finalMsg = replaceVariables(msg, vars);
-        await sendWhatsAppText(inst, phone, finalMsg);
-        // Small delay between messages
+        try {
+          await sendWhatsAppText(inst, phone, finalMsg);
+        } catch (e) {
+          console.error(`[FLOW] Failed to send message at node ${nodeId}:`, e.message);
+        }
         await new Promise(r => setTimeout(r, 500));
       }
       nodeId = findNextNodeId(flowEdges, nodeId);
       continue;
     }
     
-    // Delay node — wait then continue
+    // Delay node
     if (nt === "delay") {
       const seconds = node.data.config?.seconds || 5;
       await new Promise(r => setTimeout(r, Math.min(seconds, 10) * 1000));
@@ -135,13 +156,11 @@ async function processFlow(
     // Condition node
     if (nt === "condition") {
       const condition = node.data.config?.condition || "";
-      // Simple evaluation: check if variable equals value
       let result = false;
       const match = condition.match(/\{\{(\w+)\}\}\s*==\s*['"]?(.+?)['"]?\s*$/);
       if (match) {
         result = (vars[match[1]] || "") === match[2];
       } else if (condition) {
-        // If condition is just a variable name, check if it's truthy
         const varMatch = condition.match(/\{\{(\w+)\}\}/);
         if (varMatch) {
           result = !!(vars[varMatch[1]]);
@@ -157,9 +176,12 @@ async function processFlow(
       if (options.length > 0) {
         const menuMsg = options.map((opt, i) => `${i + 1}. ${opt}`).join("\n");
         const header = node.data.config?.message || "Escolha uma opção:";
-        await sendWhatsAppText(inst, phone, replaceVariables(`${header}\n\n${menuMsg}`, vars));
+        try {
+          await sendWhatsAppText(inst, phone, replaceVariables(`${header}\n\n${menuMsg}`, vars));
+        } catch (e) {
+          console.error(`[FLOW] Failed to send menu:`, e.message);
+        }
       }
-      // Save session waiting at this node for user to pick an option
       await adminClient.from("chat_sessions").update({
         current_node_id: nodeId,
         variables: vars,
@@ -174,7 +196,11 @@ async function processFlow(
       const buttons = (node.data.config?.buttons || []) as string[];
       if (buttons.length > 0) {
         const menuMsg = buttons.map((b, i) => `${i + 1}. ${b}`).join("\n");
-        await sendWhatsAppText(inst, phone, replaceVariables(`Escolha:\n\n${menuMsg}`, vars));
+        try {
+          await sendWhatsAppText(inst, phone, replaceVariables(`Escolha:\n\n${menuMsg}`, vars));
+        } catch (e) {
+          console.error(`[FLOW] Failed to send menu buttons:`, e.message);
+        }
       }
       await adminClient.from("chat_sessions").update({
         current_node_id: nodeId,
@@ -185,9 +211,17 @@ async function processFlow(
       return { nextNodeId: nodeId, variables: vars, status: "waiting" };
     }
     
-    // Input capture nodes — send prompt and wait for response
+    // Input capture nodes — send prompt if configured, then wait
     if (nt.startsWith("capture_") || nt === "wait") {
-      // We're now waiting for user input at this node
+      // Send prompt message if the node has one
+      const prompt = node.data.config?.message || node.data.config?.prompt || "";
+      if (prompt) {
+        try {
+          await sendWhatsAppText(inst, phone, replaceVariables(prompt, vars));
+        } catch (e) {
+          console.error(`[FLOW] Failed to send capture prompt:`, e.message);
+        }
+      }
       await adminClient.from("chat_sessions").update({
         current_node_id: nodeId,
         variables: vars,
@@ -199,7 +233,9 @@ async function processFlow(
     
     // Transfer to human
     if (nt === "transfer_human") {
-      await sendWhatsAppText(inst, phone, replaceVariables("Aguarde, estou transferindo para um atendente humano. 👤", vars));
+      try {
+        await sendWhatsAppText(inst, phone, replaceVariables("Aguarde, estou transferindo para um atendente humano. 👤", vars));
+      } catch (_) {}
       await adminClient.from("chat_sessions").update({
         current_node_id: nodeId,
         variables: vars,
@@ -220,8 +256,8 @@ async function processFlow(
       return { nextNodeId: null, variables: vars, status: "completed" };
     }
     
-    // Unknown node type — skip
-    console.log(`Unknown node type: ${nt}, skipping`);
+    // Fallback — skip unknown
+    console.log(`[FLOW] Unhandled node type: ${nt}, skipping`);
     nodeId = findNextNodeId(flowEdges, nodeId);
   }
   
@@ -249,17 +285,14 @@ function handleMenuSelection(
     return { nextNodeId: null, selectedOption: null };
   }
   
-  // Try to match by number
   const num = parseInt(userInput.trim());
   if (!isNaN(num) && num >= 1 && num <= options.length) {
     const idx = num - 1;
-    // Check if there's a handle for this option
     const handleId = `option-${idx}`;
     const nextId = findNextNodeId(edges, node.id, handleId) || findNextNodeId(edges, node.id);
     return { nextNodeId: nextId, selectedOption: options[idx] };
   }
   
-  // Try to match by text
   const lower = userInput.trim().toLowerCase();
   const matchIdx = options.findIndex(o => o.toLowerCase() === lower);
   if (matchIdx >= 0) {
@@ -288,7 +321,6 @@ Deno.serve(async (req) => {
     const body = await req.json().catch(() => ({}));
     const eventType = (body.EventType ?? body.event ?? body.type ?? "").toString().toLowerCase();
     
-    // Log raw payload for debugging (first 500 chars)
     console.log(`[WEBHOOK] event="${eventType}" keys=${Object.keys(body).join(",")}`);
     console.log(`[WEBHOOK] body=${JSON.stringify(body).substring(0, 500)}`);
 
@@ -308,7 +340,7 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ ok: true }), { headers: { "Content-Type": "application/json" } });
     }
 
-    // Handle message events - detect message in body regardless of event type
+    // Handle message events
     const hasMessage = body.message || body.messages || body.data?.message;
     const isMessageEvent = eventType.includes("message") || eventType === "" && hasMessage;
     
@@ -319,9 +351,8 @@ Deno.serve(async (req) => {
       const fromMe = msg.fromMe ?? msg.key?.fromMe ?? false;
       const phone = chatId.replace("@s.whatsapp.net", "").replace("@c.us", "");
       
-      console.log(`[WEBHOOK] Message detected: phone=${phone}, fromMe=${fromMe}, text="${messageText}"`);
+      console.log(`[WEBHOOK] Message: phone=${phone}, fromMe=${fromMe}, text="${messageText}"`);
 
-      // Upsert signal for realtime UI updates
       if (chatId) {
         await adminClient.from("message_signals").upsert(
           { chat_id: chatId, updated_at: new Date().toISOString() },
@@ -329,7 +360,6 @@ Deno.serve(async (req) => {
         );
       }
 
-      // Only process incoming messages (not our own)
       if (!fromMe && messageText && phone) {
         await processIncomingMessage(phone, messageText);
       }
@@ -352,7 +382,7 @@ Deno.serve(async (req) => {
 
     return new Response(JSON.stringify({ ok: true }), { headers: { "Content-Type": "application/json" } });
   } catch (e) {
-    console.error("Webhook error:", e);
+    console.error("[WEBHOOK] Error:", e);
     return new Response(JSON.stringify({ error: e.message }), { status: 500 });
   }
 });
@@ -360,15 +390,18 @@ Deno.serve(async (req) => {
 // ── Process incoming message through active flow ─────────────────────
 async function processIncomingMessage(phone: string, text: string) {
   try {
-    // 1. Find active flow
+    console.log(`[AUTO-REPLY] Processing message from ${phone}: "${text}"`);
+
+    // 1. Find active flow — deterministic: most recently updated
     const { data: flows } = await adminClient
       .from("chatbot_flows")
-      .select("id, nodes, edges")
+      .select("id, name, nodes, edges")
       .eq("status", "active")
+      .order("updated_at", { ascending: false })
       .limit(1);
     
     if (!flows || flows.length === 0) {
-      console.log("No active flow found, skipping auto-reply");
+      console.log("[AUTO-REPLY] No active flow found");
       return;
     }
     
@@ -376,16 +409,26 @@ async function processIncomingMessage(phone: string, text: string) {
     const flowNodes = flow.nodes as FlowNode[];
     const flowEdges = flow.edges as FlowEdge[];
     
+    console.log(`[AUTO-REPLY] Using flow: "${flow.name}" (${flow.id}), nodes=${flowNodes.length}, edges=${flowEdges.length}`);
+
     if (!flowNodes || flowNodes.length === 0) {
-      console.log("Flow has no nodes");
+      console.log("[AUTO-REPLY] Flow has no nodes");
+      return;
+    }
+
+    // Validate flow has at least one supported node type
+    const supportedNodes = flowNodes.filter(n => SUPPORTED_NODE_TYPES.has(n.data?.nodeType));
+    if (supportedNodes.length === 0) {
+      console.log(`[AUTO-REPLY] Flow "${flow.name}" has NO supported node types, skipping`);
       return;
     }
     
     const inst = await getWhatsAppInstance();
     if (!inst) {
-      console.log("No WhatsApp instance found");
+      console.log("[AUTO-REPLY] No WhatsApp instance found");
       return;
     }
+    console.log(`[AUTO-REPLY] WhatsApp instance: ${inst.instance_name}`);
 
     // 2. Find or create customer by phone
     let customerId: string;
@@ -405,11 +448,11 @@ async function processIncomingMessage(phone: string, text: string) {
         .select("id")
         .single();
       if (custErr || !newCustomer) {
-        console.error("Failed to create customer:", custErr);
+        console.error("[AUTO-REPLY] Failed to create customer:", custErr);
         return;
       }
       customerId = newCustomer.id;
-      console.log(`Created new customer: ${customerId} for phone ${phone}`);
+      console.log(`[AUTO-REPLY] Created customer: ${customerId}`);
     }
     
     // 3. Find existing active/waiting session
@@ -424,7 +467,7 @@ async function processIncomingMessage(phone: string, text: string) {
     let session = existingSessions?.[0];
     
     if (session) {
-      console.log(`Existing session: ${session.id}, node: ${session.current_node_id}, status: ${session.status}`);
+      console.log(`[AUTO-REPLY] Existing session: ${session.id}, node=${session.current_node_id}, status=${session.status}`);
       
       const currentNodeId = session.current_node_id;
       const variables = (session.variables || {}) as Record<string, string>;
@@ -434,6 +477,7 @@ async function processIncomingMessage(phone: string, text: string) {
         
         if (currentNode) {
           const nt = currentNode.data.nodeType;
+          console.log(`[AUTO-REPLY] Current node type: ${nt}`);
           
           // Handle menu selection
           if (nt === "menu_text" || nt === "menu_buttons") {
@@ -442,7 +486,9 @@ async function processIncomingMessage(phone: string, text: string) {
               variables["menu_selection"] = selectedOption || text;
               await processFlow(inst, phone, text, session.id, flowNodes, flowEdges, nextNodeId, variables);
             } else {
-              await sendWhatsAppText(inst, phone, "❌ Opção inválida. Por favor, escolha uma opção válida.");
+              try {
+                await sendWhatsAppText(inst, phone, "❌ Opção inválida. Por favor, escolha uma opção válida.");
+              } catch (_) {}
             }
             return;
           }
@@ -455,7 +501,7 @@ async function processIncomingMessage(phone: string, text: string) {
         }
       }
       
-      console.log("Session has no actionable node, restarting flow");
+      console.log("[AUTO-REPLY] Session has no actionable node, restarting flow");
     }
     
     // 4. Start new session — find start node (no incoming edges)
@@ -463,11 +509,11 @@ async function processIncomingMessage(phone: string, text: string) {
     const startNode = flowNodes.find(n => !targetIds.has(n.id));
     
     if (!startNode) {
-      console.log("No start node found in flow");
+      console.log("[AUTO-REPLY] No start node found in flow");
       return;
     }
     
-    console.log(`Starting new flow session from node: ${startNode.id} (${startNode.data.nodeType})`);
+    console.log(`[AUTO-REPLY] Starting new session from node: ${startNode.id} (${startNode.data.nodeType}) "${startNode.data.label}"`);
     
     const { data: newSession, error: sessError } = await adminClient
       .from("chat_sessions")
@@ -482,13 +528,13 @@ async function processIncomingMessage(phone: string, text: string) {
       .single();
     
     if (sessError || !newSession) {
-      console.error("Failed to create session:", sessError);
+      console.error("[AUTO-REPLY] Failed to create session:", sessError);
       return;
     }
     
     await processFlow(inst, phone, text, newSession.id, flowNodes, flowEdges, startNode.id, {});
     
   } catch (err) {
-    console.error("processIncomingMessage error:", err);
+    console.error("[AUTO-REPLY] Error:", err);
   }
 }

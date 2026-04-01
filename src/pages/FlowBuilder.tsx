@@ -18,7 +18,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { ArrowLeft, Undo2, Redo2, Download, Save } from "lucide-react";
 import type { NodeTypeConfig } from "@/components/flow-builder/nodeTypes";
 import type { FlowNodeData } from "@/types";
-import { useFlows, useSaveFlow } from "@/hooks/use-flows";
+import { useFlows, useFlow, useSaveFlow, useCreateFlow } from "@/hooks/use-flows";
+import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 
@@ -43,68 +44,51 @@ function FlowBuilderContent() {
   const [currentFlowName, setCurrentFlowName] = useState("Novo Fluxo");
   const [currentFlowStatus, setCurrentFlowStatus] = useState<string>("draft");
   const [isActive, setIsActive] = useState(false);
+  const [dbLoaded, setDbLoaded] = useState(false);
 
   const { data: flows, isLoading } = useFlows();
+  const { data: flowDetail } = useFlow(currentFlowId);
   const saveFlow = useSaveFlow();
+  const createFlow = useCreateFlow();
 
-  const initialNodes: Node[] = [
-    {
-      id: "1",
-      type: "flowNode",
-      position: { x: 50, y: 80 },
-      data: {
-        label: "Boas-vindas",
-        category: "mensagem",
-        nodeType: "message",
-        config: { message: "Olá! 👋 Seja bem-vindo(a)! Como você prefere ser chamado(a)?" },
-        description: "Pergunta o nome preferido",
-        blocks: [],
-      },
-    },
-    {
-      id: "2",
-      type: "flowNode",
-      position: { x: 450, y: 80 },
-      data: {
-        label: "Capturar Nome",
-        category: "entrada",
-        nodeType: "capture_name",
-        config: { variable: "nome_usuario" },
-        description: "Salva o nome do usuário",
-        blocks: [],
-      },
-    },
-    {
-      id: "3",
-      type: "flowNode",
-      position: { x: 850, y: 80 },
-      data: {
-        label: "Confirmar Nome",
-        category: "mensagem",
-        nodeType: "message",
-        config: { message: "Prazer, {{nome_usuario}}! 😊 A partir de agora vou te chamar assim. Como posso te ajudar?" },
-        description: "Confirma o nome salvo",
-        blocks: [],
-      },
-    },
-  ];
-
-  const initialEdges: Edge[] = [
-    { id: "e1-2", source: "1", target: "2", type: "smoothstep", style: { stroke: "hsl(220 13% 80%)", strokeWidth: 2 }, animated: false },
-    { id: "e2-3", source: "2", target: "3", type: "smoothstep", style: { stroke: "hsl(220 13% 80%)", strokeWidth: 2 }, animated: false },
-  ];
-
+  // Pick the first flow from list (or allow creation)
   useEffect(() => {
     if (flows && flows.length > 0 && !currentFlowId) {
-      const flow = flows[0];
-      setCurrentFlowId(flow.id);
-      setCurrentFlowName("Atendimento Inicial");
-      setCurrentFlowStatus(flow.status);
-      setIsActive(flow.status === "active");
-      setNodes(initialNodes);
-      setEdges(initialEdges);
+      setCurrentFlowId(flows[0].id);
     }
-  }, [flows, currentFlowId, setNodes, setEdges]);
+  }, [flows, currentFlowId]);
+
+  // When flow detail loads, populate canvas from DB
+  useEffect(() => {
+    if (flowDetail && !dbLoaded) {
+      setCurrentFlowName(flowDetail.name);
+      setCurrentFlowStatus(flowDetail.status);
+      setIsActive(flowDetail.status === "active");
+
+      const dbNodes = (flowDetail.nodes || []) as Node[];
+      const dbEdges = (flowDetail.edges || []) as Edge[];
+
+      if (dbNodes.length > 0) {
+        // Ensure all nodes have type=flowNode
+        const fixedNodes = dbNodes.map(n => ({ ...n, type: "flowNode" }));
+        setNodes(fixedNodes);
+        setEdges(dbEdges);
+        // Update nodeIdCounter to avoid collisions
+        const maxId = Math.max(...dbNodes.map(n => parseInt(n.id) || 0), nodeIdCounter);
+        nodeIdCounter = maxId + 1;
+      } else {
+        // Empty flow — start with blank canvas
+        setNodes([]);
+        setEdges([]);
+      }
+      setDbLoaded(true);
+    }
+  }, [flowDetail, dbLoaded, setNodes, setEdges]);
+
+  // Reset dbLoaded when flowId changes
+  useEffect(() => {
+    setDbLoaded(false);
+  }, [currentFlowId]);
 
   const onConnect = useCallback(
     (params: Connection) => setEdges((eds) => addEdge({ ...params, ...defaultEdgeOptions }, eds)),
@@ -168,9 +152,32 @@ function FlowBuilderContent() {
     setSelectedNode(null);
   }, [setNodes, setEdges]);
 
-  const handleSave = () => {
-    if (!currentFlowId) return;
+  const handleSave = async () => {
     const status = isActive ? "active" : "inactive";
+
+    // If activating, deactivate all other flows first
+    if (status === "active") {
+      const { error: deactivateErr } = await supabase
+        .from("chatbot_flows")
+        .update({ status: "inactive" as any, updated_at: new Date().toISOString() })
+        .neq("id", currentFlowId || "");
+      if (deactivateErr) {
+        console.error("Failed to deactivate other flows:", deactivateErr);
+      }
+    }
+
+    if (!currentFlowId) {
+      // Create new flow
+      createFlow.mutate({ name: currentFlowName, nodes: nodes as any, edges: edges as any }, {
+        onSuccess: (data) => {
+          setCurrentFlowId(data.id);
+          toast.success("Fluxo criado!");
+        },
+        onError: () => toast.error("Erro ao criar fluxo"),
+      });
+      return;
+    }
+
     saveFlow.mutate({ id: currentFlowId, nodes, edges, name: currentFlowName, status }, {
       onSuccess: () => toast.success("Fluxo salvo!"),
       onError: () => toast.error("Erro ao salvar fluxo"),
