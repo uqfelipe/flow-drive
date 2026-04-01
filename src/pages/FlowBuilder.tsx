@@ -54,8 +54,9 @@ function FlowBuilderContent() {
       setCurrentFlowName(flow.name);
       setCurrentFlowStatus(flow.status);
       setIsActive(flow.status === "active");
-      setNodes(flow.nodes as Node[]);
-      setEdges(flow.edges as Edge[]);
+      // Start with empty canvas
+      setNodes([]);
+      setEdges([]);
     }
   }, [flows, currentFlowId, setNodes, setEdges]);
 
