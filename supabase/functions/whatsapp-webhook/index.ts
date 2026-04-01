@@ -286,10 +286,14 @@ Deno.serve(async (req) => {
     }
 
     const body = await req.json().catch(() => ({}));
-    const eventType = body.EventType ?? body.event ?? "";
+    const eventType = (body.EventType ?? body.event ?? body.type ?? "").toString().toLowerCase();
+    
+    // Log raw payload for debugging (first 500 chars)
+    console.log(`[WEBHOOK] event="${eventType}" keys=${Object.keys(body).join(",")}`);
+    console.log(`[WEBHOOK] body=${JSON.stringify(body).substring(0, 500)}`);
 
     // Handle ChatPresence events
-    if (eventType === "ChatPresence" || eventType === "chatPresence" || eventType === "presence") {
+    if (eventType === "chatpresence" || eventType === "presence") {
       const chatId = body.chatid ?? body.chat?.wa_chatid ?? body.from ?? "";
       const state = (body.state ?? body.State ?? body.presence ?? "").toLowerCase();
       const isTyping = state === "composing" || state === "recording";
@@ -304,14 +308,18 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ ok: true }), { headers: { "Content-Type": "application/json" } });
     }
 
-    // Handle message events
-    if (eventType === "messages" || eventType === "message") {
-      const chatId = body.message?.chatid ?? body.chat?.wa_chatid ?? "";
-      const messageText = body.message?.body ?? body.message?.text ?? body.message?.conversation ?? "";
-      const fromMe = body.message?.fromMe ?? false;
+    // Handle message events - detect message in body regardless of event type
+    const hasMessage = body.message || body.messages || body.data?.message;
+    const isMessageEvent = eventType.includes("message") || eventType === "" && hasMessage;
+    
+    if (isMessageEvent || hasMessage) {
+      const msg = body.message || body.messages?.[0] || body.data?.message || {};
+      const chatId = msg.chatid ?? msg.chat ?? msg.key?.remoteJid ?? body.chatid ?? body.from ?? "";
+      const messageText = msg.body ?? msg.text ?? msg.conversation ?? msg.message?.conversation ?? msg.message?.extendedTextMessage?.text ?? "";
+      const fromMe = msg.fromMe ?? msg.key?.fromMe ?? false;
       const phone = chatId.replace("@s.whatsapp.net", "").replace("@c.us", "");
       
-      console.log(`Webhook message: phone=${phone}, fromMe=${fromMe}, text="${messageText}"`);
+      console.log(`[WEBHOOK] Message detected: phone=${phone}, fromMe=${fromMe}, text="${messageText}"`);
 
       // Upsert signal for realtime UI updates
       if (chatId) {
