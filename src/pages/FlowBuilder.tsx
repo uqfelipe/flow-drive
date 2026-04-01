@@ -9,15 +9,18 @@ import "@xyflow/react/dist/style.css";
 import { AdminLayout } from "@/components/AdminLayout";
 import { NodePalette } from "@/components/flow-builder/NodePalette";
 import { NodeConfigPanel } from "@/components/flow-builder/NodeConfigPanel";
+import { FlowLegend } from "@/components/flow-builder/FlowLegend";
 import FlowNode from "@/components/flow-builder/FlowNode";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Save, Workflow } from "lucide-react";
+import { ArrowLeft, Undo2, Redo2, Download, Save } from "lucide-react";
 import type { NodeTypeConfig } from "@/components/flow-builder/nodeTypes";
 import type { FlowNodeData } from "@/types";
 import { useFlows, useSaveFlow } from "@/hooks/use-flows";
 import { toast } from "sonner";
+import { useNavigate } from "react-router-dom";
 
 const customNodeTypes = { flowNode: FlowNode };
 
@@ -30,14 +33,16 @@ const defaultEdgeOptions = {
 let nodeIdCounter = 100;
 
 function FlowBuilderContent() {
+  const navigate = useNavigate();
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const [selectedNode, setSelectedNode] = useState<Node | null>(null);
   const [reactFlowInstance, setReactFlowInstance] = useState<any>(null);
   const [currentFlowId, setCurrentFlowId] = useState<string | null>(null);
-  const [currentFlowName, setCurrentFlowName] = useState("Carregando...");
-  const [currentFlowStatus, setCurrentFlowStatus] = useState("draft");
+  const [currentFlowName, setCurrentFlowName] = useState("Novo Fluxo");
+  const [currentFlowStatus, setCurrentFlowStatus] = useState<string>("draft");
+  const [isActive, setIsActive] = useState(false);
 
   const { data: flows, isLoading } = useFlows();
   const saveFlow = useSaveFlow();
@@ -48,6 +53,7 @@ function FlowBuilderContent() {
       setCurrentFlowId(flow.id);
       setCurrentFlowName(flow.name);
       setCurrentFlowStatus(flow.status);
+      setIsActive(flow.status === "active");
       setNodes(flow.nodes as Node[]);
       setEdges(flow.edges as Edge[]);
     }
@@ -79,7 +85,7 @@ function FlowBuilderContent() {
         type: "flowNode",
         position,
         data: {
-          label: `Grupo ${nodeIdCounter}`,
+          label: parsed.label,
           category: parsed.category,
           nodeType: parsed.type,
           config: parsed.defaultConfig || {},
@@ -110,10 +116,23 @@ function FlowBuilderContent() {
 
   const handleSave = () => {
     if (!currentFlowId) return;
-    saveFlow.mutate({ id: currentFlowId, nodes, edges }, {
+    const status = isActive ? "active" : "inactive";
+    saveFlow.mutate({ id: currentFlowId, nodes, edges, name: currentFlowName, status }, {
       onSuccess: () => toast.success("Fluxo salvo!"),
       onError: () => toast.error("Erro ao salvar fluxo"),
     });
+  };
+
+  const handleExport = () => {
+    const data = JSON.stringify({ nodes, edges, name: currentFlowName }, null, 2);
+    const blob = new Blob([data], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${currentFlowName.replace(/\s+/g, "_")}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success("Fluxo exportado!");
   };
 
   if (isLoading) {
@@ -127,27 +146,51 @@ function FlowBuilderContent() {
   return (
     <AdminLayout title="Construtor de Fluxos" subtitle="Monte automações visuais para o chatbot">
       <div className="flex flex-col h-[calc(100vh-3.5rem)]">
-        {/* Simplified toolbar */}
-        <div className="flex items-center justify-between px-4 py-2 border-b border-gray-200 dark:border-border bg-white dark:bg-card">
+        {/* Toolbar */}
+        <div className="flex items-center justify-between px-4 py-2 border-b border-border bg-white dark:bg-card gap-3">
           <div className="flex items-center gap-3">
-            <Workflow className="h-4 w-4 text-blue-500 dark:text-primary" />
-            <span className="font-display font-semibold text-sm text-gray-800 dark:text-foreground">{currentFlowName}</span>
-            <Badge variant="outline" className={
-              currentFlowStatus === "active"
-                ? "bg-emerald-50 text-emerald-600 border-emerald-200 dark:bg-success/10 dark:text-success dark:border-success/30 text-[10px]"
-                : "bg-gray-50 text-gray-500 border-gray-200 dark:bg-muted dark:text-muted-foreground dark:border-border text-[10px]"
-            }>
-              {currentFlowStatus === "active" ? "Ativo" : currentFlowStatus === "draft" ? "Rascunho" : "Inativo"}
-            </Badge>
+            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => navigate(-1)}>
+              <ArrowLeft className="h-4 w-4" />
+            </Button>
+            <Input
+              className="h-8 w-48 text-sm font-display font-semibold border-transparent hover:border-border focus:border-border bg-transparent"
+              value={currentFlowName}
+              onChange={(e) => setCurrentFlowName(e.target.value)}
+            />
           </div>
-          <Button size="sm" className="h-8 text-xs" onClick={handleSave} disabled={saveFlow.isPending}>
-            <Save className="h-3.5 w-3.5 mr-1.5" /> Salvar
-          </Button>
+
+          <div className="flex items-center gap-2">
+            <Button variant="ghost" size="icon" className="h-8 w-8" title="Desfazer">
+              <Undo2 className="h-4 w-4" />
+            </Button>
+            <Button variant="ghost" size="icon" className="h-8 w-8" title="Refazer">
+              <Redo2 className="h-4 w-4" />
+            </Button>
+
+            <div className="h-5 w-px bg-border mx-1" />
+
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-muted-foreground">{isActive ? "Ativo" : "Inativo"}</span>
+              <Switch
+                checked={isActive}
+                onCheckedChange={setIsActive}
+              />
+            </div>
+
+            <div className="h-5 w-px bg-border mx-1" />
+
+            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleExport} title="Exportar">
+              <Download className="h-4 w-4" />
+            </Button>
+            <Button size="sm" className="h-8 text-xs" onClick={handleSave} disabled={saveFlow.isPending}>
+              <Save className="h-3.5 w-3.5 mr-1.5" /> Salvar
+            </Button>
+          </div>
         </div>
 
         <div className="flex flex-1 overflow-hidden">
           <NodePalette onDragStart={onDragStart} />
-          <div className="flex-1" ref={reactFlowWrapper}>
+          <div className="flex-1 relative" ref={reactFlowWrapper}>
             <ReactFlow
               nodes={nodes} edges={edges}
               onNodesChange={onNodesChange} onEdgesChange={onEdgesChange}
@@ -155,7 +198,7 @@ function FlowBuilderContent() {
               onDrop={onDrop} onDragOver={onDragOver}
               onSelectionChange={onSelectionChange}
               nodeTypes={customNodeTypes} fitView
-              className="!bg-gray-50 dark:!bg-background"
+              className="!bg-muted/30"
               defaultEdgeOptions={defaultEdgeOptions}
               connectionLineType={ConnectionLineType.SmoothStep}
               connectionLineStyle={{ stroke: "hsl(220 80% 60%)", strokeWidth: 2 }}
@@ -166,9 +209,9 @@ function FlowBuilderContent() {
                 gap={20}
                 size={1}
                 color="hsl(220 13% 82%)"
-                className="dark:!bg-background"
               />
             </ReactFlow>
+            <FlowLegend />
           </div>
           {selectedNode && (
             <NodeConfigPanel node={selectedNode} onClose={() => setSelectedNode(null)} onUpdate={onUpdateNode} onDelete={onDeleteNode} />

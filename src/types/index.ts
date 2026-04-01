@@ -61,7 +61,7 @@ export interface RentalPayment {
 }
 
 // Chatbot Flow types
-export type FlowNodeCategory = 'bubble' | 'input' | 'logic' | 'integration';
+export type FlowNodeCategory = 'mensagem' | 'menu' | 'midia' | 'entrada' | 'logica' | 'integracao';
 
 export interface FlowBlock {
   id: string;
