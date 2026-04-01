@@ -839,7 +839,7 @@ export default function Conversations() {
   const filtered = (chats ?? [])
     .filter((c) => {
       const q = search.toLowerCase();
-      const name = chatName(c).toLowerCase();
+      const name = chatName(c, customerMap).toLowerCase();
       const phone = phoneFromChatId(c.wa_chatid);
       return name.includes(q) || phone.includes(search);
     })
