@@ -1162,7 +1162,7 @@ export default function Conversations() {
                   >
                     {(selectedChat.image || selectedChat.imagePreview || selectedChat.wa_profilePicUrl) && <AvatarImage src={selectedChat.image || selectedChat.imagePreview || selectedChat.wa_profilePicUrl} />}
                     <AvatarFallback className="bg-primary/15 text-primary text-xs font-bold">
-                      {getInitials(chatName(selectedChat))}
+                      {getInitials(chatName(selectedChat, customerMap))}
                     </AvatarFallback>
                   </Avatar>
                   <div>
