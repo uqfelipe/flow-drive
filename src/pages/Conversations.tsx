@@ -1077,7 +1077,7 @@ export default function Conversations() {
                             "text-[13px] truncate",
                             hasUnread || isActive ? "font-semibold text-foreground" : "font-medium text-foreground/80"
                           )}>
-                            {chatName(chat)}
+                            {chatName(chat, customerMap)}
                           </p>
                           <span className={cn(
                             "text-[10px] shrink-0 font-medium",
