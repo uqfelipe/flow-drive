@@ -10,6 +10,38 @@ const USER_ID = "admin"; // single-tenant, no auth
 
 const adminClient = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
 
+// ── Webhook registration helper ──────────────────────────────────────
+async function registerWebhook(serverUrl: string, instanceToken: string) {
+  const webhookUrl = `${SUPABASE_URL}/functions/v1/whatsapp-webhook?user_id=${USER_ID}`;
+  console.log(`[WEBHOOK-REG] Registering webhook: ${webhookUrl} on ${serverUrl}`);
+  try {
+    const res = await fetch(`${serverUrl}/webhook`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", token: instanceToken },
+      body: JSON.stringify({
+        url: webhookUrl,
+        enabled: true,
+        active: true,
+        byApi: true,
+        addUrlEvents: true,
+        addUrlTypesMessages: true,
+        excludeMessages: ["wasSentByApi", "isGroupYes"],
+        events: [
+          "connection", "messages", "messages_update", "presence",
+          "call", "contacts", "groups", "labels", "chats",
+          "chat_labels", "blocks", "leads", "history", "sender",
+        ],
+      }),
+    });
+    const text = await res.text();
+    console.log(`[WEBHOOK-REG] Result: ${res.status} ${text}`);
+    return res.ok;
+  } catch (e) {
+    console.error(`[WEBHOOK-REG] Failed:`, e.message);
+    return false;
+  }
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -36,7 +68,6 @@ Deno.serve(async (req) => {
 });
 
 async function handleGetOrCreate() {
-  // Check existing
   const { data: existing, error: fetchErr } = await adminClient
     .from("whatsapp_instances")
     .select("*")
@@ -46,10 +77,12 @@ async function handleGetOrCreate() {
   if (fetchErr) throw fetchErr;
 
   if (existing) {
+    // Re-register webhook to ensure it's synced
+    await registerWebhook(existing.server_url, existing.instance_token);
     return json({ instance: sanitize(existing), is_new: false });
   }
 
-  // Create instance via WhatsApi proxy — simple POST, token in body, no auth headers
+  // Create instance via WhatsApi proxy
   const instanceName = `locadora-${Date.now()}`;
   const createPayload = {
     token: WHATSAPI_TOKEN,
@@ -58,7 +91,6 @@ async function handleGetOrCreate() {
   };
 
   console.log("Creating instance:", instanceName, "URL:", CREATE_URL);
-  console.log("Payload:", JSON.stringify(createPayload));
   const createRes = await fetch(CREATE_URL, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -87,37 +119,9 @@ async function handleGetOrCreate() {
     throw new Error(`Resposta da API incompleta: server_url=${serverUrl}, token=${!!instanceToken}`);
   }
 
-  // Build webhook URL
+  // Register webhook
   const webhookUrl = `${SUPABASE_URL}/functions/v1/whatsapp-webhook?user_id=${USER_ID}`;
-
-  // Register webhook on uazapi
-  try {
-    const webhookRes = await fetch(`${serverUrl}/webhook`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        token: instanceToken,
-      },
-      body: JSON.stringify({
-        url: webhookUrl,
-        enabled: true,
-        active: true,
-        byApi: true,
-        addUrlEvents: true,
-        addUrlTypesMessages: true,
-        excludeMessages: ["wasSentByApi", "isGroupYes"],
-        events: [
-          "connection", "messages", "messages_update", "presence",
-          "call", "contacts", "groups", "labels", "chats",
-          "chat_labels", "blocks", "leads", "history", "sender",
-        ],
-      }),
-    });
-    const webhookText = await webhookRes.text();
-    console.log("Webhook registered:", webhookRes.status, webhookText);
-  } catch (e) {
-    console.error("Webhook registration failed (continuing):", e.message);
-  }
+  await registerWebhook(serverUrl, instanceToken);
 
   // Save to DB
   const { data: inserted, error: insertErr } = await adminClient
@@ -150,6 +154,9 @@ async function handleQrCode() {
 
   if (error) throw error;
   if (!inst) return json({ error: "Instância não encontrada" }, 404);
+
+  // Always re-register webhook when generating QR
+  await registerWebhook(inst.server_url, inst.instance_token);
 
   const qrRes = await fetch(`${inst.server_url}/instance/connect`, {
     method: "POST",
