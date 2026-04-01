@@ -1,42 +1,68 @@
 
 
-# Gravação de áudio para envio no chat
+# Redesign do Flow Builder baseado na referência visual
 
-## O que será feito
-Adicionar um botão de gravação de áudio na área de input do chat. Ao pressionar/clicar no microfone, o navegador captura áudio via `MediaRecorder API`, converte para base64 e envia como áudio PTT (push-to-talk) via a action `send-media` já existente (tipo `audio`).
-
-## Fluxo do usuário
-1. Sem texto digitado, o botão de microfone aparece (já existe visualmente)
-2. Clique no mic → inicia gravação, UI muda para modo gravação (timer + botão cancelar + botão enviar)
-3. Clique em enviar → para gravação, converte blob para base64 data URL, envia via `useSendMedia` com type `audio`
-4. Clique em cancelar → descarta gravação
+## Visão geral
+Redesenhar o construtor de fluxos para ficar semelhante à imagem de referência: sidebar com lista vertical (ícone + nome + descrição), categorias reorganizadas (Mensagens, Menus, Mídia, etc.), toolbar superior com toggle ativo/inativo, undo/redo, download e nome editável, nodes com visual mais limpo e colorido por tipo, botão X para deletar no node, legenda no canto inferior direito, e cada tipo de node com cor única.
 
 ## Alterações
 
-### `src/pages/Conversations.tsx`
+### 1. `src/components/flow-builder/nodeTypes.ts` — Reorganizar categorias e tipos
 
-**1. Novos estados e refs para gravação:**
-- `isRecording`, `recordingTime`, `mediaRecorderRef`, `audioChunksRef`, `recordingTimerRef`
+Trocar as 4 categorias atuais (bubble/input/logic/integration) por categorias que espelham a imagem:
+- **Mensagens**: Mensagem, Enviar Link, Pix (Copia e Cola), Copia e Cola
+- **Menus**: Menu Texto, Menu Botões, Menu Carrossel, Enquete
+- **Mídia**: Enviar Imagem, Enviar Áudio, Enviar Vídeo, Enviar Arquivo, Enviar Figurinha, Enviar Localização, Cartão de Contato
+- **Entrada de Dados**: Captura texto, número, email, data, telefone, nome, CPF
+- **Lógica**: Condição, Aguardar, Delay, Definir variável
+- **Integrações**: Webhook, Transferir p/ Humano, Encerramento, Integração
 
-**2. Funções de gravação:**
-- `startRecording()`: pede permissão do mic via `navigator.mediaDevices.getUserMedia`, cria `MediaRecorder` (webm/ogg), coleta chunks, inicia timer
-- `stopRecording()`: para o recorder, monta blob, converte para base64 data URL, envia via `sendMediaMutation` com type=`audio`
-- `cancelRecording()`: para o recorder, limpa estado
+Atribuir cor única por tipo de node (conforme a legenda da imagem: Mensagem = roxo, Menu Texto = laranja, Menu Botões = azul, etc.)
 
-**3. UI do modo gravação (substituir input area quando `isRecording`):**
-- Indicador vermelho pulsante + timer (MM:SS)
-- Botão de cancelar (lixeira/X)
-- Botão de enviar (send)
-- Animação suave com framer-motion
+### 2. `src/types/index.ts` — Atualizar FlowNodeCategory
 
-**4. Botão mic existente (linha 1266-1272):**
-- Adicionar `onClick={startRecording}` ao botão de mic que já existe
+Expandir o type para incluir as novas categorias: `'mensagem' | 'menu' | 'midia' | 'entrada' | 'logica' | 'integracao'`
 
-### Edge function — sem alteração
-A action `send-media` já suporta type `audio` e aceita base64 data URLs no campo `file`.
+### 3. `src/components/flow-builder/NodePalette.tsx` — Layout tipo lista vertical
 
-## Resultado
-- Gravação nativa do navegador, sem dependências externas
-- Visual integrado ao tema dark premium existente
-- Envio como áudio que aparece reproduzível no WhatsApp do destinatário
+Trocar o grid 2 colunas por lista vertical como na imagem:
+- Cada item: ícone colorido à esquerda + nome em bold + descrição pequena abaixo
+- Categorias com ícone e seta para colapsar/expandir
+- Título "Componentes" no topo
+- Manter busca
+
+### 4. `src/components/flow-builder/FlowNode.tsx` — Visual dos nodes
+
+- Borda colorida por tipo de node (não apenas por categoria)
+- Título colorido no header com ícone do tipo
+- Botão X no canto superior direito para deletar o node diretamente
+- Para nodes tipo "Menu Texto": mostrar as opções (items) inline dentro do node, cada opção com seu próprio handle de saída à direita com label
+- Conteúdo do node visível (mensagem de texto, opções do menu, etc.)
+- Handles de saída com seta triangular colorida (como na imagem)
+
+### 5. `src/pages/FlowBuilder.tsx` — Toolbar e legenda
+
+**Toolbar superior redesenhada:**
+- Seta voltar à esquerda
+- Nome do fluxo editável (input inline)
+- Botões undo/redo
+- Toggle switch Ativo/Inativo
+- Botão download
+- Botão "Salvar" estilizado (azul)
+
+**Legenda (Legend panel):**
+- Componente fixo no canto inferior direito do canvas
+- Grid 2 colunas mostrando bolinha colorida + nome de cada tipo de node
+- Fundo branco com sombra sutil
+
+### 6. `src/components/flow-builder/FlowLegend.tsx` — Novo componente
+
+Componente de legenda que lista todos os tipos de node com sua cor correspondente, posicionado absolute no canto inferior direito.
+
+### 7. `src/components/flow-builder/NodeConfigPanel.tsx` — Adaptação
+
+Atualizar cores e categorias para refletir os novos tipos. Adicionar config para opções de menu (adicionar/remover items para Menu Texto, Menu Botões).
+
+## Resultado esperado
+Visual e UX do flow builder muito próximo à referência: sidebar como lista com descrições, nodes coloridos por tipo com conteúdo visível, toolbar completa com toggle e undo/redo, e legenda de cores.
 
