@@ -218,7 +218,7 @@ function FlowBuilderContent() {
                 color="hsl(220 13% 82%)"
               />
             </ReactFlow>
-            <FlowLegend />
+            
           </div>
           {selectedNode && (
             <NodeConfigPanel node={selectedNode} onClose={() => setSelectedNode(null)} onUpdate={onUpdateNode} onDelete={onDeleteNode} />
