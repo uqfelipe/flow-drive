@@ -3,7 +3,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { X, Trash2 } from "lucide-react";
+import { X, Trash2, Plus } from "lucide-react";
 import type { Node } from "@xyflow/react";
 import type { FlowNodeData } from "@/types";
 
@@ -14,29 +14,30 @@ interface NodeConfigPanelProps {
   onDelete: (nodeId: string) => void;
 }
 
-const categoryColors: Record<string, { headerBg: string; text: string }> = {
-  bubble: { headerBg: "bg-blue-50 dark:bg-blue-950/30", text: "text-blue-600 dark:text-blue-400" },
-  input: { headerBg: "bg-orange-50 dark:bg-orange-950/30", text: "text-orange-600 dark:text-orange-400" },
-  logic: { headerBg: "bg-purple-50 dark:bg-purple-950/30", text: "text-purple-600 dark:text-purple-400" },
-  integration: { headerBg: "bg-emerald-50 dark:bg-emerald-950/30", text: "text-emerald-600 dark:text-emerald-400" },
-};
-
 export function NodeConfigPanel({ node, onClose, onUpdate, onDelete }: NodeConfigPanelProps) {
   if (!node) return null;
 
   const data = node.data as unknown as FlowNodeData;
   const config = getNodeTypeConfig(data.nodeType);
   const Icon = config?.icon;
-  const colors = categoryColors[data.category] || categoryColors.bubble;
+  const color = config?.color || "#8B5CF6";
+
+  const isMenu = data.nodeType === "menu_text" || data.nodeType === "menu_buttons";
+  const optionsKey = data.nodeType === "menu_text" ? "options" : "buttons";
+  const menuItems = (data.config?.[optionsKey] as string[]) || [];
+
+  const updateMenuItems = (items: string[]) => {
+    onUpdate(node.id, { config: { ...data.config, [optionsKey]: items } });
+  };
 
   return (
-    <div className="w-72 bg-white dark:bg-card border-l border-gray-200 dark:border-border flex flex-col h-full animate-slide-in-right">
+    <div className="w-72 bg-white dark:bg-card border-l border-border flex flex-col h-full animate-slide-in-right">
       {/* Header */}
-      <div className={`p-4 border-b border-gray-100 dark:border-border ${colors.headerBg}`}>
+      <div className="p-4 border-b border-border" style={{ backgroundColor: `${color}10` }}>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            {Icon && <Icon className={`h-4 w-4 ${colors.text}`} />}
-            <h3 className="font-display font-semibold text-sm text-gray-800 dark:text-foreground">Configurar</h3>
+            {Icon && <Icon className="h-4 w-4" style={{ color }} />}
+            <h3 className="font-display font-semibold text-sm text-foreground">Configurar</h3>
           </div>
           <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onClose}>
             <X className="h-4 w-4" />
@@ -46,7 +47,7 @@ export function NodeConfigPanel({ node, onClose, onUpdate, onDelete }: NodeConfi
 
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
         <div className="space-y-1.5">
-          <Label className="text-xs font-medium text-gray-600 dark:text-muted-foreground">Nome do Grupo</Label>
+          <Label className="text-xs font-medium text-muted-foreground">Nome do Grupo</Label>
           <Input
             className="h-9 text-sm"
             value={data.label}
@@ -55,7 +56,7 @@ export function NodeConfigPanel({ node, onClose, onUpdate, onDelete }: NodeConfi
         </div>
 
         <div className="space-y-1.5">
-          <Label className="text-xs font-medium text-gray-600 dark:text-muted-foreground">Descrição</Label>
+          <Label className="text-xs font-medium text-muted-foreground">Descrição</Label>
           <Input
             className="h-9 text-sm"
             value={data.description || ""}
@@ -64,25 +65,59 @@ export function NodeConfigPanel({ node, onClose, onUpdate, onDelete }: NodeConfi
         </div>
 
         {/* Message config */}
-        {data.category === "bubble" && (
+        {data.category === "mensagem" && (
           <div className="space-y-1.5">
-            <Label className="text-xs font-medium text-gray-600 dark:text-muted-foreground">Mensagem</Label>
+            <Label className="text-xs font-medium text-muted-foreground">Mensagem</Label>
             <Textarea
               className="text-sm min-h-[80px]"
               placeholder="Digite a mensagem..."
               value={data.config?.message || ""}
               onChange={(e) => onUpdate(node.id, { config: { ...data.config, message: e.target.value } })}
             />
-            <p className="text-[10px] text-gray-400 dark:text-muted-foreground">
+            <p className="text-[10px] text-muted-foreground">
               Use {"{{variavel}}"} para valores dinâmicos
             </p>
           </div>
         )}
 
-        {/* Logic config */}
-        {data.category === "logic" && data.nodeType !== "delay" && (
+        {/* Menu options config */}
+        {isMenu && (
           <div className="space-y-1.5">
-            <Label className="text-xs font-medium text-gray-600 dark:text-muted-foreground">Condição</Label>
+            <Label className="text-xs font-medium text-muted-foreground">Opções</Label>
+            <div className="space-y-1.5">
+              {menuItems.map((item, idx) => (
+                <div key={idx} className="flex items-center gap-1.5">
+                  <Input
+                    className="h-8 text-xs flex-1"
+                    value={item}
+                    onChange={(e) => {
+                      const updated = [...menuItems];
+                      updated[idx] = e.target.value;
+                      updateMenuItems(updated);
+                    }}
+                  />
+                  <Button
+                    variant="ghost" size="icon" className="h-8 w-8 text-destructive"
+                    onClick={() => updateMenuItems(menuItems.filter((_, i) => i !== idx))}
+                  >
+                    <X className="h-3 w-3" />
+                  </Button>
+                </div>
+              ))}
+            </div>
+            <Button
+              variant="outline" size="sm" className="w-full h-8 text-xs mt-1"
+              onClick={() => updateMenuItems([...menuItems, `Opção ${menuItems.length + 1}`])}
+            >
+              <Plus className="h-3 w-3 mr-1" /> Adicionar Opção
+            </Button>
+          </div>
+        )}
+
+        {/* Condition config */}
+        {data.nodeType === "condition" && (
+          <div className="space-y-1.5">
+            <Label className="text-xs font-medium text-muted-foreground">Condição</Label>
             <Input
               className="h-9 text-sm"
               placeholder="Ex: {{variavel}} == 'valor'"
@@ -95,7 +130,7 @@ export function NodeConfigPanel({ node, onClose, onUpdate, onDelete }: NodeConfi
         {/* Delay config */}
         {data.nodeType === "delay" && (
           <div className="space-y-1.5">
-            <Label className="text-xs font-medium text-gray-600 dark:text-muted-foreground">Tempo (segundos)</Label>
+            <Label className="text-xs font-medium text-muted-foreground">Tempo (segundos)</Label>
             <Input
               type="number"
               className="h-9 text-sm"
@@ -105,20 +140,56 @@ export function NodeConfigPanel({ node, onClose, onUpdate, onDelete }: NodeConfi
           </div>
         )}
 
-        <div className="pt-3 border-t border-gray-100 dark:border-border">
-          <div className="text-[11px] text-gray-400 dark:text-muted-foreground space-y-1">
-            <p><span className="font-medium text-gray-500 dark:text-foreground/70">Tipo:</span> {config?.label}</p>
-            <p><span className="font-medium text-gray-500 dark:text-foreground/70">Categoria:</span> {data.category}</p>
-            <p><span className="font-medium text-gray-500 dark:text-foreground/70">ID:</span> {node.id}</p>
+        {/* Variable config */}
+        {(data.category === "entrada" || data.nodeType === "set_variable") && (
+          <div className="space-y-1.5">
+            <Label className="text-xs font-medium text-muted-foreground">Nome da Variável</Label>
+            <Input
+              className="h-9 text-sm"
+              placeholder="nome_variavel"
+              value={data.config?.variable || ""}
+              onChange={(e) => onUpdate(node.id, { config: { ...data.config, variable: e.target.value } })}
+            />
+          </div>
+        )}
+
+        {/* Webhook config */}
+        {data.nodeType === "webhook" && (
+          <>
+            <div className="space-y-1.5">
+              <Label className="text-xs font-medium text-muted-foreground">URL</Label>
+              <Input
+                className="h-9 text-sm"
+                placeholder="https://..."
+                value={data.config?.url || ""}
+                onChange={(e) => onUpdate(node.id, { config: { ...data.config, url: e.target.value } })}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs font-medium text-muted-foreground">Método</Label>
+              <Input
+                className="h-9 text-sm"
+                value={data.config?.method || "POST"}
+                onChange={(e) => onUpdate(node.id, { config: { ...data.config, method: e.target.value } })}
+              />
+            </div>
+          </>
+        )}
+
+        <div className="pt-3 border-t border-border">
+          <div className="text-[11px] text-muted-foreground space-y-1">
+            <p><span className="font-medium text-foreground/70">Tipo:</span> {config?.label}</p>
+            <p><span className="font-medium text-foreground/70">Categoria:</span> {data.category}</p>
+            <p><span className="font-medium text-foreground/70">ID:</span> {node.id}</p>
           </div>
         </div>
       </div>
 
-      <div className="p-4 border-t border-gray-100 dark:border-border">
+      <div className="p-4 border-t border-border">
         <Button
           variant="outline"
           size="sm"
-          className="w-full text-red-500 hover:text-white hover:bg-red-500 border-red-200 dark:border-destructive/30 dark:text-destructive"
+          className="w-full text-destructive hover:text-white hover:bg-destructive border-destructive/30"
           onClick={() => onDelete(node.id)}
         >
           <Trash2 className="h-3.5 w-3.5 mr-1.5" /> Remover Grupo
