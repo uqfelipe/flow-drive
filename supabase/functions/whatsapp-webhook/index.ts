@@ -9,12 +9,15 @@ const adminClient = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
 const SUPPORTED_NODE_TYPES = new Set([
   "message", "send_link", "pix", "copy_paste",
   "delay", "set_variable", "condition",
-  "menu_text", "menu_buttons",
-  "capture_text", "capture_name", "capture_email", "capture_phone", "capture_cpf", "capture_number", "wait",
+  "menu_text", "menu_buttons", "menu_list", "menu_carousel", "poll",
+  "capture_text", "capture_name", "capture_email", "capture_phone", "capture_cpf", "capture_number", "capture_date", "wait",
   "transfer_human", "end",
+  "send_image", "send_audio", "send_video", "send_file", "send_sticker",
+  "send_location", "contact_card", "request_location", "request_payment",
+  "typing_indicator",
 ]);
 
-// ── WhatsApp API helper ──────────────────────────────────────────────
+// ── WhatsApp API helpers ─────────────────────────────────────────────
 async function getWhatsAppInstance() {
   const { data, error } = await adminClient
     .from("whatsapp_instances")
@@ -26,19 +29,58 @@ async function getWhatsAppInstance() {
   return data as { server_url: string; instance_token: string; instance_name: string };
 }
 
-async function sendWhatsAppText(inst: { server_url: string; instance_token: string }, phone: string, text: string) {
-  const res = await fetch(`${inst.server_url}/send/text`, {
+type Inst = { server_url: string; instance_token: string };
+
+async function waFetch(inst: Inst, path: string, body: Record<string, any>) {
+  const res = await fetch(`${inst.server_url}${path}`, {
     method: "POST",
     headers: { "Content-Type": "application/json", token: inst.instance_token },
-    body: JSON.stringify({ number: phone, text }),
+    body: JSON.stringify(body),
   });
   if (!res.ok) {
     const t = await res.text();
-    console.error(`[SEND] FAILED status=${res.status} body=${t}`);
-    throw new Error(`sendWhatsAppText failed: ${res.status} - ${t}`);
+    console.error(`[SEND] FAILED ${path} status=${res.status} body=${t}`);
+    throw new Error(`${path} failed: ${res.status}`);
   }
-  console.log(`[SEND] OK to=${phone} text="${text.substring(0, 80)}"`);
+  console.log(`[SEND] OK ${path}`);
   return true;
+}
+
+async function sendWhatsAppText(inst: Inst, phone: string, text: string) {
+  await waFetch(inst, "/send/text", { number: phone, text });
+  console.log(`[SEND] text to=${phone} "${text.substring(0, 80)}"`);
+}
+
+async function sendWhatsAppMedia(inst: Inst, phone: string, type: string, file: string, caption?: string) {
+  await waFetch(inst, "/send/media", { number: phone, type, file, ...(caption ? { caption } : {}) });
+}
+
+async function sendWhatsAppContact(inst: Inst, phone: string, fullName: string, phoneNumber: string, org?: string, email?: string) {
+  await waFetch(inst, "/send/contact", { number: phone, fullName, phoneNumber, ...(org ? { organization: org } : {}), ...(email ? { email } : {}) });
+}
+
+async function sendWhatsAppLocation(inst: Inst, phone: string, lat: number, lng: number, name?: string, address?: string) {
+  await waFetch(inst, "/send/location", { number: phone, latitude: lat, longitude: lng, ...(name ? { name } : {}), ...(address ? { address } : {}) });
+}
+
+async function sendWhatsAppLocationButton(inst: Inst, phone: string, text: string) {
+  await waFetch(inst, "/send/location-button", { number: phone, text });
+}
+
+async function sendWhatsAppMenu(inst: Inst, phone: string, type: string, text: string, choices: any, opts?: Record<string, any>) {
+  await waFetch(inst, "/send/menu", { number: phone, type, text, ...choices, ...(opts || {}) });
+}
+
+async function sendWhatsAppCarousel(inst: Inst, phone: string, text: string, cards: any[]) {
+  await waFetch(inst, "/send/carousel", { number: phone, text, cards });
+}
+
+async function sendWhatsAppPayment(inst: Inst, phone: string, amount: number, opts: Record<string, any>) {
+  await waFetch(inst, "/send/request-payment", { number: phone, amount, ...opts });
+}
+
+async function sendWhatsAppPresence(inst: Inst, phone: string, presence: string, delay?: number) {
+  await waFetch(inst, "/message/presence", { number: phone, presence, ...(delay ? { delay } : {}) });
 }
 
 // ── Flow engine ──────────────────────────────────────────────────────
@@ -71,7 +113,7 @@ function findNextNodeId(edges: FlowEdge[], currentNodeId: string, handleId?: str
 }
 
 async function processFlow(
-  inst: { server_url: string; instance_token: string },
+  inst: Inst,
   phone: string,
   incomingText: string,
   sessionId: string,
@@ -90,185 +132,268 @@ async function processFlow(
     const currentNode = nodesMap.get(nodeId);
     if (currentNode) {
       const nt = currentNode.data.nodeType;
-      
-      // Input capture nodes — save the user's response
       if (nt.startsWith("capture_") || nt === "wait") {
         const varName = currentNode.data.config?.variable || nt.replace("capture_", "");
         vars[varName] = incomingText;
         console.log(`[FLOW] Captured ${varName} = "${incomingText}"`);
-        
-        // Move to next node
         nodeId = findNextNodeId(flowEdges, nodeId);
       }
     }
   }
   
-  // Now process non-input nodes sequentially
   let safety = 0;
-  while (nodeId && safety < 20) {
+  while (nodeId && safety < 30) {
     safety++;
     const node = nodesMap.get(nodeId);
     if (!node) { console.log(`[FLOW] Node ${nodeId} not found, stopping`); break; }
     
     const nt = node.data.nodeType;
+    const cfg = node.data.config || {};
     console.log(`[FLOW] Processing node=${nodeId} type=${nt} label="${node.data.label}"`);
 
-    // Skip unsupported node types
     if (!SUPPORTED_NODE_TYPES.has(nt)) {
-      console.log(`[FLOW] Unsupported node type "${nt}", skipping to next`);
+      console.log(`[FLOW] Unsupported node type "${nt}", skipping`);
       nodeId = findNextNodeId(flowEdges, nodeId);
       continue;
     }
     
-    // Message node — send text and continue
-    if (nt === "message" || nt === "send_link" || nt === "pix" || nt === "copy_paste") {
-      const msg = node.data.config?.message || node.data.config?.text || node.data.config?.url || node.data.config?.pixKey || "";
-      if (msg) {
-        const finalMsg = replaceVariables(msg, vars);
-        try {
-          await sendWhatsAppText(inst, phone, finalMsg);
-        } catch (e) {
-          console.error(`[FLOW] Failed to send message at node ${nodeId}:`, e.message);
-        }
+    // ─── Typing indicator ───
+    if (nt === "typing_indicator") {
+      const seconds = Math.min(cfg.seconds || 3, 15);
+      try { await sendWhatsAppPresence(inst, phone, "composing", seconds * 1000); } catch (_) {}
+      await new Promise(r => setTimeout(r, seconds * 1000));
+      nodeId = findNextNodeId(flowEdges, nodeId);
+      continue;
+    }
+
+    // ─── Message / send_link / pix / copy_paste ───
+    if (nt === "message") {
+      const msg = cfg.message || "";
+      if (msg) { try { await sendWhatsAppText(inst, phone, replaceVariables(msg, vars)); } catch (e) { console.error(`[FLOW] send fail:`, e.message); } await new Promise(r => setTimeout(r, 500)); }
+      nodeId = findNextNodeId(flowEdges, nodeId);
+      continue;
+    }
+
+    if (nt === "send_link") {
+      const msg = cfg.message || cfg.url || "";
+      if (msg) { try { await sendWhatsAppText(inst, phone, replaceVariables(msg, vars)); } catch (e) { console.error(`[FLOW]`, e.message); } }
+      nodeId = findNextNodeId(flowEdges, nodeId);
+      continue;
+    }
+
+    if (nt === "pix") {
+      const msg = cfg.message || `Chave Pix: ${cfg.pixKey || ""}${cfg.amount ? `\nValor: R$ ${cfg.amount}` : ""}`;
+      if (msg) { try { await sendWhatsAppText(inst, phone, replaceVariables(msg, vars)); } catch (_) {} }
+      nodeId = findNextNodeId(flowEdges, nodeId);
+      continue;
+    }
+
+    if (nt === "copy_paste") {
+      const msg = cfg.text || "";
+      if (msg) { try { await sendWhatsAppText(inst, phone, replaceVariables(msg, vars)); } catch (_) {} }
+      nodeId = findNextNodeId(flowEdges, nodeId);
+      continue;
+    }
+
+    // ─── Media nodes ───
+    if (nt === "send_image" || nt === "send_video" || nt === "send_audio" || nt === "send_file" || nt === "send_sticker") {
+      const file = cfg.file || "";
+      if (file) {
+        const mediaType = nt === "send_image" ? "image" : nt === "send_video" ? "video" : nt === "send_audio" ? "audio" : nt === "send_file" ? "document" : "sticker";
+        try { await sendWhatsAppMedia(inst, phone, mediaType, replaceVariables(file, vars), cfg.caption ? replaceVariables(cfg.caption, vars) : undefined); } catch (e) { console.error(`[FLOW]`, e.message); }
         await new Promise(r => setTimeout(r, 500));
       }
       nodeId = findNextNodeId(flowEdges, nodeId);
       continue;
     }
+
+    // ─── Send location ───
+    if (nt === "send_location") {
+      const lat = parseFloat(cfg.latitude);
+      const lng = parseFloat(cfg.longitude);
+      if (!isNaN(lat) && !isNaN(lng)) {
+        try { await sendWhatsAppLocation(inst, phone, lat, lng, cfg.name, cfg.address); } catch (e) { console.error(`[FLOW]`, e.message); }
+      }
+      nodeId = findNextNodeId(flowEdges, nodeId);
+      continue;
+    }
+
+    // ─── Contact card ───
+    if (nt === "contact_card") {
+      const name = cfg.fullName || "";
+      const ph = cfg.phoneNumber || "";
+      if (name && ph) {
+        try { await sendWhatsAppContact(inst, phone, name, ph, cfg.organization, cfg.email); } catch (e) { console.error(`[FLOW]`, e.message); }
+      }
+      nodeId = findNextNodeId(flowEdges, nodeId);
+      continue;
+    }
+
+    // ─── Request location button ───
+    if (nt === "request_location") {
+      const msg = cfg.message || "Compartilhe sua localização";
+      try { await sendWhatsAppLocationButton(inst, phone, replaceVariables(msg, vars)); } catch (e) { console.error(`[FLOW]`, e.message); }
+      // Wait for user response
+      await adminClient.from("chat_sessions").update({ current_node_id: nodeId, variables: vars, status: "waiting", updated_at: new Date().toISOString() }).eq("id", sessionId);
+      return { nextNodeId: nodeId, variables: vars, status: "waiting" };
+    }
+
+    // ─── Menu text ───
+    if (nt === "menu_text") {
+      const options = (cfg.options || []) as string[];
+      if (options.length > 0) {
+        const menuMsg = options.map((opt: string, i: number) => `${i + 1}. ${opt}`).join("\n");
+        const header = cfg.message || "Escolha uma opção:";
+        try { await sendWhatsAppText(inst, phone, replaceVariables(`${header}\n\n${menuMsg}`, vars)); } catch (e) { console.error(`[FLOW]`, e.message); }
+      }
+      await adminClient.from("chat_sessions").update({ current_node_id: nodeId, variables: vars, status: "waiting", updated_at: new Date().toISOString() }).eq("id", sessionId);
+      return { nextNodeId: nodeId, variables: vars, status: "waiting" };
+    }
     
-    // Delay node
+    // ─── Menu buttons (interactive) ───
+    if (nt === "menu_buttons") {
+      const buttons = (cfg.buttons || []) as any[];
+      if (buttons.length > 0) {
+        const btnPayload = buttons.map((b: any, i: number) => {
+          const isObj = typeof b === "object";
+          return { id: `btn-${i}`, text: isObj ? b.text : b, type: isObj ? (b.type || "REPLY") : "REPLY" };
+        });
+        try {
+          await sendWhatsAppMenu(inst, phone, "button", replaceVariables(cfg.message || "Escolha:", vars), { buttons: btnPayload }, cfg.imageButton ? { image: cfg.imageButton } : {});
+        } catch (_) {
+          // Fallback to text
+          const fallback = buttons.map((b: any, i: number) => `${i + 1}. ${typeof b === "object" ? b.text : b}`).join("\n");
+          try { await sendWhatsAppText(inst, phone, replaceVariables(`${cfg.message || "Escolha:"}\n\n${fallback}`, vars)); } catch (_) {}
+        }
+      }
+      await adminClient.from("chat_sessions").update({ current_node_id: nodeId, variables: vars, status: "waiting", updated_at: new Date().toISOString() }).eq("id", sessionId);
+      return { nextNodeId: nodeId, variables: vars, status: "waiting" };
+    }
+
+    // ─── Menu list ───
+    if (nt === "menu_list") {
+      const sections = (cfg.sections || []) as any[];
+      if (sections.length > 0) {
+        try {
+          await sendWhatsAppMenu(inst, phone, "list", replaceVariables(cfg.message || "Escolha:", vars), { sections, listButton: cfg.listButton || "Ver opções" });
+        } catch (_) {
+          // Fallback to text
+          const fallback = sections.flatMap((s: any) => [s.title + ":", ...(s.items || []).map((it: any, i: number) => `  ${i + 1}. ${it.title}`)]).join("\n");
+          try { await sendWhatsAppText(inst, phone, replaceVariables(`${cfg.message || "Escolha:"}\n\n${fallback}`, vars)); } catch (_) {}
+        }
+      }
+      await adminClient.from("chat_sessions").update({ current_node_id: nodeId, variables: vars, status: "waiting", updated_at: new Date().toISOString() }).eq("id", sessionId);
+      return { nextNodeId: nodeId, variables: vars, status: "waiting" };
+    }
+
+    // ─── Menu carousel ───
+    if (nt === "menu_carousel") {
+      const cards = (cfg.cards || []) as any[];
+      if (cards.length > 0) {
+        try {
+          await sendWhatsAppCarousel(inst, phone, replaceVariables(cfg.message || "", vars), cards);
+        } catch (_) {
+          // Fallback to text with numbered cards
+          const fallback = cards.map((c: any, i: number) => `${i + 1}. ${c.text}`).join("\n");
+          try { await sendWhatsAppText(inst, phone, replaceVariables(`${cfg.message || ""}\n\n${fallback}`, vars)); } catch (_) {}
+        }
+      }
+      await adminClient.from("chat_sessions").update({ current_node_id: nodeId, variables: vars, status: "waiting", updated_at: new Date().toISOString() }).eq("id", sessionId);
+      return { nextNodeId: nodeId, variables: vars, status: "waiting" };
+    }
+
+    // ─── Poll ───
+    if (nt === "poll") {
+      const question = cfg.question || "Enquete";
+      const options = (cfg.options || []) as string[];
+      if (options.length >= 2) {
+        try {
+          await sendWhatsAppMenu(inst, phone, "poll", replaceVariables(question, vars), { options, selectableCount: cfg.selectableCount || 1 });
+        } catch (_) {
+          const fallback = options.map((o: string, i: number) => `${i + 1}. ${o}`).join("\n");
+          try { await sendWhatsAppText(inst, phone, replaceVariables(`${question}\n\n${fallback}`, vars)); } catch (_) {}
+        }
+      }
+      nodeId = findNextNodeId(flowEdges, nodeId);
+      continue;
+    }
+
+    // ─── Request payment ───
+    if (nt === "request_payment") {
+      const amount = parseFloat(cfg.amount);
+      if (!isNaN(amount) && amount > 0) {
+        try {
+          await sendWhatsAppPayment(inst, phone, amount, { pixKey: cfg.pixKey, pixType: cfg.pixType, paymentLink: cfg.paymentLink, boletoCode: cfg.boletoCode });
+        } catch (_) {
+          // Fallback
+          const msg = cfg.message || `💰 Pagamento solicitado: R$ ${amount.toFixed(2)}${cfg.pixKey ? `\nPix: ${cfg.pixKey}` : ""}`;
+          try { await sendWhatsAppText(inst, phone, replaceVariables(msg, vars)); } catch (_) {}
+        }
+      } else if (cfg.message) {
+        try { await sendWhatsAppText(inst, phone, replaceVariables(cfg.message, vars)); } catch (_) {}
+      }
+      nodeId = findNextNodeId(flowEdges, nodeId);
+      continue;
+    }
+    
+    // ─── Delay ───
     if (nt === "delay") {
-      const seconds = node.data.config?.seconds || 5;
+      const seconds = cfg.seconds || 5;
       await new Promise(r => setTimeout(r, Math.min(seconds, 10) * 1000));
       nodeId = findNextNodeId(flowEdges, nodeId);
       continue;
     }
     
-    // Set variable node
+    // ─── Set variable ───
     if (nt === "set_variable") {
-      const varName = node.data.config?.variable || "";
-      const varValue = node.data.config?.value || "";
+      const varName = cfg.variable || "";
+      const varValue = cfg.value || "";
       if (varName) vars[varName] = replaceVariables(varValue, vars);
       nodeId = findNextNodeId(flowEdges, nodeId);
       continue;
     }
     
-    // Condition node
+    // ─── Condition ───
     if (nt === "condition") {
-      const condition = node.data.config?.condition || "";
+      const condition = cfg.condition || "";
       let result = false;
       const match = condition.match(/\{\{(\w+)\}\}\s*==\s*['"]?(.+?)['"]?\s*$/);
       if (match) {
         result = (vars[match[1]] || "") === match[2];
       } else if (condition) {
         const varMatch = condition.match(/\{\{(\w+)\}\}/);
-        if (varMatch) {
-          result = !!(vars[varMatch[1]]);
-        }
+        if (varMatch) result = !!(vars[varMatch[1]]);
       }
       nodeId = findNextNodeId(flowEdges, nodeId, result ? "true" : "false");
       continue;
     }
     
-    // Menu text node — send options and wait
-    if (nt === "menu_text") {
-      const options = (node.data.config?.options || []) as string[];
-      if (options.length > 0) {
-        const menuMsg = options.map((opt, i) => `${i + 1}. ${opt}`).join("\n");
-        const header = node.data.config?.message || "Escolha uma opção:";
-        try {
-          await sendWhatsAppText(inst, phone, replaceVariables(`${header}\n\n${menuMsg}`, vars));
-        } catch (e) {
-          console.error(`[FLOW] Failed to send menu:`, e.message);
-        }
-      }
-      await adminClient.from("chat_sessions").update({
-        current_node_id: nodeId,
-        variables: vars,
-        status: "waiting",
-        updated_at: new Date().toISOString(),
-      }).eq("id", sessionId);
-      return { nextNodeId: nodeId, variables: vars, status: "waiting" };
-    }
-    
-    // Menu buttons node
-    if (nt === "menu_buttons") {
-      const buttons = (node.data.config?.buttons || []) as string[];
-      if (buttons.length > 0) {
-        const menuMsg = buttons.map((b, i) => `${i + 1}. ${b}`).join("\n");
-        try {
-          await sendWhatsAppText(inst, phone, replaceVariables(`Escolha:\n\n${menuMsg}`, vars));
-        } catch (e) {
-          console.error(`[FLOW] Failed to send menu buttons:`, e.message);
-        }
-      }
-      await adminClient.from("chat_sessions").update({
-        current_node_id: nodeId,
-        variables: vars,
-        status: "waiting",
-        updated_at: new Date().toISOString(),
-      }).eq("id", sessionId);
-      return { nextNodeId: nodeId, variables: vars, status: "waiting" };
-    }
-    
-    // Input capture nodes — send prompt if configured, then wait
+    // ─── Input capture nodes ───
     if (nt.startsWith("capture_") || nt === "wait") {
-      // Send prompt message if the node has one
-      const prompt = node.data.config?.message || node.data.config?.prompt || "";
-      if (prompt) {
-        try {
-          await sendWhatsAppText(inst, phone, replaceVariables(prompt, vars));
-        } catch (e) {
-          console.error(`[FLOW] Failed to send capture prompt:`, e.message);
-        }
-      }
-      await adminClient.from("chat_sessions").update({
-        current_node_id: nodeId,
-        variables: vars,
-        status: "waiting",
-        updated_at: new Date().toISOString(),
-      }).eq("id", sessionId);
+      const prompt = cfg.message || cfg.prompt || "";
+      if (prompt) { try { await sendWhatsAppText(inst, phone, replaceVariables(prompt, vars)); } catch (e) { console.error(`[FLOW]`, e.message); } }
+      await adminClient.from("chat_sessions").update({ current_node_id: nodeId, variables: vars, status: "waiting", updated_at: new Date().toISOString() }).eq("id", sessionId);
       return { nextNodeId: nodeId, variables: vars, status: "waiting" };
     }
     
-    // Transfer to human
+    // ─── Transfer to human ───
     if (nt === "transfer_human") {
-      try {
-        await sendWhatsAppText(inst, phone, replaceVariables("Aguarde, estou transferindo para um atendente humano. 👤", vars));
-      } catch (_) {}
-      await adminClient.from("chat_sessions").update({
-        current_node_id: nodeId,
-        variables: vars,
-        status: "completed",
-        updated_at: new Date().toISOString(),
-      }).eq("id", sessionId);
+      try { await sendWhatsAppText(inst, phone, replaceVariables("Aguarde, estou transferindo para um atendente humano. 👤", vars)); } catch (_) {}
+      await adminClient.from("chat_sessions").update({ current_node_id: nodeId, variables: vars, status: "completed", updated_at: new Date().toISOString() }).eq("id", sessionId);
       return { nextNodeId: null, variables: vars, status: "completed" };
     }
     
-    // End node
+    // ─── End ───
     if (nt === "end") {
-      await adminClient.from("chat_sessions").update({
-        current_node_id: null,
-        variables: vars,
-        status: "completed",
-        updated_at: new Date().toISOString(),
-      }).eq("id", sessionId);
+      await adminClient.from("chat_sessions").update({ current_node_id: null, variables: vars, status: "completed", updated_at: new Date().toISOString() }).eq("id", sessionId);
       return { nextNodeId: null, variables: vars, status: "completed" };
     }
     
-    // Fallback — skip unknown
     console.log(`[FLOW] Unhandled node type: ${nt}, skipping`);
     nodeId = findNextNodeId(flowEdges, nodeId);
   }
   
-  // Flow ended (no more nodes)
-  await adminClient.from("chat_sessions").update({
-    current_node_id: null,
-    variables: vars,
-    status: "completed",
-    updated_at: new Date().toISOString(),
-  }).eq("id", sessionId);
-  
+  await adminClient.from("chat_sessions").update({ current_node_id: null, variables: vars, status: "completed", updated_at: new Date().toISOString() }).eq("id", sessionId);
   return { nextNodeId: null, variables: vars, status: "completed" };
 }
 
@@ -279,28 +404,82 @@ function handleMenuSelection(
   edges: FlowEdge[],
 ): { nextNodeId: string | null; selectedOption: string | null } {
   const nt = node.data.nodeType;
-  const options = (node.data.config?.options || node.data.config?.buttons || []) as string[];
   
-  if (nt !== "menu_text" && nt !== "menu_buttons") {
+  // Menu text
+  if (nt === "menu_text") {
+    const options = (node.data.config?.options || []) as string[];
+    const num = parseInt(userInput.trim());
+    if (!isNaN(num) && num >= 1 && num <= options.length) {
+      const idx = num - 1;
+      const nextId = findNextNodeId(edges, node.id, `option-${idx}`) || findNextNodeId(edges, node.id);
+      return { nextNodeId: nextId, selectedOption: options[idx] };
+    }
+    const lower = userInput.trim().toLowerCase();
+    const matchIdx = options.findIndex(o => o.toLowerCase() === lower);
+    if (matchIdx >= 0) {
+      const nextId = findNextNodeId(edges, node.id, `option-${matchIdx}`) || findNextNodeId(edges, node.id);
+      return { nextNodeId: nextId, selectedOption: options[matchIdx] };
+    }
     return { nextNodeId: null, selectedOption: null };
   }
-  
-  const num = parseInt(userInput.trim());
-  if (!isNaN(num) && num >= 1 && num <= options.length) {
-    const idx = num - 1;
-    const handleId = `option-${idx}`;
-    const nextId = findNextNodeId(edges, node.id, handleId) || findNextNodeId(edges, node.id);
-    return { nextNodeId: nextId, selectedOption: options[idx] };
+
+  // Menu buttons
+  if (nt === "menu_buttons") {
+    const buttons = (node.data.config?.buttons || []) as any[];
+    const num = parseInt(userInput.trim());
+    if (!isNaN(num) && num >= 1 && num <= buttons.length) {
+      const idx = num - 1;
+      const nextId = findNextNodeId(edges, node.id, `option-${idx}`) || findNextNodeId(edges, node.id);
+      const text = typeof buttons[idx] === "object" ? buttons[idx].text : buttons[idx];
+      return { nextNodeId: nextId, selectedOption: text };
+    }
+    const lower = userInput.trim().toLowerCase();
+    const matchIdx = buttons.findIndex((b: any) => (typeof b === "object" ? b.text : b).toLowerCase() === lower);
+    if (matchIdx >= 0) {
+      const nextId = findNextNodeId(edges, node.id, `option-${matchIdx}`) || findNextNodeId(edges, node.id);
+      const text = typeof buttons[matchIdx] === "object" ? buttons[matchIdx].text : buttons[matchIdx];
+      return { nextNodeId: nextId, selectedOption: text };
+    }
+    return { nextNodeId: null, selectedOption: null };
   }
-  
-  const lower = userInput.trim().toLowerCase();
-  const matchIdx = options.findIndex(o => o.toLowerCase() === lower);
-  if (matchIdx >= 0) {
-    const handleId = `option-${matchIdx}`;
-    const nextId = findNextNodeId(edges, node.id, handleId) || findNextNodeId(edges, node.id);
-    return { nextNodeId: nextId, selectedOption: options[matchIdx] };
+
+  // Menu list — match by item title or row id
+  if (nt === "menu_list") {
+    const sections = (node.data.config?.sections || []) as any[];
+    const allItems = sections.flatMap((s: any) => s.items || []);
+    const lower = userInput.trim().toLowerCase();
+    const matchIdx = allItems.findIndex((it: any) => it.title?.toLowerCase() === lower || it.id === userInput.trim());
+    if (matchIdx >= 0) {
+      const nextId = findNextNodeId(edges, node.id, `option-${matchIdx}`) || findNextNodeId(edges, node.id);
+      return { nextNodeId: nextId, selectedOption: allItems[matchIdx].title };
+    }
+    const num = parseInt(userInput.trim());
+    if (!isNaN(num) && num >= 1 && num <= allItems.length) {
+      const idx = num - 1;
+      const nextId = findNextNodeId(edges, node.id, `option-${idx}`) || findNextNodeId(edges, node.id);
+      return { nextNodeId: nextId, selectedOption: allItems[idx].title };
+    }
+    return { nextNodeId: null, selectedOption: null };
   }
-  
+
+  // Menu carousel — match by card index
+  if (nt === "menu_carousel") {
+    const cards = (node.data.config?.cards || []) as any[];
+    const num = parseInt(userInput.trim());
+    if (!isNaN(num) && num >= 1 && num <= cards.length) {
+      const idx = num - 1;
+      const nextId = findNextNodeId(edges, node.id, `option-${idx}`) || findNextNodeId(edges, node.id);
+      return { nextNodeId: nextId, selectedOption: cards[idx].text };
+    }
+    return { nextNodeId: null, selectedOption: null };
+  }
+
+  // Request location — any response continues
+  if (nt === "request_location") {
+    const nextId = findNextNodeId(edges, node.id);
+    return { nextNodeId: nextId, selectedOption: userInput };
+  }
+
   return { nextNodeId: null, selectedOption: null };
 }
 
@@ -392,7 +571,6 @@ async function processIncomingMessage(phone: string, text: string) {
   try {
     console.log(`[AUTO-REPLY] Processing message from ${phone}: "${text}"`);
 
-    // 1. Find active flow — deterministic: most recently updated
     const { data: flows } = await adminClient
       .from("chatbot_flows")
       .select("id, name, nodes, edges")
@@ -416,7 +594,6 @@ async function processIncomingMessage(phone: string, text: string) {
       return;
     }
 
-    // Validate flow has at least one supported node type
     const supportedNodes = flowNodes.filter(n => SUPPORTED_NODE_TYPES.has(n.data?.nodeType));
     if (supportedNodes.length === 0) {
       console.log(`[AUTO-REPLY] Flow "${flow.name}" has NO supported node types, skipping`);
@@ -428,9 +605,7 @@ async function processIncomingMessage(phone: string, text: string) {
       console.log("[AUTO-REPLY] No WhatsApp instance found");
       return;
     }
-    console.log(`[AUTO-REPLY] WhatsApp instance: ${inst.instance_name}`);
 
-    // 2. Find or create customer by phone
     let customerId: string;
     const { data: existingCustomer } = await adminClient
       .from("customers")
@@ -452,10 +627,8 @@ async function processIncomingMessage(phone: string, text: string) {
         return;
       }
       customerId = newCustomer.id;
-      console.log(`[AUTO-REPLY] Created customer: ${customerId}`);
     }
     
-    // 3. Find existing active/waiting session
     const { data: existingSessions } = await adminClient
       .from("chat_sessions")
       .select("*")
@@ -477,18 +650,15 @@ async function processIncomingMessage(phone: string, text: string) {
         
         if (currentNode) {
           const nt = currentNode.data.nodeType;
-          console.log(`[AUTO-REPLY] Current node type: ${nt}`);
           
-          // Handle menu selection
-          if (nt === "menu_text" || nt === "menu_buttons") {
+          // Handle menu/list/carousel/request_location selection
+          if (nt === "menu_text" || nt === "menu_buttons" || nt === "menu_list" || nt === "menu_carousel" || nt === "request_location") {
             const { nextNodeId, selectedOption } = handleMenuSelection(currentNode, text, flowEdges);
             if (nextNodeId) {
               variables["menu_selection"] = selectedOption || text;
               await processFlow(inst, phone, text, session.id, flowNodes, flowEdges, nextNodeId, variables);
             } else {
-              try {
-                await sendWhatsAppText(inst, phone, "❌ Opção inválida. Por favor, escolha uma opção válida.");
-              } catch (_) {}
+              try { await sendWhatsAppText(inst, phone, "❌ Opção inválida. Por favor, escolha uma opção válida."); } catch (_) {}
             }
             return;
           }
@@ -504,7 +674,7 @@ async function processIncomingMessage(phone: string, text: string) {
       console.log("[AUTO-REPLY] Session has no actionable node, restarting flow");
     }
     
-    // 4. Start new session — find start node (no incoming edges)
+    // Start new session
     const targetIds = new Set(flowEdges.map(e => e.target));
     const startNode = flowNodes.find(n => !targetIds.has(n.id));
     
@@ -513,17 +683,11 @@ async function processIncomingMessage(phone: string, text: string) {
       return;
     }
     
-    console.log(`[AUTO-REPLY] Starting new session from node: ${startNode.id} (${startNode.data.nodeType}) "${startNode.data.label}"`);
+    console.log(`[AUTO-REPLY] Starting new session from node: ${startNode.id} (${startNode.data.nodeType})`);
     
     const { data: newSession, error: sessError } = await adminClient
       .from("chat_sessions")
-      .insert({
-        customer_id: customerId,
-        flow_id: flow.id,
-        current_node_id: startNode.id,
-        variables: {},
-        status: "active",
-      })
+      .insert({ customer_id: customerId, flow_id: flow.id, current_node_id: startNode.id, variables: {}, status: "active" })
       .select()
       .single();
     
