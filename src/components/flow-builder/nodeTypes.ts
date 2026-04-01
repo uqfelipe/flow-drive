@@ -1,116 +1,80 @@
-import type { FlowNodeCategory } from "@/types";
+import type { LucideIcon } from "lucide-react";
 import {
-  MessageSquare,
-  Type,
-  Image,
-  Video,
-  Code,
-  TextCursorInput,
-  Hash,
-  Mail,
-  Globe,
-  Calendar,
-  Phone,
-  MousePointerClick,
-  CreditCard,
-  Star,
-  Upload,
-  GitBranch,
-  Variable,
-  ExternalLink,
-  Bot,
-  Database,
-  Webhook,
-  Sparkles,
-  Brain,
-  Send,
-  Car,
-  Search,
-  UserPlus,
-  CalendarPlus,
-  RefreshCw,
-  Save,
-  Timer,
-  Users,
-  XCircle,
-  Bell,
-  Zap,
-  Target,
-  Lightbulb,
-  Clock,
-  ListChecks,
-  CheckCircle2,
-  FileText,
-  DollarSign,
+  MessageSquare, Link, QrCode, Copy, ListOrdered, SquareMousePointer, GalleryHorizontalEnd, BarChart3,
+  Image, Mic, Video, File, Sticker, MapPin, Contact,
+  Type, Hash, Mail, Calendar, Phone, User, CreditCard,
+  GitBranch, Clock, Timer, Variable,
+  Webhook, HeadphonesIcon, XCircle, Puzzle,
 } from "lucide-react";
+import type { FlowNodeCategory } from "@/types";
 
 export interface NodeTypeConfig {
   type: string;
   label: string;
   category: FlowNodeCategory;
-  icon: any;
+  icon: LucideIcon;
   description: string;
   color: string;
   defaultConfig?: Record<string, any>;
 }
 
-export const nodeCategories: { category: FlowNodeCategory; label: string; color: string; icon: any }[] = [
-  { category: "bubble", label: "Bubbles", color: "text-blue-500", icon: MessageSquare },
-  { category: "input", label: "Inputs", color: "text-orange-500", icon: TextCursorInput },
-  { category: "logic", label: "Lógica", color: "text-purple-500", icon: GitBranch },
-  { category: "integration", label: "Integrações", color: "text-emerald-500", icon: Database },
+export interface NodeCategoryConfig {
+  category: FlowNodeCategory;
+  label: string;
+  icon: LucideIcon;
+}
+
+export const nodeCategories: NodeCategoryConfig[] = [
+  { category: "mensagem", label: "Mensagens", icon: MessageSquare },
+  { category: "menu", label: "Menus", icon: ListOrdered },
+  { category: "midia", label: "Mídia", icon: Image },
+  { category: "entrada", label: "Entrada de Dados", icon: Type },
+  { category: "logica", label: "Lógica", icon: GitBranch },
+  { category: "integracao", label: "Integrações", icon: Puzzle },
 ];
 
 export const nodeTypes: NodeTypeConfig[] = [
-  // Bubbles
-  { type: "send_text", label: "Texto", category: "bubble", icon: Type, description: "Envia uma mensagem de texto", color: "blue", defaultConfig: { message: "" } },
-  { type: "send_image", label: "Imagem", category: "bubble", icon: Image, description: "Envia uma imagem", color: "blue" },
-  { type: "send_video", label: "Vídeo", category: "bubble", icon: Video, description: "Envia um vídeo", color: "blue" },
-  { type: "send_options", label: "Opções", category: "bubble", icon: ListChecks, description: "Envia lista de opções", color: "blue", defaultConfig: { options: [] } },
-  { type: "send_confirmation", label: "Confirmação", category: "bubble", icon: CheckCircle2, description: "Envia confirmação", color: "blue" },
-  { type: "send_summary", label: "Resumo", category: "bubble", icon: FileText, description: "Resumo da reserva", color: "blue" },
-  { type: "embed", label: "Embed", category: "bubble", icon: Code, description: "Conteúdo embed", color: "blue" },
+  // Mensagens
+  { type: "message", label: "Mensagem", category: "mensagem", icon: MessageSquare, description: "Enviar mensagem de texto", color: "#8B5CF6", defaultConfig: { message: "" } },
+  { type: "send_link", label: "Enviar Link", category: "mensagem", icon: Link, description: "Enviar link com preview", color: "#6366F1", defaultConfig: { url: "" } },
+  { type: "pix", label: "Pix (Copia e Cola)", category: "mensagem", icon: QrCode, description: "Enviar chave Pix", color: "#06B6D4", defaultConfig: { pixKey: "" } },
+  { type: "copy_paste", label: "Copia e Cola", category: "mensagem", icon: Copy, description: "Texto para copiar", color: "#0EA5E9", defaultConfig: { text: "" } },
 
-  // Inputs
-  { type: "capture_text", label: "Texto", category: "input", icon: TextCursorInput, description: "Captura texto livre", color: "orange" },
-  { type: "capture_number", label: "Número", category: "input", icon: Hash, description: "Captura um número", color: "orange" },
-  { type: "capture_email", label: "Email", category: "input", icon: Mail, description: "Captura email", color: "orange" },
-  { type: "capture_website", label: "Website", category: "input", icon: Globe, description: "Captura URL", color: "orange" },
-  { type: "capture_date", label: "Data", category: "input", icon: Calendar, description: "Captura uma data", color: "orange" },
-  { type: "capture_phone", label: "Telefone", category: "input", icon: Phone, description: "Captura telefone", color: "orange" },
-  { type: "capture_name", label: "Nome", category: "input", icon: Type, description: "Captura o nome", color: "orange" },
-  { type: "capture_cpf", label: "CPF", category: "input", icon: Hash, description: "Captura e valida CPF", color: "orange" },
-  { type: "capture_vehicle", label: "Veículo", category: "input", icon: Car, description: "Escolha de veículo", color: "orange" },
-  { type: "button_input", label: "Botões", category: "input", icon: MousePointerClick, description: "Entrada por botões", color: "orange" },
-  { type: "payment_input", label: "Pagamento", category: "input", icon: CreditCard, description: "Entrada de pagamento", color: "orange" },
-  { type: "rating_input", label: "Avaliação", category: "input", icon: Star, description: "Entrada de avaliação", color: "orange" },
-  { type: "file_input", label: "Arquivo", category: "input", icon: Upload, description: "Upload de arquivo", color: "orange" },
+  // Menus
+  { type: "menu_text", label: "Menu Texto", category: "menu", icon: ListOrdered, description: "Menu com opções numeradas", color: "#F97316", defaultConfig: { options: ["Opção 1", "Opção 2", "Opção 3"] } },
+  { type: "menu_buttons", label: "Menu Botões", category: "menu", icon: SquareMousePointer, description: "Menu com botões interativos", color: "#3B82F6", defaultConfig: { buttons: ["Botão 1", "Botão 2"] } },
+  { type: "menu_carousel", label: "Menu Carrossel", category: "menu", icon: GalleryHorizontalEnd, description: "Carrossel de cards", color: "#EC4899", defaultConfig: { cards: [] } },
+  { type: "poll", label: "Enquete", category: "menu", icon: BarChart3, description: "Criar enquete", color: "#14B8A6", defaultConfig: { question: "", options: [] } },
 
-  // Logic
-  { type: "set_variable", label: "Definir variável", category: "logic", icon: Variable, description: "Define o valor de uma variável", color: "purple" },
-  { type: "if_else", label: "Condição", category: "logic", icon: GitBranch, description: "Condição com duas saídas", color: "purple", defaultConfig: { condition: "" } },
-  { type: "redirect", label: "Redirecionar", category: "logic", icon: ExternalLink, description: "Redireciona para URL", color: "purple" },
-  { type: "code_block", label: "Código", category: "logic", icon: Code, description: "Executa código customizado", color: "purple" },
-  { type: "typebot_link", label: "Typebot", category: "logic", icon: Bot, description: "Link para outro fluxo", color: "purple" },
-  { type: "delay", label: "Delay", category: "logic", icon: Timer, description: "Aguarda um tempo", color: "purple", defaultConfig: { seconds: 5 } },
-  { type: "wait_response", label: "Aguardar Resposta", category: "logic", icon: Clock, description: "Aguarda resposta do cliente", color: "purple" },
+  // Mídia
+  { type: "send_image", label: "Enviar Imagem", category: "midia", icon: Image, description: "Enviar foto ou imagem", color: "#10B981" },
+  { type: "send_audio", label: "Enviar Áudio", category: "midia", icon: Mic, description: "Enviar mensagem de áudio", color: "#F59E0B" },
+  { type: "send_video", label: "Enviar Vídeo", category: "midia", icon: Video, description: "Enviar arquivo de vídeo", color: "#EF4444" },
+  { type: "send_file", label: "Enviar Arquivo", category: "midia", icon: File, description: "Enviar documento", color: "#6366F1" },
+  { type: "send_sticker", label: "Enviar Figurinha", category: "midia", icon: Sticker, description: "Enviar sticker", color: "#A855F7" },
+  { type: "send_location", label: "Enviar Localização", category: "midia", icon: MapPin, description: "Compartilhar localização", color: "#22C55E" },
+  { type: "contact_card", label: "Cartão de Contato", category: "midia", icon: Contact, description: "Enviar cartão de contato", color: "#0EA5E9" },
 
-  // Integrations
-  { type: "webhook", label: "Webhook", category: "integration", icon: Webhook, description: "Envia/recebe webhook", color: "emerald" },
-  { type: "search_vehicles", label: "Buscar Veículos", category: "integration", icon: Car, description: "Busca veículos disponíveis", color: "emerald" },
-  { type: "search_customer", label: "Buscar Cliente", category: "integration", icon: Search, description: "Busca cliente no banco", color: "emerald" },
-  { type: "create_customer", label: "Criar Cliente", category: "integration", icon: UserPlus, description: "Cadastra novo cliente", color: "emerald" },
-  { type: "create_rental", label: "Criar Reserva", category: "integration", icon: CalendarPlus, description: "Cria uma reserva", color: "emerald" },
-  { type: "update_rental", label: "Atualizar Reserva", category: "integration", icon: RefreshCw, description: "Atualiza reserva", color: "emerald" },
-  { type: "register_payment", label: "Registrar Pagamento", category: "integration", icon: CreditCard, description: "Registra pagamento", color: "emerald" },
-  { type: "save_history", label: "Salvar Histórico", category: "integration", icon: Save, description: "Salva histórico", color: "emerald" },
-  { type: "transfer_human", label: "Transferir Humano", category: "integration", icon: Users, description: "Transfere para humano", color: "emerald" },
-  { type: "end_session", label: "Encerrar", category: "integration", icon: XCircle, description: "Finaliza sessão", color: "emerald" },
-  { type: "send_reminder", label: "Lembrete", category: "integration", icon: Bell, description: "Agenda lembrete", color: "emerald" },
-  { type: "interpret_message", label: "Interpretar IA", category: "integration", icon: Brain, description: "Interpreta com IA", color: "emerald" },
-  { type: "classify_intent", label: "Classificar Intenção", category: "integration", icon: Target, description: "Classifica intenção", color: "emerald" },
-  { type: "natural_response", label: "Resposta IA", category: "integration", icon: Sparkles, description: "Gera resposta IA", color: "emerald" },
-  { type: "suggest_next", label: "Sugerir Próximo", category: "integration", icon: Lightbulb, description: "Sugere próximo passo", color: "emerald" },
+  // Entrada de Dados
+  { type: "capture_text", label: "Capturar Texto", category: "entrada", icon: Type, description: "Capturar texto livre", color: "#8B5CF6", defaultConfig: { variable: "" } },
+  { type: "capture_number", label: "Capturar Número", category: "entrada", icon: Hash, description: "Capturar valor numérico", color: "#F97316", defaultConfig: { variable: "" } },
+  { type: "capture_email", label: "Capturar Email", category: "entrada", icon: Mail, description: "Capturar endereço de email", color: "#3B82F6", defaultConfig: { variable: "" } },
+  { type: "capture_date", label: "Capturar Data", category: "entrada", icon: Calendar, description: "Capturar uma data", color: "#14B8A6", defaultConfig: { variable: "" } },
+  { type: "capture_phone", label: "Capturar Telefone", category: "entrada", icon: Phone, description: "Capturar número de telefone", color: "#10B981", defaultConfig: { variable: "" } },
+  { type: "capture_name", label: "Capturar Nome", category: "entrada", icon: User, description: "Capturar nome completo", color: "#EC4899", defaultConfig: { variable: "" } },
+  { type: "capture_cpf", label: "Capturar CPF", category: "entrada", icon: CreditCard, description: "Capturar CPF válido", color: "#EF4444", defaultConfig: { variable: "" } },
+
+  // Lógica
+  { type: "condition", label: "Condição", category: "logica", icon: GitBranch, description: "Desvio condicional", color: "#F59E0B", defaultConfig: { condition: "" } },
+  { type: "wait", label: "Aguardar", category: "logica", icon: Clock, description: "Aguardar resposta do usuário", color: "#6366F1" },
+  { type: "delay", label: "Delay", category: "logica", icon: Timer, description: "Aguardar tempo definido", color: "#0EA5E9", defaultConfig: { seconds: 5 } },
+  { type: "set_variable", label: "Definir Variável", category: "logica", icon: Variable, description: "Atribuir valor a variável", color: "#8B5CF6", defaultConfig: { variable: "", value: "" } },
+
+  // Integrações
+  { type: "webhook", label: "Webhook", category: "integracao", icon: Webhook, description: "Chamada HTTP externa", color: "#F97316", defaultConfig: { url: "", method: "POST" } },
+  { type: "transfer_human", label: "Transferir p/ Humano", category: "integracao", icon: HeadphonesIcon, description: "Transferir para atendente", color: "#3B82F6" },
+  { type: "end", label: "Encerramento", category: "integracao", icon: XCircle, description: "Encerrar conversa", color: "#EF4444" },
+  { type: "integration", label: "Integração", category: "integracao", icon: Puzzle, description: "Integração externa", color: "#10B981", defaultConfig: { service: "" } },
 ];
 
 export function getNodeTypeConfig(type: string): NodeTypeConfig | undefined {
