@@ -47,16 +47,62 @@ function FlowBuilderContent() {
   const { data: flows, isLoading } = useFlows();
   const saveFlow = useSaveFlow();
 
+  const initialNodes: Node[] = [
+    {
+      id: "1",
+      type: "flowNode",
+      position: { x: 50, y: 80 },
+      data: {
+        label: "Boas-vindas",
+        category: "mensagem",
+        nodeType: "message",
+        config: { message: "Olá! 👋 Seja bem-vindo(a)! Como você prefere ser chamado(a)?" },
+        description: "Pergunta o nome preferido",
+        blocks: [],
+      },
+    },
+    {
+      id: "2",
+      type: "flowNode",
+      position: { x: 450, y: 80 },
+      data: {
+        label: "Capturar Nome",
+        category: "entrada",
+        nodeType: "capture_name",
+        config: { variable: "nome_usuario" },
+        description: "Salva o nome do usuário",
+        blocks: [],
+      },
+    },
+    {
+      id: "3",
+      type: "flowNode",
+      position: { x: 850, y: 80 },
+      data: {
+        label: "Confirmar Nome",
+        category: "mensagem",
+        nodeType: "message",
+        config: { message: "Prazer, {{nome_usuario}}! 😊 A partir de agora vou te chamar assim. Como posso te ajudar?" },
+        description: "Confirma o nome salvo",
+        blocks: [],
+      },
+    },
+  ];
+
+  const initialEdges: Edge[] = [
+    { id: "e1-2", source: "1", target: "2", type: "smoothstep", style: { stroke: "hsl(220 13% 80%)", strokeWidth: 2 }, animated: false },
+    { id: "e2-3", source: "2", target: "3", type: "smoothstep", style: { stroke: "hsl(220 13% 80%)", strokeWidth: 2 }, animated: false },
+  ];
+
   useEffect(() => {
     if (flows && flows.length > 0 && !currentFlowId) {
       const flow = flows[0];
       setCurrentFlowId(flow.id);
-      setCurrentFlowName(flow.name);
+      setCurrentFlowName("Atendimento Inicial");
       setCurrentFlowStatus(flow.status);
       setIsActive(flow.status === "active");
-      // Start with empty canvas
-      setNodes([]);
-      setEdges([]);
+      setNodes(initialNodes);
+      setEdges(initialEdges);
     }
   }, [flows, currentFlowId, setNodes, setEdges]);
 
