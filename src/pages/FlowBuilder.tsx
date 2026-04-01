@@ -9,7 +9,7 @@ import "@xyflow/react/dist/style.css";
 import { AdminLayout } from "@/components/AdminLayout";
 import { NodePalette } from "@/components/flow-builder/NodePalette";
 import { NodeConfigPanel } from "@/components/flow-builder/NodeConfigPanel";
-import { FlowLegend } from "@/components/flow-builder/FlowLegend";
+
 import FlowNode from "@/components/flow-builder/FlowNode";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
