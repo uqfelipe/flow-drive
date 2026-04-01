@@ -1,7 +1,7 @@
 import { useCallback, useRef, useState, useEffect } from "react";
 import {
   ReactFlow, addEdge, useNodesState, useEdgesState, Controls, Background, BackgroundVariant,
-  type Connection, type Edge, type Node, type OnSelectionChangeFunc, ReactFlowProvider,
+  type Connection, type Edge, type Node, ReactFlowProvider,
   ConnectionLineType,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
