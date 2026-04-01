@@ -1,5 +1,6 @@
 import { AdminLayout } from "@/components/AdminLayout";
 import { Input } from "@/components/ui/input";
+import { useCustomers } from "@/hooks/use-customers";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -34,8 +35,10 @@ function getInitials(name?: string) {
   return name.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase();
 }
 
-function chatName(chat: WhatsAppChat) {
-  return chat.wa_contactName || chat.wa_name || chat.name || chat.wa_chatid?.replace("@s.whatsapp.net", "") || "—";
+function chatName(chat: WhatsAppChat, customerMap?: Record<string, string>) {
+  const phone = chat.wa_chatid?.replace(/@.*$/, "") ?? "";
+  if (customerMap && phone && customerMap[phone]) return customerMap[phone];
+  return chat.wa_contactName || chat.wa_name || chat.name || phone || "—";
 }
 
 function chatPreview(msg: any): string {
@@ -640,6 +643,16 @@ function MediaContact({ contactName, fromMe }: { contactName?: string; fromMe: b
 const chatBgPattern = `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%239C92AC' fill-opacity='0.03'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`;
 
 export default function Conversations() {
+  const { data: customers } = useCustomers();
+  const customerMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    (customers ?? []).forEach((c) => {
+      const digits = c.phone.replace(/\D/g, "");
+      if (digits) map[digits] = c.name;
+    });
+    return map;
+  }, [customers]);
+
   const [search, setSearch] = useState("");
   const [selectedChat, setSelectedChat] = useState<WhatsAppChat | null>(null);
   const [text, setText] = useState("");
@@ -826,7 +839,7 @@ export default function Conversations() {
   const filtered = (chats ?? [])
     .filter((c) => {
       const q = search.toLowerCase();
-      const name = chatName(c).toLowerCase();
+      const name = chatName(c, customerMap).toLowerCase();
       const phone = phoneFromChatId(c.wa_chatid);
       return name.includes(q) || phone.includes(search);
     })
@@ -1050,7 +1063,7 @@ export default function Conversations() {
                               ? "bg-primary/20 text-primary"
                               : "bg-muted text-muted-foreground"
                           )}>
-                            {getInitials(chatName(chat))}
+                            {getInitials(chatName(chat, customerMap))}
                           </AvatarFallback>
                         </Avatar>
                         <span className={cn(
@@ -1064,7 +1077,7 @@ export default function Conversations() {
                             "text-[13px] truncate",
                             hasUnread || isActive ? "font-semibold text-foreground" : "font-medium text-foreground/80"
                           )}>
-                            {chatName(chat)}
+                            {chatName(chat, customerMap)}
                           </p>
                           <span className={cn(
                             "text-[10px] shrink-0 font-medium",
@@ -1149,11 +1162,11 @@ export default function Conversations() {
                   >
                     {(selectedChat.image || selectedChat.imagePreview || selectedChat.wa_profilePicUrl) && <AvatarImage src={selectedChat.image || selectedChat.imagePreview || selectedChat.wa_profilePicUrl} />}
                     <AvatarFallback className="bg-primary/15 text-primary text-xs font-bold">
-                      {getInitials(chatName(selectedChat))}
+                      {getInitials(chatName(selectedChat, customerMap))}
                     </AvatarFallback>
                   </Avatar>
                   <div>
-                    <p className="text-sm font-display font-bold">{chatName(selectedChat)}</p>
+                    <p className="text-sm font-display font-bold">{chatName(selectedChat, customerMap)}</p>
                     <p className="text-[11px] text-muted-foreground flex items-center gap-1">
                       <span className="h-1.5 w-1.5 rounded-full bg-success inline-block" />
                       {formatPhone(phoneFromChatId(selectedChat.wa_chatid))}
