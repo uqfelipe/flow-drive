@@ -203,7 +203,7 @@ function FlowBuilderContent() {
               onNodesChange={onNodesChange} onEdgesChange={onEdgesChange}
               onConnect={onConnect} onInit={setReactFlowInstance}
               onDrop={onDrop} onDragOver={onDragOver}
-              onSelectionChange={onSelectionChange}
+              
               nodeTypes={customNodeTypes} fitView
               className="!bg-muted/30"
               defaultEdgeOptions={defaultEdgeOptions}
