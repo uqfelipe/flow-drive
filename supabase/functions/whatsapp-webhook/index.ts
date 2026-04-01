@@ -540,7 +540,11 @@ Deno.serve(async (req) => {
       }
 
       if (!fromMe && messageText && phone) {
-        await processIncomingMessage(phone, messageText);
+        // Fire-and-forget: don't block the webhook response
+        // This allows multiple users to be processed concurrently
+        processIncomingMessage(phone, messageText).catch(err =>
+          console.error("[AUTO-REPLY] Background error:", err)
+        );
       }
     }
 
