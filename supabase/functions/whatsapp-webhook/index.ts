@@ -373,21 +373,47 @@ async function processIncomingMessage(phone: string, text: string) {
       return;
     }
     
-    // 2. Find or create session for this phone
-    const { data: existingSessions } = await adminClient
-      .from("chat_sessions")
-      .select("*")
-      .eq("customer_id", phone)
-      .in("status", ["active", "waiting"])
-      .order("created_at", { ascending: false })
-      .limit(1);
-    
-    let session = existingSessions?.[0];
     const inst = await getWhatsAppInstance();
     if (!inst) {
       console.log("No WhatsApp instance found");
       return;
     }
+
+    // 2. Find or create customer by phone
+    let customerId: string;
+    const { data: existingCustomer } = await adminClient
+      .from("customers")
+      .select("id")
+      .eq("phone", phone)
+      .limit(1)
+      .maybeSingle();
+    
+    if (existingCustomer) {
+      customerId = existingCustomer.id;
+    } else {
+      const { data: newCustomer, error: custErr } = await adminClient
+        .from("customers")
+        .insert({ name: phone, phone, cpf: "000.000.000-00", status: "active" })
+        .select("id")
+        .single();
+      if (custErr || !newCustomer) {
+        console.error("Failed to create customer:", custErr);
+        return;
+      }
+      customerId = newCustomer.id;
+      console.log(`Created new customer: ${customerId} for phone ${phone}`);
+    }
+    
+    // 3. Find existing active/waiting session
+    const { data: existingSessions } = await adminClient
+      .from("chat_sessions")
+      .select("*")
+      .eq("customer_id", customerId)
+      .in("status", ["active", "waiting"])
+      .order("created_at", { ascending: false })
+      .limit(1);
+    
+    let session = existingSessions?.[0];
     
     if (session) {
       console.log(`Existing session: ${session.id}, node: ${session.current_node_id}, status: ${session.status}`);
@@ -404,18 +430,16 @@ async function processIncomingMessage(phone: string, text: string) {
           // Handle menu selection
           if (nt === "menu_text" || nt === "menu_buttons") {
             const { nextNodeId, selectedOption } = handleMenuSelection(currentNode, text, flowEdges);
-            
             if (nextNodeId) {
               variables["menu_selection"] = selectedOption || text;
               await processFlow(inst, phone, text, session.id, flowNodes, flowEdges, nextNodeId, variables);
             } else {
-              // Invalid option, re-send menu
               await sendWhatsAppText(inst, phone, "❌ Opção inválida. Por favor, escolha uma opção válida.");
             }
             return;
           }
           
-          // Handle capture nodes — user is responding with data
+          // Handle capture nodes
           if (nt.startsWith("capture_") || nt === "wait") {
             await processFlow(inst, phone, text, session.id, flowNodes, flowEdges, currentNodeId, variables);
             return;
@@ -423,11 +447,10 @@ async function processIncomingMessage(phone: string, text: string) {
         }
       }
       
-      // Session exists but no current node or completed — restart flow
-      console.log("Session has no current node, restarting flow");
+      console.log("Session has no actionable node, restarting flow");
     }
     
-    // 3. Create new session — find the first node (no incoming edges = start node)
+    // 4. Start new session — find start node (no incoming edges)
     const targetIds = new Set(flowEdges.map(e => e.target));
     const startNode = flowNodes.find(n => !targetIds.has(n.id));
     
@@ -438,11 +461,10 @@ async function processIncomingMessage(phone: string, text: string) {
     
     console.log(`Starting new flow session from node: ${startNode.id} (${startNode.data.nodeType})`);
     
-    // Create session
     const { data: newSession, error: sessError } = await adminClient
       .from("chat_sessions")
       .insert({
-        customer_id: phone,
+        customer_id: customerId,
         flow_id: flow.id,
         current_node_id: startNode.id,
         variables: {},
@@ -456,7 +478,6 @@ async function processIncomingMessage(phone: string, text: string) {
       return;
     }
     
-    // Process the flow starting from the first node
     await processFlow(inst, phone, text, newSession.id, flowNodes, flowEdges, startNode.id, {});
     
   } catch (err) {
