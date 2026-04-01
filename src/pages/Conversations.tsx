@@ -1166,7 +1166,7 @@ export default function Conversations() {
                     </AvatarFallback>
                   </Avatar>
                   <div>
-                    <p className="text-sm font-display font-bold">{chatName(selectedChat)}</p>
+                    <p className="text-sm font-display font-bold">{chatName(selectedChat, customerMap)}</p>
                     <p className="text-[11px] text-muted-foreground flex items-center gap-1">
                       <span className="h-1.5 w-1.5 rounded-full bg-success inline-block" />
                       {formatPhone(phoneFromChatId(selectedChat.wa_chatid))}
