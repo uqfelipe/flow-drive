@@ -1063,7 +1063,7 @@ export default function Conversations() {
                               ? "bg-primary/20 text-primary"
                               : "bg-muted text-muted-foreground"
                           )}>
-                            {getInitials(chatName(chat))}
+                            {getInitials(chatName(chat, customerMap))}
                           </AvatarFallback>
                         </Avatar>
                         <span className={cn(
