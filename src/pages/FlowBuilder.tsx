@@ -64,9 +64,16 @@ function FlowBuilderContent() {
     [setEdges]
   );
 
-  const onSelectionChange: OnSelectionChangeFunc = useCallback(({ nodes: sel }) => {
-    setSelectedNode(sel.length === 1 ? sel[0] : null);
-  }, []);
+  // Only open config panel via pencil icon (custom event), not on selection
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const nodeId = (e as CustomEvent).detail;
+      const node = nodes.find((n) => n.id === nodeId);
+      if (node) setSelectedNode(node);
+    };
+    window.addEventListener("flow-edit-node", handler);
+    return () => window.removeEventListener("flow-edit-node", handler);
+  }, [nodes]);
 
   const onDragOver = useCallback((event: React.DragEvent) => {
     event.preventDefault();
