@@ -2,7 +2,7 @@ import { memo, useCallback } from "react";
 import { Handle, Position, type NodeProps, useReactFlow } from "@xyflow/react";
 import { getNodeTypeConfig } from "./nodeTypes";
 import type { FlowNodeData } from "@/types";
-import { X, GripHorizontal } from "lucide-react";
+import { X, GripHorizontal, Pencil } from "lucide-react";
 
 function FlowNode({ data, selected, id }: NodeProps) {
   const nodeData = data as unknown as FlowNodeData;
@@ -52,8 +52,16 @@ function FlowNode({ data, selected, id }: NodeProps) {
           {config?.label || nodeData.nodeType}
         </span>
         <button
+          onClick={(e) => { e.stopPropagation(); /* selection handles config panel */ }}
+          className="p-0.5 rounded hover:bg-black/10 dark:hover:bg-white/10 transition-colors"
+          title="Editar"
+        >
+          <Pencil className="h-3.5 w-3.5 text-muted-foreground" />
+        </button>
+        <button
           onClick={handleDelete}
           className="p-0.5 rounded hover:bg-black/10 dark:hover:bg-white/10 transition-colors"
+          title="Remover"
         >
           <X className="h-3.5 w-3.5 text-muted-foreground" />
         </button>
