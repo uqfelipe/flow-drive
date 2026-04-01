@@ -1,7 +1,7 @@
 import { useCallback, useRef, useState, useEffect } from "react";
 import {
   ReactFlow, addEdge, useNodesState, useEdgesState, Controls, Background, BackgroundVariant,
-  type Connection, type Edge, type Node, type OnSelectionChangeFunc, ReactFlowProvider,
+  type Connection, type Edge, type Node, ReactFlowProvider,
   ConnectionLineType,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
@@ -64,9 +64,16 @@ function FlowBuilderContent() {
     [setEdges]
   );
 
-  const onSelectionChange: OnSelectionChangeFunc = useCallback(({ nodes: sel }) => {
-    setSelectedNode(sel.length === 1 ? sel[0] : null);
-  }, []);
+  // Only open config panel via pencil icon (custom event), not on selection
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const nodeId = (e as CustomEvent).detail;
+      const node = nodes.find((n) => n.id === nodeId);
+      if (node) setSelectedNode(node);
+    };
+    window.addEventListener("flow-edit-node", handler);
+    return () => window.removeEventListener("flow-edit-node", handler);
+  }, [nodes]);
 
   const onDragOver = useCallback((event: React.DragEvent) => {
     event.preventDefault();
@@ -196,7 +203,7 @@ function FlowBuilderContent() {
               onNodesChange={onNodesChange} onEdgesChange={onEdgesChange}
               onConnect={onConnect} onInit={setReactFlowInstance}
               onDrop={onDrop} onDragOver={onDragOver}
-              onSelectionChange={onSelectionChange}
+              
               nodeTypes={customNodeTypes} fitView
               className="!bg-muted/30"
               defaultEdgeOptions={defaultEdgeOptions}

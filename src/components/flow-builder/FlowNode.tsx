@@ -52,7 +52,10 @@ function FlowNode({ data, selected, id }: NodeProps) {
           {config?.label || nodeData.nodeType}
         </span>
         <button
-          onClick={(e) => { e.stopPropagation(); /* selection handles config panel */ }}
+          onClick={(e) => {
+            e.stopPropagation();
+            window.dispatchEvent(new CustomEvent("flow-edit-node", { detail: id }));
+          }}
           className="p-0.5 rounded hover:bg-black/10 dark:hover:bg-white/10 transition-colors"
           title="Editar"
         >
