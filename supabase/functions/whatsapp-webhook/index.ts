@@ -83,6 +83,28 @@ async function sendWhatsAppPresence(inst: Inst, phone: string, presence: string,
   await waFetch(inst, "/message/presence", { number: phone, presence, ...(delay ? { delay } : {}) });
 }
 
+// ── Name memory helpers ──────────────────────────────────────────────
+function detectNameChange(text: string): string | null {
+  const patterns = [
+    /(?:mude|troque|altere|muda|troca)\s+(?:meu\s+)?nome\s+(?:para|pra)\s+(.+)/i,
+    /(?:me\s+chame?\s+de)\s+(.+)/i,
+    /(?:pode\s+me\s+chamar\s+de)\s+(.+)/i,
+    /(?:prefiro\s+ser\s+chamad[oa]\s+de)\s+(.+)/i,
+  ];
+  for (const p of patterns) {
+    const m = text.match(p);
+    if (m) return m[1].trim();
+  }
+  return null;
+}
+
+function isValidName(text: string): boolean {
+  const trimmed = text.trim();
+  if (!trimmed || trimmed.length < 2 || trimmed.length > 50) return false;
+  if (/^\d+$/.test(trimmed)) return false;
+  return true;
+}
+
 // ── Flow engine ──────────────────────────────────────────────────────
 function replaceVariables(text: string, variables: Record<string, string>): string {
   return text.replace(/\{\{(\w+)\}\}/g, (_, key) => variables[key] || `{{${key}}}`);
