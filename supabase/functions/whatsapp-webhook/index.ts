@@ -716,16 +716,26 @@ async function processIncomingMessage(phone: string, text: string) {
     if (existingCustomer) {
       customerId = existingCustomer.id;
     } else {
+      // Use phone as unique CPF placeholder to avoid duplicate constraint
+      const placeholderCpf = phone.replace(/\D/g, "").slice(-11).padStart(11, "0").replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4");
       const { data: newCustomer, error: custErr } = await adminClient
         .from("customers")
-        .insert({ name: phone, phone, cpf: "000.000.000-00", status: "active" })
+        .insert({ name: phone, phone, cpf: placeholderCpf, status: "active" })
         .select("id")
         .single();
-      if (custErr || !newCustomer) {
-        console.error("[AUTO-REPLY] Failed to create customer:", custErr);
-        return;
+      if (custErr) {
+        // If CPF conflict, try to find existing customer by CPF
+        if (custErr.code === "23505") {
+          const { data: byCpf } = await adminClient.from("customers").select("id").eq("cpf", placeholderCpf).maybeSingle();
+          if (byCpf) { customerId = byCpf.id; }
+          else { console.error("[AUTO-REPLY] CPF conflict but no customer found:", custErr); return; }
+        } else {
+          console.error("[AUTO-REPLY] Failed to create customer:", custErr);
+          return;
+        }
+      } else {
+        customerId = newCustomer!.id;
       }
-      customerId = newCustomer.id;
     }
     
     const { data: existingSessions } = await adminClient
