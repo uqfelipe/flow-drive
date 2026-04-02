@@ -28,12 +28,12 @@ async function getInstance() {
   return data as { server_url: string; instance_token: string; instance_name: string; token: string };
 }
 
-async function apiCall(serverUrl: string, token: string, path: string, body: unknown) {
+async function apiCall(serverUrl: string, authToken: string, path: string, body: unknown) {
   const url = `${serverUrl}${path}`;
-  console.log(`[CHAT-API] ${path} url=${url} tokenPrefix=${token?.substring(0, 8)}`);
+  console.log(`[CHAT-API] ${path} url=${url} tokenPrefix=${authToken?.substring(0, 8)}`);
   const res = await fetch(url, {
     method: "POST",
-    headers: { "Content-Type": "application/json", apikey: token },
+    headers: { "Content-Type": "application/json", token: authToken },
     body: JSON.stringify(body),
   });
   if (!res.ok) {
