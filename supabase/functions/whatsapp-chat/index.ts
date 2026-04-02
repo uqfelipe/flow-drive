@@ -20,22 +20,25 @@ async function getInstance() {
   );
   const { data, error } = await supabase
     .from("whatsapp_instances")
-    .select("server_url, instance_token, instance_name")
+    .select("server_url, instance_token, instance_name, token")
     .eq("user_id", "admin")
     .limit(1)
     .single();
   if (error || !data) throw new Error("Instância WhatsApp não encontrada");
-  return data as { server_url: string; instance_token: string; instance_name: string };
+  return data as { server_url: string; instance_token: string; instance_name: string; token: string };
 }
 
-async function apiCall(serverUrl: string, token: string, path: string, body: unknown) {
-  const res = await fetch(`${serverUrl}${path}`, {
+async function apiCall(serverUrl: string, authToken: string, path: string, body: unknown) {
+  const url = `${serverUrl}${path}`;
+  console.log(`[CHAT-API] ${path} url=${url} tokenPrefix=${authToken?.substring(0, 8)}`);
+  const res = await fetch(url, {
     method: "POST",
-    headers: { "Content-Type": "application/json", token },
+    headers: { "Content-Type": "application/json", token: authToken },
     body: JSON.stringify(body),
   });
   if (!res.ok) {
     const text = await res.text();
+    console.error(`[CHAT-API] FAILED ${path} status=${res.status} body=${text}`);
     throw new Error(`API ${path} error ${res.status}: ${text}`);
   }
   return res.json();
