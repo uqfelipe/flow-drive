@@ -28,10 +28,6 @@ export function NodeConfigPanel({ node, onClose, onUpdate, onDelete }: NodeConfi
     onUpdate(node.id, { config: { ...data.config, ...patch } });
   };
 
-  // Legacy menu support (string arrays)
-  const isLegacyMenu = nt === "menu_text";
-  const legacyItems = (data.config?.options as string[]) || [];
-  const updateLegacyMenu = (items: string[]) => updateConfig({ options: items });
 
   return (
     <div className="w-80 bg-white dark:bg-card border-l border-border flex flex-col h-full animate-slide-in-right">
@@ -105,23 +101,6 @@ export function NodeConfigPanel({ node, onClose, onUpdate, onDelete }: NodeConfi
           </>
         )}
 
-        {/* ─── MENU TEXTO (legacy string array) ─── */}
-        {isLegacyMenu && (
-          <div className="space-y-1.5">
-            <Label className="text-xs font-medium text-muted-foreground">Mensagem</Label>
-            <Textarea className="text-sm min-h-[60px]" placeholder="Escolha uma opção:" value={data.config?.message || ""} onChange={(e) => updateConfig({ message: e.target.value })} />
-            <Label className="text-xs font-medium text-muted-foreground mt-2">Opções</Label>
-            <div className="space-y-1.5">
-              {legacyItems.map((item, idx) => (
-                <div key={idx} className="flex items-center gap-1.5">
-                  <Input className="h-8 text-xs flex-1" value={item} onChange={(e) => { const u = [...legacyItems]; u[idx] = e.target.value; updateLegacyMenu(u); }} />
-                  <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => updateLegacyMenu(legacyItems.filter((_, i) => i !== idx))}><X className="h-3 w-3" /></Button>
-                </div>
-              ))}
-            </div>
-            <Button variant="outline" size="sm" className="w-full h-8 text-xs mt-1" onClick={() => updateLegacyMenu([...legacyItems, `Opção ${legacyItems.length + 1}`])}><Plus className="h-3 w-3 mr-1" /> Adicionar Opção</Button>
-          </div>
-        )}
 
         {/* ─── MENU BOTÕES ─── */}
         {nt === "menu_buttons" && (
