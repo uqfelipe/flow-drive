@@ -325,7 +325,8 @@ async function processFlow(
           return { id: `btn-${i}`, text: isObj ? b.text : b, type: isObj ? (b.type || "REPLY") : "REPLY" };
         });
         try {
-          await sendWhatsAppMenu(inst, phone, "button", replaceVariables(cfg.message || "Escolha:", vars), { buttons: btnPayload }, cfg.imageButton ? { image: cfg.imageButton } : {});
+          const menuText = replaceVariables(cfg.message || "Escolha uma opção:", vars);
+          await sendWhatsAppMenu(inst, phone, "button", menuText, { buttons: btnPayload }, cfg.imageButton ? { image: cfg.imageButton } : {});
         } catch (_) {
           // Fallback to text
           const fallback = buttons.map((b: any, i: number) => `${i + 1}. ${typeof b === "object" ? b.text : b}`).join("\n");
