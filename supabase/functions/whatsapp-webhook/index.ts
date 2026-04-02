@@ -812,6 +812,8 @@ async function processIncomingMessage(phone: string, text: string) {
               await processFlow(inst, phone, text, session.id, flowNodes, flowEdges, nextNodeId, variables);
             } else {
               try { await sendWhatsAppText(inst, phone, "❌ Opção inválida. Por favor, escolha uma opção válida."); } catch (_) {}
+              await new Promise(r => setTimeout(r, 500));
+              await processFlow(inst, phone, "", session.id, flowNodes, flowEdges, currentNodeId, variables);
             }
             return;
           }
