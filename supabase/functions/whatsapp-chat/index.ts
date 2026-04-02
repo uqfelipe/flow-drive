@@ -20,12 +20,12 @@ async function getInstance() {
   );
   const { data, error } = await supabase
     .from("whatsapp_instances")
-    .select("server_url, instance_token, instance_name")
+    .select("server_url, instance_token, instance_name, token")
     .eq("user_id", "admin")
     .limit(1)
     .single();
   if (error || !data) throw new Error("Instância WhatsApp não encontrada");
-  return data as { server_url: string; instance_token: string; instance_name: string };
+  return data as { server_url: string; instance_token: string; instance_name: string; token: string };
 }
 
 async function apiCall(serverUrl: string, token: string, path: string, body: unknown) {
