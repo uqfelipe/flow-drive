@@ -839,8 +839,7 @@ async function processIncomingMessage(phone: string, text: string) {
           variables["name"] = nome;
           delete variables["__awaiting_name"];
           await adminClient.from("customers").update({ name: nome, updated_at: new Date().toISOString() }).eq("id", customerId);
-          try { await sendWhatsAppText(inst, phone, `Perfeito, ${nome} — em que posso ajudar?`); } catch (_) {}
-          // Now start the actual flow
+          // Now start the actual flow (the welcome node will greet by name)
           const targetIds2 = new Set(flowEdges.map(e => e.target));
           const startNode2 = flowNodes.find(n => !targetIds2.has(n.id));
           if (startNode2) {
