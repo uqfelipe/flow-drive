@@ -1,47 +1,53 @@
 
 
 ## Problema
-Ao reconectar o WhatsApp, a API dispara uma enxurrada de mensagens pendentes (históricas + grupos). Cada mensagem faz uma query separada ao banco para buscar o fluxo ativo. Isso sobrecarrega o banco, causando timeouts (Error 522), e o código interpreta o erro como "No active flow found."
 
-Nos logs: dezenas de "No active flow found" por segundo, incluindo mensagens de grupos (`120363...`, `205497...`) e mensagens próprias da API (`18002428478`).
+O `send_link` está tentando `/send/buttons` e `/send/cta-url` — ambos retornam **405 Method Not Allowed**. Esses endpoints não existem na API uazapi. O endpoint correto é `/send/menu` com `type: "button"`.
 
 ## Solução
 
-### 1. Filtrar mensagens de grupo e status no webhook
-Antes de processar, ignorar:
-- Mensagens de grupos (`@g.us` no chatId, ou IDs com mais de 15 dígitos)
-- Mensagens sem texto
-- Mensagens próprias (`fromMe`)
+Alterar o handler do nó `send_link` em `supabase/functions/whatsapp-webhook/index.ts` para usar o formato correto da API:
 
-### 2. Cachear o fluxo ativo em memória
-Em vez de cada mensagem fazer uma query ao banco, buscar o fluxo **uma vez** e reutilizar durante a vida da instância da Edge Function (~30s).
-
-```text
-let cachedFlow = null;
-let cacheTime = 0;
-const CACHE_TTL = 30000; // 30s
-
-async function getActiveFlow() {
-  if (cachedFlow && Date.now() - cacheTime < CACHE_TTL) return cachedFlow;
-  const { data, error } = await query...
-  if (error) { console.error(...); return null; }
-  cachedFlow = data?.[0] ?? null;
-  cacheTime = Date.now();
-  return cachedFlow;
+```json
+{
+  "number": "5511999999999",
+  "type": "button",
+  "text": "Mensagem opcional",
+  "choices": ["Texto do botão|url:https://exemplo.com"]
 }
 ```
 
-### 3. Processar mensagens em série com limite
-Em vez de disparar todas em paralelo (e sobrecarregar o banco), processar no máximo 5 mensagens por invocação do webhook, ignorando o resto.
+### Mudança no código (linhas 177-206)
 
-### 4. Logar erros do banco corretamente
-Capturar `error` da query e logar em vez de silenciar.
+Substituir as 3 tentativas (buttons → cta-url → text) por uma única chamada a `/send/menu`:
 
-## Arquivos alterados
-- `supabase/functions/whatsapp-webhook/index.ts` — Cache de fluxo, filtro de grupos, limite de processamento, log de erros
+```typescript
+if (nt === "send_link") {
+  const url = cfg.url || "";
+  const label = cfg.label || cfg.buttonText || "Acessar link";
+  const msg = cfg.message || "";
+  if (url) {
+    try {
+      await waFetch(inst, "/send/menu", {
+        number: phone,
+        type: "button",
+        text: replaceVariables(msg || "Acesse o link abaixo:", vars),
+        choices: [`${replaceVariables(label, vars)}|url:${replaceVariables(url, vars)}`],
+      });
+    } catch (_) {
+      // Fallback: plain text with URL
+      const fallbackMsg = msg ? `${msg}\n\n🔗 ${url}` : url;
+      try { await sendWhatsAppText(inst, phone, replaceVariables(fallbackMsg, vars)); } catch (_2) {}
+    }
+  }
+  nodeId = findNextNodeId(flowEdges, nodeId);
+  continue;
+}
+```
 
-## Resultado
-- Bot responde múltiplos usuários sem sobrecarregar o banco
-- Mensagens de grupo são ignoradas
-- Reconexão não causa flood de queries
-- Erros do banco ficam visíveis nos logs
+### Arquivo alterado
+- `supabase/functions/whatsapp-webhook/index.ts` — Trocar `/send/buttons` + `/send/cta-url` por `/send/menu` com `type: "button"` e `choices` no formato `"label|url:https://..."`.
+
+### Resultado
+O link será enviado como **botão clicável** no WhatsApp, usando o endpoint correto da API uazapi.
+
