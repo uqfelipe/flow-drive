@@ -899,18 +899,28 @@ async function processIncomingMessage(phone: string, text: string) {
     
     console.log(`[AUTO-REPLY] Starting new session from node: ${startNode.id} (${startNode.data.nodeType})`);
     
-    const { data: newSession, error: sessError } = await adminClient
-      .from("chat_sessions")
-      .insert({ customer_id: customerId, flow_id: flow.id, current_node_id: startNode.id, variables: {}, status: "active" })
-      .select()
-      .single();
+    // Check if customer already has a real name
+    const { data: customerData } = await adminClient.from("customers").select("name").eq("id", customerId).single();
+    const hasRealName = customerData?.name && customerData.name !== phone && !/^\d+$/.test(customerData.name);
     
-    if (sessError || !newSession) {
-      console.error("[AUTO-REPLY] Failed to create session:", sessError);
-      return;
+    if (hasRealName) {
+      const vars: Record<string, string> = { nome: customerData.name, name: customerData.name };
+      const { data: newSession, error: sessError } = await adminClient
+        .from("chat_sessions")
+        .insert({ customer_id: customerId, flow_id: flow.id, current_node_id: startNode.id, variables: vars, status: "active" })
+        .select().single();
+      if (sessError || !newSession) { console.error("[AUTO-REPLY] Failed to create session:", sessError); return; }
+      try { await sendWhatsAppText(inst, phone, `Olá, ${customerData.name}! Como posso ajudar?`); } catch (_) {}
+      await new Promise(r => setTimeout(r, 500));
+      await processFlow(inst, phone, text, newSession.id, flowNodes, flowEdges, startNode.id, vars);
+    } else {
+      const { data: newSession, error: sessError } = await adminClient
+        .from("chat_sessions")
+        .insert({ customer_id: customerId, flow_id: flow.id, current_node_id: null, variables: { __awaiting_name: "true" }, status: "active" })
+        .select().single();
+      if (sessError || !newSession) { console.error("[AUTO-REPLY] Failed to create session:", sessError); return; }
+      try { await sendWhatsAppText(inst, phone, "Olá! Como você gostaria de ser chamado(a)?"); } catch (_) {}
     }
-    
-    await processFlow(inst, phone, text, newSession.id, flowNodes, flowEdges, startNode.id, {});
     
   } catch (err) {
     console.error("[AUTO-REPLY] Error:", err);
