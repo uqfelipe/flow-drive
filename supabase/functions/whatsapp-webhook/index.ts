@@ -529,6 +529,42 @@ function extractIncomingMessages(body: any): IncomingWebhookMessage[] {
   return Array.from(uniqueMessages.values());
 }
 
+// ── Flow cache ───────────────────────────────────────────────────────
+let cachedFlow: any = null;
+let lastCacheTime = 0;
+const FLOW_CACHE_TTL = 30_000; // 30s
+
+async function getActiveFlowCached() {
+  if (cachedFlow && Date.now() - lastCacheTime < FLOW_CACHE_TTL) return cachedFlow;
+  const { data, error } = await adminClient
+    .from("chatbot_flows")
+    .select("id, name, nodes, edges")
+    .eq("status", "active")
+    .order("updated_at", { ascending: false })
+    .limit(1);
+  if (error) {
+    console.error("[FLOW-CACHE] DB error fetching flow:", error.message);
+    return null;
+  }
+  cachedFlow = data?.[0] ?? null;
+  lastCacheTime = Date.now();
+  return cachedFlow;
+}
+
+// ── Group / noise filter ─────────────────────────────────────────────
+function isGroupOrNoise(chatId: string): boolean {
+  if (chatId.includes("@g.us")) return true;
+  if (chatId.includes("@broadcast")) return true;
+  // Group LIDs or status updates
+  const digits = chatId.replace(/@.*$/, "");
+  if (digits.length > 15) return true;
+  // WhatsApp service numbers
+  if (digits === "0" || digits === "status") return true;
+  return false;
+}
+
+const MAX_MESSAGES_PER_INVOCATION = 5;
+
 // ── Main webhook handler ─────────────────────────────────────────────
 Deno.serve(async (req) => {
   if (req.method !== "POST") {
@@ -571,28 +607,47 @@ Deno.serve(async (req) => {
     
     if (isMessageEvent || hasMessage) {
       const incomingMessages = extractIncomingMessages(body);
-      console.log(`[WEBHOOK] extracted_messages=${incomingMessages.length}`);
+      
+      // Filter out groups, noise, fromMe, empty text
+      const validMessages = incomingMessages.filter(({ chatId, phone, text, fromMe }) => {
+        if (isGroupOrNoise(chatId)) {
+          console.log(`[WEBHOOK] SKIP group/noise: ${chatId}`);
+          return false;
+        }
+        if (fromMe || !text || !phone) return false;
+        return true;
+      });
 
-      const backgroundTasks = incomingMessages.map(async ({ chatId, phone, text, fromMe }) => {
-        console.log(`[WEBHOOK] Message: phone=${phone}, fromMe=${fromMe}, text="${text}"`);
+      console.log(`[WEBHOOK] extracted=${incomingMessages.length} valid=${validMessages.length}`);
 
+      // Signal updates for ALL non-group messages (even fromMe) for UI refresh
+      for (const { chatId } of incomingMessages.filter(m => !isGroupOrNoise(m.chatId))) {
         await adminClient.from("message_signals").upsert(
           { chat_id: chatId, updated_at: new Date().toISOString() },
           { onConflict: "chat_id" }
-        );
+        ).then(({ error }) => { if (error) console.error("[WEBHOOK] signal upsert error:", error.message); });
+      }
 
-        if (!fromMe && text && phone) {
-          await processIncomingMessage(phone, text);
+      // Process at most MAX_MESSAGES_PER_INVOCATION in series
+      const toProcess = validMessages.slice(0, MAX_MESSAGES_PER_INVOCATION);
+      if (toProcess.length < validMessages.length) {
+        console.log(`[WEBHOOK] Throttled: processing ${toProcess.length} of ${validMessages.length}`);
+      }
+
+      const backgroundTask = (async () => {
+        for (const { phone, text } of toProcess) {
+          try {
+            await processIncomingMessage(phone, text);
+          } catch (err) {
+            console.error(`[AUTO-REPLY] Error for ${phone}:`, err);
+          }
         }
-      });
+      })();
 
       const edgeRuntime = (globalThis as typeof globalThis & {
         EdgeRuntime?: { waitUntil?: (promise: Promise<unknown>) => void };
       }).EdgeRuntime;
-
-      if (backgroundTasks.length > 0) {
-        edgeRuntime?.waitUntil?.(Promise.allSettled(backgroundTasks));
-      }
+      edgeRuntime?.waitUntil?.(backgroundTask);
     }
 
     // Handle connection/disconnection events
@@ -622,19 +677,12 @@ async function processIncomingMessage(phone: string, text: string) {
   try {
     console.log(`[AUTO-REPLY] Processing message from ${phone}: "${text}"`);
 
-    const { data: flows } = await adminClient
-      .from("chatbot_flows")
-      .select("id, name, nodes, edges")
-      .eq("status", "active")
-      .order("updated_at", { ascending: false })
-      .limit(1);
+    const flow = await getActiveFlowCached();
     
-    if (!flows || flows.length === 0) {
+    if (!flow) {
       console.log("[AUTO-REPLY] No active flow found");
       return;
     }
-    
-    const flow = flows[0];
     const flowNodes = flow.nodes as FlowNode[];
     const flowEdges = flow.edges as FlowEdge[];
     
