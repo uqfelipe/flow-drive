@@ -82,36 +82,6 @@ export function NodeConfigPanel({ node, onClose, onUpdate, onDelete }: NodeConfi
           </>
         )}
 
-        {/* ─── PIX ─── */}
-        {nt === "pix" && (
-          <>
-            <div className="space-y-1.5">
-              <Label className="text-xs font-medium text-muted-foreground">Chave Pix</Label>
-              <Input className="h-9 text-sm" placeholder="chave@pix.com" value={data.config?.pixKey || ""} onChange={(e) => updateConfig({ pixKey: e.target.value })} />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs font-medium text-muted-foreground">Tipo da chave</Label>
-              <Select value={data.config?.pixType || "cpf"} onValueChange={(v) => updateConfig({ pixType: v })}>
-                <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="cpf">CPF</SelectItem>
-                  <SelectItem value="cnpj">CNPJ</SelectItem>
-                  <SelectItem value="email">Email</SelectItem>
-                  <SelectItem value="phone">Telefone</SelectItem>
-                  <SelectItem value="random">Aleatória</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs font-medium text-muted-foreground">Valor (R$)</Label>
-              <Input className="h-9 text-sm" type="number" placeholder="0.00" value={data.config?.amount || ""} onChange={(e) => updateConfig({ amount: e.target.value })} />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs font-medium text-muted-foreground">Mensagem</Label>
-              <Textarea className="text-sm min-h-[60px]" placeholder="Texto acompanhando o Pix..." value={data.config?.message || ""} onChange={(e) => updateConfig({ message: e.target.value })} />
-            </div>
-          </>
-        )}
 
         {/* ─── COPY PASTE ─── */}
         {nt === "copy_paste" && (

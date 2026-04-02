@@ -1,6 +1,6 @@
 import type { LucideIcon } from "lucide-react";
 import {
-  MessageSquare, Link, QrCode, Copy, ListOrdered, SquareMousePointer, GalleryHorizontalEnd, BarChart3,
+  MessageSquare, Link, Copy, ListOrdered, SquareMousePointer, GalleryHorizontalEnd, BarChart3,
   Image, Mic, Video, File, Sticker, MapPin, Contact,
   Type, Hash, Mail, Calendar, Phone, User, CreditCard,
   GitBranch, Clock, Timer, Variable,
@@ -37,7 +37,7 @@ export const nodeTypes: NodeTypeConfig[] = [
   // Mensagens
   { type: "message", label: "Mensagem", category: "mensagem", icon: MessageSquare, description: "Enviar mensagem de texto", color: "#8B5CF6", defaultConfig: { message: "" } },
   { type: "send_link", label: "Enviar Link", category: "mensagem", icon: Link, description: "Enviar link com preview", color: "#6366F1", defaultConfig: { url: "", linkPreviewTitle: "", linkPreviewDescription: "", linkPreviewImage: "" } },
-  { type: "pix", label: "Pix (Copia e Cola)", category: "mensagem", icon: QrCode, description: "Enviar chave Pix", color: "#06B6D4", defaultConfig: { pixKey: "", pixType: "cpf", amount: "" } },
+  
   { type: "copy_paste", label: "Copia e Cola", category: "mensagem", icon: Copy, description: "Texto para copiar", color: "#0EA5E9", defaultConfig: { text: "", message: "", label: "Copiar" } },
 
   // Menus
