@@ -29,13 +29,16 @@ async function getInstance() {
 }
 
 async function apiCall(serverUrl: string, token: string, path: string, body: unknown) {
-  const res = await fetch(`${serverUrl}${path}`, {
+  const url = `${serverUrl}${path}`;
+  console.log(`[CHAT-API] ${path} url=${url} tokenPrefix=${token?.substring(0, 8)}`);
+  const res = await fetch(url, {
     method: "POST",
-    headers: { "Content-Type": "application/json", token },
+    headers: { "Content-Type": "application/json", apikey: token },
     body: JSON.stringify(body),
   });
   if (!res.ok) {
     const text = await res.text();
+    console.error(`[CHAT-API] FAILED ${path} status=${res.status} body=${text}`);
     throw new Error(`API ${path} error ${res.status}: ${text}`);
   }
   return res.json();
