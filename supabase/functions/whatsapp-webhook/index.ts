@@ -220,8 +220,21 @@ async function processFlow(
     }
 
     if (nt === "copy_paste") {
-      const msg = cfg.text || "";
-      if (msg) { try { await sendWhatsAppText(inst, phone, replaceVariables(msg, vars)); } catch (_) {} }
+      const textToCopy = cfg.text || cfg.content || "";
+      const label = cfg.label || cfg.buttonText || "Copiar";
+      const msg = cfg.message || "";
+      if (textToCopy) {
+        try {
+          await waFetch(inst, "/send/menu", {
+            number: phone,
+            type: "button",
+            text: replaceVariables(msg || textToCopy, vars),
+            choices: [`${replaceVariables(label, vars)}|copy:${replaceVariables(textToCopy, vars)}`],
+          });
+        } catch (_) {
+          try { await sendWhatsAppText(inst, phone, replaceVariables(textToCopy, vars)); } catch (_2) {}
+        }
+      }
       nodeId = findNextNodeId(flowEdges, nodeId);
       continue;
     }
