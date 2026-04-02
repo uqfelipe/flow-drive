@@ -175,8 +175,33 @@ async function processFlow(
     }
 
     if (nt === "send_link") {
-      const msg = cfg.message || cfg.url || "";
-      if (msg) { try { await sendWhatsAppText(inst, phone, replaceVariables(msg, vars)); } catch (e) { console.error(`[FLOW]`, e.message); } }
+      const url = cfg.url || "";
+      const label = cfg.label || cfg.buttonText || "Acessar link";
+      const msg = cfg.message || "";
+      if (url) {
+        try {
+          // Send as interactive button with URL
+          await waFetch(inst, "/send/buttons", {
+            number: phone,
+            text: replaceVariables(msg || url, vars),
+            buttons: [{ type: "url", text: replaceVariables(label, vars), url: replaceVariables(url, vars) }],
+          });
+        } catch (_) {
+          // Fallback: try CTA URL format
+          try {
+            await waFetch(inst, "/send/cta-url", {
+              number: phone,
+              text: replaceVariables(msg || "Acesse o link abaixo:", vars),
+              url: replaceVariables(url, vars),
+              buttonText: replaceVariables(label, vars),
+            });
+          } catch (_2) {
+            // Final fallback: plain text
+            const fallbackMsg = msg ? `${msg}\n\n🔗 ${url}` : url;
+            try { await sendWhatsAppText(inst, phone, replaceVariables(fallbackMsg, vars)); } catch (_3) {}
+          }
+        }
+      }
       nodeId = findNextNodeId(flowEdges, nodeId);
       continue;
     }
