@@ -36,7 +36,7 @@ export const nodeCategories: NodeCategoryConfig[] = [
 export const nodeTypes: NodeTypeConfig[] = [
   // Mensagens
   { type: "message", label: "Mensagem", category: "mensagem", icon: MessageSquare, description: "Enviar mensagem de texto", color: "#8B5CF6", defaultConfig: { message: "" } },
-  { type: "send_link", label: "Enviar Link", category: "mensagem", icon: Link, description: "Enviar link com preview", color: "#6366F1", defaultConfig: { url: "", linkPreviewTitle: "", linkPreviewDescription: "", linkPreviewImage: "" } },
+  { type: "send_link", label: "Enviar Link", category: "mensagem", icon: Link, description: "Enviar link com preview", color: "#6366F1", defaultConfig: { url: "", message: "", label: "Acessar" } },
   
   { type: "copy_paste", label: "Copia e Cola", category: "mensagem", icon: Copy, description: "Texto para copiar", color: "#0EA5E9", defaultConfig: { text: "", message: "", label: "Copiar" } },
 
