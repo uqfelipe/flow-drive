@@ -1,48 +1,57 @@
 
 
-## Completar configuração do nó "Enviar Link"
+## Problema
 
-Atualmente o `send_link` só tem 2 campos (URL e Mensagem). Vamos adicionar o campo **Label do botão** — o texto exibido no botão que o usuário clica para abrir o link. O webhook já usa `cfg.label || cfg.buttonText || "Acessar"`.
+Quando a sessão está em `waiting` no nó `menu_list` (node 119), e o usuário envia texto que não corresponde a nenhum item do menu (ex: "Oi"), o webhook retorna "❌ Opção inválida" sem reenviar o menu. O usuário fica preso sem saber quais opções escolher.
 
-### Mudanças
+Além disso, o nó de mensagem (118) tem `message: ""` — não envia nada. Então o fluxo começa "mudo" e depois fica esperando seleção de menu.
 
-**1. `src/components/flow-builder/NodeConfigPanel.tsx` (linhas 72-83)**
+## Solução
 
-Substituir o bloco `send_link` por:
+Quando `handleMenuSelection` retorna `null` (opção inválida), em vez de apenas enviar a mensagem de erro, **reenviar o menu** junto com a mensagem de erro. Assim o usuário vê as opções novamente.
 
-```tsx
-{nt === "send_link" && (
-  <>
-    <div className="space-y-1.5">
-      <Label className="text-xs font-medium text-muted-foreground">Mensagem</Label>
-      <Textarea className="text-sm min-h-[60px]" placeholder="Texto exibido acima do botão..." value={data.config?.message || ""} onChange={(e) => updateConfig({ message: e.target.value })} />
-    </div>
-    <div className="space-y-1.5">
-      <Label className="text-xs font-medium text-muted-foreground">URL do Link</Label>
-      <Input className="h-9 text-sm" placeholder="https://..." value={data.config?.url || ""} onChange={(e) => updateConfig({ url: e.target.value })} />
-    </div>
-    <div className="space-y-1.5">
-      <Label className="text-xs font-medium text-muted-foreground">Label do botão</Label>
-      <Input className="h-8 text-sm" placeholder="Acessar" value={data.config?.label || ""} onChange={(e) => updateConfig({ label: e.target.value })} />
-    </div>
-  </>
-)}
-```
+### Mudança no código
 
-**2. `src/components/flow-builder/nodeTypes.ts`**
+**Arquivo:** `supabase/functions/whatsapp-webhook/index.ts` (linhas 808-816)
 
-Atualizar `defaultConfig` do `send_link` para incluir `label`:
-
+De:
 ```typescript
-defaultConfig: { url: "", message: "", label: "Acessar" }
+if (nt === "menu_text" || nt === "menu_buttons" || nt === "menu_list" || nt === "menu_carousel" || nt === "request_location") {
+  const { nextNodeId, selectedOption } = handleMenuSelection(currentNode, text, flowEdges);
+  if (nextNodeId) {
+    variables["menu_selection"] = selectedOption || text;
+    await processFlow(inst, phone, text, session.id, flowNodes, flowEdges, nextNodeId, variables);
+  } else {
+    try { await sendWhatsAppText(inst, phone, "❌ Opção inválida. Por favor, escolha uma opção válida."); } catch (_) {}
+  }
+  return;
+}
 ```
 
-(remover os campos `linkPreviewTitle`, `linkPreviewDescription`, `linkPreviewImage` que não são usados)
+Para:
+```typescript
+if (nt === "menu_text" || nt === "menu_buttons" || nt === "menu_list" || nt === "menu_carousel" || nt === "request_location") {
+  const { nextNodeId, selectedOption } = handleMenuSelection(currentNode, text, flowEdges);
+  if (nextNodeId) {
+    variables["menu_selection"] = selectedOption || text;
+    await processFlow(inst, phone, text, session.id, flowNodes, flowEdges, nextNodeId, variables);
+  } else {
+    // Send error + re-send the menu so user can choose again
+    try { await sendWhatsAppText(inst, phone, "❌ Opção inválida. Por favor, escolha uma opção válida."); } catch (_) {}
+    await new Promise(r => setTimeout(r, 500));
+    // Re-process the current node to resend the menu
+    await processFlow(inst, phone, "", session.id, flowNodes, flowEdges, currentNodeId, variables);
+  }
+  return;
+}
+```
+
+Porém isso faria o `processFlow` reenviar o menu e entrar em `waiting` novamente — que é exatamente o comportamento desejado. O usuário vê o erro + o menu novamente.
 
 ### Resultado
-- **Mensagem**: texto exibido acima do botão
-- **URL do Link**: endereço que abre ao clicar
-- **Label do botão**: texto do botão, default "Acessar"
+- Quando o usuário digita algo que não é uma opção válida do menu, ele recebe a mensagem de erro **seguida pelo menu reenviado**
+- A sessão continua em `waiting` no mesmo nó, permitindo nova tentativa
 
-Mesma estrutura do Copia e Cola, consistente e completo.
+### Arquivo alterado
+- `supabase/functions/whatsapp-webhook/index.ts` — Reenviar menu após opção inválida
 
