@@ -10,7 +10,7 @@ function FlowNode({ data, selected, id }: NodeProps) {
   const Icon = config?.icon;
   const color = config?.color || "#8B5CF6";
   const menuOptions = nodeData.config?.options as string[] | undefined;
-  const menuButtons = nodeData.config?.buttons as string[] | undefined;
+  const menuButtons = nodeData.config?.buttons as Array<string | { text: string; type: string }> | undefined;
   const messageText = nodeData.config?.message as string | undefined;
   const { deleteElements } = useReactFlow();
 
@@ -96,7 +96,7 @@ function FlowNode({ data, selected, id }: NodeProps) {
                 className="flex items-center gap-2 px-2 py-1.5 rounded-lg text-[11px] font-medium relative"
                 style={{ backgroundColor: `${color}10`, color }}
               >
-                <span className="flex-1 truncate">{opt}</span>
+                <span className="flex-1 truncate">{typeof opt === "object" ? opt.text : opt}</span>
                 <Handle
                   type="source"
                   position={Position.Right}
