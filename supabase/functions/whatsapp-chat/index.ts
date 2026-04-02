@@ -52,7 +52,7 @@ Deno.serve(async (req) => {
     const inst = await getInstance();
 
     if (action === "list-chats") {
-      const data = await apiCall(inst.server_url, inst.token, "/chat/find", {
+      const data = await apiCall(inst.server_url, inst.instance_token, "/chat/find", {
         sort: "-wa_lastMsgTimestamp",
         limit: 50,
         offset: 0,
@@ -64,7 +64,7 @@ Deno.serve(async (req) => {
     if (action === "fetch-messages") {
       if (!phone) return json({ error: "phone required" }, 400);
       const chatid = phone.includes("@") ? phone : `${phone}@s.whatsapp.net`;
-      const data = await apiCall(inst.server_url, inst.token, "/message/find", {
+      const data = await apiCall(inst.server_url, inst.instance_token, "/message/find", {
         chatid,
         limit: 50,
         offset: 0,
@@ -74,7 +74,7 @@ Deno.serve(async (req) => {
 
     if (action === "get-profile-pic") {
       if (!phone) return json({ error: "phone required" }, 400);
-      const data = await apiCall(inst.server_url, inst.token, "/chat/details", {
+      const data = await apiCall(inst.server_url, inst.instance_token, "/chat/details", {
         number: phone,
         preview: false,
       });
@@ -83,7 +83,7 @@ Deno.serve(async (req) => {
 
     if (action === "send-image") {
       if (!phone || !imageUrl) return json({ error: "phone and imageUrl required" }, 400);
-      const data = await apiCall(inst.server_url, inst.token, "/send/image", {
+      const data = await apiCall(inst.server_url, inst.instance_token, "/send/image", {
         number: phone,
         file: imageUrl,
         text: text || "",
@@ -100,7 +100,7 @@ Deno.serve(async (req) => {
       };
       if (text) body.text = text;
       if (docName) body.docName = docName;
-      const data = await apiCall(inst.server_url, inst.token, "/send/media", body);
+      const data = await apiCall(inst.server_url, inst.instance_token, "/send/media", body);
       return json(data);
     }
 
@@ -111,13 +111,13 @@ Deno.serve(async (req) => {
         return_link: true,
         generate_mp3: true,
       };
-      const data = await apiCall(inst.server_url, inst.token, "/message/download", body);
+      const data = await apiCall(inst.server_url, inst.instance_token, "/message/download", body);
       return json(data);
     }
 
     if (action === "send-text") {
       if (!phone || !text) return json({ error: "phone and text required" }, 400);
-      const data = await apiCall(inst.server_url, inst.token, "/send/text", {
+      const data = await apiCall(inst.server_url, inst.instance_token, "/send/text", {
         number: phone,
         text,
       });
@@ -168,7 +168,7 @@ Deno.serve(async (req) => {
         );
 
       try {
-        await apiCall(inst.server_url, inst.token, "/chat/read", { number: phone });
+        await apiCall(inst.server_url, inst.instance_token, "/chat/read", { number: phone });
       } catch (_e) {
         // Ignorar — persistência local já garantida
       }
@@ -178,7 +178,7 @@ Deno.serve(async (req) => {
 
     if (action === "delete-message") {
       if (!msgId) return json({ error: "messageId required" }, 400);
-      const data = await apiCall(inst.server_url, inst.token, "/message/delete", {
+      const data = await apiCall(inst.server_url, inst.instance_token, "/message/delete", {
         id: msgId,
       });
       return json(data);
