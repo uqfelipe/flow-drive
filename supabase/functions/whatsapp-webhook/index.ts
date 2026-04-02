@@ -607,28 +607,47 @@ Deno.serve(async (req) => {
     
     if (isMessageEvent || hasMessage) {
       const incomingMessages = extractIncomingMessages(body);
-      console.log(`[WEBHOOK] extracted_messages=${incomingMessages.length}`);
+      
+      // Filter out groups, noise, fromMe, empty text
+      const validMessages = incomingMessages.filter(({ chatId, phone, text, fromMe }) => {
+        if (isGroupOrNoise(chatId)) {
+          console.log(`[WEBHOOK] SKIP group/noise: ${chatId}`);
+          return false;
+        }
+        if (fromMe || !text || !phone) return false;
+        return true;
+      });
 
-      const backgroundTasks = incomingMessages.map(async ({ chatId, phone, text, fromMe }) => {
-        console.log(`[WEBHOOK] Message: phone=${phone}, fromMe=${fromMe}, text="${text}"`);
+      console.log(`[WEBHOOK] extracted=${incomingMessages.length} valid=${validMessages.length}`);
 
+      // Signal updates for ALL non-group messages (even fromMe) for UI refresh
+      for (const { chatId } of incomingMessages.filter(m => !isGroupOrNoise(m.chatId))) {
         await adminClient.from("message_signals").upsert(
           { chat_id: chatId, updated_at: new Date().toISOString() },
           { onConflict: "chat_id" }
-        );
+        ).then(({ error }) => { if (error) console.error("[WEBHOOK] signal upsert error:", error.message); });
+      }
 
-        if (!fromMe && text && phone) {
-          await processIncomingMessage(phone, text);
+      // Process at most MAX_MESSAGES_PER_INVOCATION in series
+      const toProcess = validMessages.slice(0, MAX_MESSAGES_PER_INVOCATION);
+      if (toProcess.length < validMessages.length) {
+        console.log(`[WEBHOOK] Throttled: processing ${toProcess.length} of ${validMessages.length}`);
+      }
+
+      const backgroundTask = (async () => {
+        for (const { phone, text } of toProcess) {
+          try {
+            await processIncomingMessage(phone, text);
+          } catch (err) {
+            console.error(`[AUTO-REPLY] Error for ${phone}:`, err);
+          }
         }
-      });
+      })();
 
       const edgeRuntime = (globalThis as typeof globalThis & {
         EdgeRuntime?: { waitUntil?: (promise: Promise<unknown>) => void };
       }).EdgeRuntime;
-
-      if (backgroundTasks.length > 0) {
-        edgeRuntime?.waitUntil?.(Promise.allSettled(backgroundTasks));
-      }
+      edgeRuntime?.waitUntil?.(backgroundTask);
     }
 
     // Handle connection/disconnection events
