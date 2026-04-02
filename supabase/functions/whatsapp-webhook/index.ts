@@ -820,6 +820,43 @@ async function processIncomingMessage(phone: string, text: string) {
       const currentNodeId = session.current_node_id;
       const variables = (session.variables || {}) as Record<string, string>;
       
+      // ── Detect name change request at any point ──
+      const newName = detectNameChange(text);
+      if (newName && isValidName(newName)) {
+        variables["nome"] = newName;
+        variables["name"] = newName;
+        await adminClient.from("chat_sessions").update({ variables, updated_at: new Date().toISOString() }).eq("id", session.id);
+        await adminClient.from("customers").update({ name: newName, updated_at: new Date().toISOString() }).eq("id", customerId);
+        try { await sendWhatsAppText(inst, phone, `Nome atualizado para ${newName}. Como posso ajudar, ${newName}?`); } catch (_) {}
+        return;
+      }
+      
+      // ── Awaiting name capture ──
+      if (variables["__awaiting_name"] === "true") {
+        if (isValidName(text)) {
+          const nome = text.trim();
+          variables["nome"] = nome;
+          variables["name"] = nome;
+          delete variables["__awaiting_name"];
+          await adminClient.from("customers").update({ name: nome, updated_at: new Date().toISOString() }).eq("id", customerId);
+          try { await sendWhatsAppText(inst, phone, `Perfeito, ${nome} — em que posso ajudar?`); } catch (_) {}
+          // Now start the actual flow
+          const targetIds2 = new Set(flowEdges.map(e => e.target));
+          const startNode2 = flowNodes.find(n => !targetIds2.has(n.id));
+          if (startNode2) {
+            await adminClient.from("chat_sessions").update({ variables, current_node_id: startNode2.id, updated_at: new Date().toISOString() }).eq("id", session.id);
+            await new Promise(r => setTimeout(r, 500));
+            await processFlow(inst, phone, "", session.id, flowNodes, flowEdges, startNode2.id, variables);
+          } else {
+            await adminClient.from("chat_sessions").update({ variables, status: "completed", updated_at: new Date().toISOString() }).eq("id", session.id);
+          }
+          return;
+        } else {
+          try { await sendWhatsAppText(inst, phone, "Desculpe, não entendi o nome — como você prefere ser chamado(a)?"); } catch (_) {}
+          return;
+        }
+      }
+      
       if (currentNodeId) {
         const currentNode = flowNodes.find(n => n.id === currentNodeId);
         
