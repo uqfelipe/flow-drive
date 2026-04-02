@@ -38,7 +38,7 @@ export const nodeTypes: NodeTypeConfig[] = [
   { type: "message", label: "Mensagem", category: "mensagem", icon: MessageSquare, description: "Enviar mensagem de texto", color: "#8B5CF6", defaultConfig: { message: "" } },
   { type: "send_link", label: "Enviar Link", category: "mensagem", icon: Link, description: "Enviar link com preview", color: "#6366F1", defaultConfig: { url: "", linkPreviewTitle: "", linkPreviewDescription: "", linkPreviewImage: "" } },
   { type: "pix", label: "Pix (Copia e Cola)", category: "mensagem", icon: QrCode, description: "Enviar chave Pix", color: "#06B6D4", defaultConfig: { pixKey: "", pixType: "cpf", amount: "" } },
-  { type: "copy_paste", label: "Copia e Cola", category: "mensagem", icon: Copy, description: "Texto para copiar", color: "#0EA5E9", defaultConfig: { text: "" } },
+  { type: "copy_paste", label: "Copia e Cola", category: "mensagem", icon: Copy, description: "Texto para copiar", color: "#0EA5E9", defaultConfig: { text: "", message: "", label: "Copiar" } },
 
   // Menus
   { type: "menu_text", label: "Menu Texto", category: "menu", icon: ListOrdered, description: "Menu com opções numeradas", color: "#F97316", defaultConfig: { options: ["Opção 1", "Opção 2", "Opção 3"] } },
