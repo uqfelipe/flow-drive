@@ -197,8 +197,27 @@ async function processFlow(
     }
 
     if (nt === "pix") {
-      const msg = cfg.message || `Chave Pix: ${cfg.pixKey || ""}${cfg.amount ? `\nValor: R$ ${cfg.amount}` : ""}`;
-      if (msg) { try { await sendWhatsAppText(inst, phone, replaceVariables(msg, vars)); } catch (_) {} }
+      const pixKey = cfg.pixKey || "";
+      const amount = cfg.amount ? `\nValor: R$ ${cfg.amount}` : "";
+      const pixMsg = cfg.message || `Chave Pix: ${pixKey}${amount}`;
+      if (pixMsg) {
+        try { await sendWhatsAppText(inst, phone, replaceVariables(pixMsg, vars)); } catch (_) {}
+        await new Promise(r => setTimeout(r, 500));
+      }
+      // Send copy button with the pix key
+      if (pixKey) {
+        try {
+          await waFetch(inst, "/send/menu", {
+            number: phone,
+            type: "button",
+            text: "📋 Copie a chave Pix abaixo:",
+            choices: [`Copiar Pix|copy:${replaceVariables(pixKey, vars)}`],
+          });
+        } catch (_) {
+          // Fallback: send key as plain text for easy copy
+          try { await sendWhatsAppText(inst, phone, replaceVariables(pixKey, vars)); } catch (_2) {}
+        }
+      }
       nodeId = findNextNodeId(flowEdges, nodeId);
       continue;
     }
