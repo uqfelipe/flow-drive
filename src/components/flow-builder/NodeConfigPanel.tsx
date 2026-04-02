@@ -72,12 +72,16 @@ export function NodeConfigPanel({ node, onClose, onUpdate, onDelete }: NodeConfi
         {nt === "send_link" && (
           <>
             <div className="space-y-1.5">
-              <Label className="text-xs font-medium text-muted-foreground">URL</Label>
+              <Label className="text-xs font-medium text-muted-foreground">Mensagem</Label>
+              <Textarea className="text-sm min-h-[60px]" placeholder="Texto exibido acima do botão..." value={data.config?.message || ""} onChange={(e) => updateConfig({ message: e.target.value })} />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs font-medium text-muted-foreground">URL do Link</Label>
               <Input className="h-9 text-sm" placeholder="https://..." value={data.config?.url || ""} onChange={(e) => updateConfig({ url: e.target.value })} />
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs font-medium text-muted-foreground">Mensagem</Label>
-              <Textarea className="text-sm min-h-[60px]" placeholder="Texto da mensagem com o link..." value={data.config?.message || ""} onChange={(e) => updateConfig({ message: e.target.value })} />
+              <Label className="text-xs font-medium text-muted-foreground">Label do botão</Label>
+              <Input className="h-8 text-sm" placeholder="Acessar" value={data.config?.label || ""} onChange={(e) => updateConfig({ label: e.target.value })} />
             </div>
           </>
         )}
