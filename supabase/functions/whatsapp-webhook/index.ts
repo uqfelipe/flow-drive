@@ -529,6 +529,42 @@ function extractIncomingMessages(body: any): IncomingWebhookMessage[] {
   return Array.from(uniqueMessages.values());
 }
 
+// ── Flow cache ───────────────────────────────────────────────────────
+let cachedFlow: any = null;
+let lastCacheTime = 0;
+const FLOW_CACHE_TTL = 30_000; // 30s
+
+async function getActiveFlowCached() {
+  if (cachedFlow && Date.now() - lastCacheTime < FLOW_CACHE_TTL) return cachedFlow;
+  const { data, error } = await adminClient
+    .from("chatbot_flows")
+    .select("id, name, nodes, edges")
+    .eq("status", "active")
+    .order("updated_at", { ascending: false })
+    .limit(1);
+  if (error) {
+    console.error("[FLOW-CACHE] DB error fetching flow:", error.message);
+    return null;
+  }
+  cachedFlow = data?.[0] ?? null;
+  lastCacheTime = Date.now();
+  return cachedFlow;
+}
+
+// ── Group / noise filter ─────────────────────────────────────────────
+function isGroupOrNoise(chatId: string): boolean {
+  if (chatId.includes("@g.us")) return true;
+  if (chatId.includes("@broadcast")) return true;
+  // Group LIDs or status updates
+  const digits = chatId.replace(/@.*$/, "");
+  if (digits.length > 15) return true;
+  // WhatsApp service numbers
+  if (digits === "0" || digits === "status") return true;
+  return false;
+}
+
+const MAX_MESSAGES_PER_INVOCATION = 5;
+
 // ── Main webhook handler ─────────────────────────────────────────────
 Deno.serve(async (req) => {
   if (req.method !== "POST") {
