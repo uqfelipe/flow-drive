@@ -1,50 +1,44 @@
 
 
-## Problema
-O nó `copy_paste` (ID 106/108) está enviando o texto como mensagem simples via `/send/text`. Deveria enviar como botão com ação de copiar, igual ao Pix.
+## Melhorar configuração do nó Copia e Cola
 
-## Solução
-Alterar o handler do nó `copy_paste` para usar `/send/menu` com `type: "button"` e `choices` no formato `"label|copy:valor"`.
+O painel atual só tem um campo "Texto para copiar". Faltam campos para a mensagem exibida acima do botão e para o label do botão — campos que o webhook já suporta (`message`, `label`/`buttonText`).
 
-### Mudança no código (linhas 222-227)
+### Mudança
 
-De:
-```typescript
-if (nt === "copy_paste") {
-  const msg = cfg.text || "";
-  if (msg) { try { await sendWhatsAppText(inst, phone, replaceVariables(msg, vars)); } catch (_) {} }
-  nodeId = findNextNodeId(flowEdges, nodeId);
-  continue;
-}
+**Arquivo:** `src/components/flow-builder/NodeConfigPanel.tsx` (linhas 116-122)
+
+Substituir o bloco `copy_paste` por:
+
+```tsx
+{nt === "copy_paste" && (
+  <>
+    <div className="space-y-1.5">
+      <Label className="text-xs font-medium text-muted-foreground">Mensagem</Label>
+      <Textarea className="text-sm min-h-[60px]" placeholder="Texto exibido acima do botão..." value={data.config?.message || ""} onChange={(e) => updateConfig({ message: e.target.value })} />
+    </div>
+    <div className="space-y-1.5">
+      <Label className="text-xs font-medium text-muted-foreground">Texto para copiar</Label>
+      <Textarea className="text-sm min-h-[80px]" placeholder="Conteúdo que será copiado ao clicar no botão..." value={data.config?.text || ""} onChange={(e) => updateConfig({ text: e.target.value })} />
+    </div>
+    <div className="space-y-1.5">
+      <Label className="text-xs font-medium text-muted-foreground">Label do botão</Label>
+      <Input className="h-8 text-sm" placeholder="Copiar" value={data.config?.label || ""} onChange={(e) => updateConfig({ label: e.target.value })} />
+    </div>
+  </>
+)}
 ```
 
-Para:
-```typescript
-if (nt === "copy_paste") {
-  const textToCopy = cfg.text || cfg.content || "";
-  const label = cfg.label || cfg.buttonText || "Copiar";
-  const msg = cfg.message || "";
-  if (textToCopy) {
-    try {
-      await waFetch(inst, "/send/menu", {
-        number: phone,
-        type: "button",
-        text: replaceVariables(msg || textToCopy, vars),
-        choices: [`${replaceVariables(label, vars)}|copy:${replaceVariables(textToCopy, vars)}`],
-      });
-    } catch (_) {
-      // Fallback: texto simples
-      try { await sendWhatsAppText(inst, phone, replaceVariables(textToCopy, vars)); } catch (_2) {}
-    }
-  }
-  nodeId = findNextNodeId(flowEdges, nodeId);
-  continue;
-}
-```
+**Também atualizar** `nodeTypes.ts` — adicionar `defaultConfig` completo para `copy_paste`:
 
-### Arquivo alterado
-- `supabase/functions/whatsapp-webhook/index.ts` — Trocar `sendWhatsAppText` por `/send/menu` com `choices: ["Copiar|copy:valor"]`
+```typescript
+{ type: "copy_paste", ..., defaultConfig: { text: "", message: "", label: "Copiar" } },
+```
 
 ### Resultado
-O nó Copia e Cola enviará um botão interativo que copia o texto ao clicar, em vez de uma mensagem de texto simples.
+- **Mensagem**: texto exibido acima do botão (campo `message`)
+- **Texto para copiar**: conteúdo copiado ao clicar (campo `text`)
+- **Label do botão**: texto do botão, default "Copiar" (campo `label`)
+
+Todos os 3 campos já são lidos pelo webhook — essa mudança apenas expõe no painel de configuração.
 
