@@ -677,19 +677,12 @@ async function processIncomingMessage(phone: string, text: string) {
   try {
     console.log(`[AUTO-REPLY] Processing message from ${phone}: "${text}"`);
 
-    const { data: flows } = await adminClient
-      .from("chatbot_flows")
-      .select("id, name, nodes, edges")
-      .eq("status", "active")
-      .order("updated_at", { ascending: false })
-      .limit(1);
+    const flow = await getActiveFlowCached();
     
-    if (!flows || flows.length === 0) {
+    if (!flow) {
       console.log("[AUTO-REPLY] No active flow found");
       return;
     }
-    
-    const flow = flows[0];
     const flowNodes = flow.nodes as FlowNode[];
     const flowEdges = flow.edges as FlowEdge[];
     
