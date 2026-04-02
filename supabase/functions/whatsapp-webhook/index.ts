@@ -68,7 +68,14 @@ async function sendWhatsAppLocationButton(inst: Inst, phone: string, text: strin
 }
 
 async function sendWhatsAppMenu(inst: Inst, phone: string, type: string, text: string, choices: any, opts?: Record<string, any>) {
-  await waFetch(inst, "/send/menu", { number: phone, type, text, ...choices, ...(opts || {}) });
+  await waFetch(inst, "/send/menu", {
+    number: phone,
+    type,
+    text,
+    message: text,
+    ...choices,
+    ...(opts || {}),
+  });
 }
 
 async function sendWhatsAppCarousel(inst: Inst, phone: string, text: string, cards: any[]) {
@@ -320,13 +327,13 @@ async function processFlow(
     if (nt === "menu_buttons") {
       const buttons = (cfg.buttons || []) as any[];
       if (buttons.length > 0) {
-        const btnPayload = buttons.map((b: any, i: number) => {
-          const isObj = typeof b === "object";
-          return { id: `btn-${i}`, text: isObj ? b.text : b, type: isObj ? (b.type || "REPLY") : "REPLY" };
+        const btnChoices = buttons.map((b: any) => {
+          const label = replaceVariables(typeof b === "object" ? b.text : b, vars);
+          return `${label}|reply:${label}`;
         });
         try {
           const menuText = replaceVariables(cfg.message || "Escolha uma opção:", vars);
-          await sendWhatsAppMenu(inst, phone, "button", menuText, { buttons: btnPayload }, cfg.imageButton ? { image: cfg.imageButton } : {});
+          await sendWhatsAppMenu(inst, phone, "button", menuText, { choices: btnChoices }, cfg.imageButton ? { image: cfg.imageButton } : {});
         } catch (_) {
           // Fallback to text
           const fallback = buttons.map((b: any, i: number) => `${i + 1}. ${typeof b === "object" ? b.text : b}`).join("\n");
