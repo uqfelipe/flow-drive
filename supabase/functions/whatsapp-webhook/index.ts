@@ -930,8 +930,7 @@ async function processIncomingMessage(phone: string, text: string) {
         .insert({ customer_id: customerId, flow_id: flow.id, current_node_id: startNode.id, variables: vars, status: "active" })
         .select().single();
       if (sessError || !newSession) { console.error("[AUTO-REPLY] Failed to create session:", sessError); return; }
-      try { await sendWhatsAppText(inst, phone, `Olá, ${customerData.name}! Como posso ajudar?`); } catch (_) {}
-      await new Promise(r => setTimeout(r, 500));
+      // Let processFlow handle the greeting via the welcome node — no hardcoded message
       await processFlow(inst, phone, text, newSession.id, flowNodes, flowEdges, startNode.id, vars);
     } else {
       const { data: newSession, error: sessError } = await adminClient
