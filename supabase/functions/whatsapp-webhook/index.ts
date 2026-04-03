@@ -533,9 +533,9 @@ function handleMenuSelection(
   // Menu list — match by item title or row id
   if (nt === "menu_list") {
     const sections = (node.data.config?.sections || []) as any[];
-    const allItems = sections.flatMap((s: any) => s.items || []);
+    const allItems = sections.flatMap((s: any) => s.items || s.rows || []);
     const lower = userInput.trim().toLowerCase();
-    const matchIdx = allItems.findIndex((it: any) => it.title?.toLowerCase() === lower || it.id === userInput.trim());
+    const matchIdx = allItems.findIndex((it: any) => it.title?.toLowerCase() === lower || it.id === userInput.trim() || it.rowId === userInput.trim());
     if (matchIdx >= 0) {
       const nextId = findNextNodeId(edges, node.id, `option-${matchIdx}`) || findNextNodeId(edges, node.id);
       return { nextNodeId: nextId, selectedOption: allItems[matchIdx].title };
