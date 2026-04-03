@@ -349,10 +349,23 @@ async function processFlow(
       const sections = (cfg.sections || []) as any[];
       if (sections.length > 0) {
         try {
-          await sendWhatsAppMenu(inst, phone, "list", replaceVariables(cfg.message || "Escolha:", vars), { sections, listButton: cfg.listButton || "Ver opções" });
-        } catch (_) {
+          // Convert items → rows with rowId for WhatsApi API
+          const apiSections = sections.map((s: any) => ({
+            title: s.title,
+            rows: (s.items || s.rows || []).map((it: any, i: number) => ({
+              title: it.title,
+              description: it.description || "",
+              rowId: it.id || it.rowId || `row_${i}`,
+            })),
+          }));
+          const menuText = replaceVariables(cfg.message || "Escolha:", vars);
+          const listButton = cfg.listButton || "Ver opções";
+          console.log(`[FLOW] menu_list sections=${JSON.stringify(apiSections)} listButton=${listButton}`);
+          await sendWhatsAppMenu(inst, phone, "list", menuText, { sections: apiSections, listButton });
+        } catch (menuErr) {
+          console.error(`[FLOW] menu_list send failed:`, menuErr);
           // Fallback to text
-          const fallback = sections.flatMap((s: any) => [s.title + ":", ...(s.items || []).map((it: any, i: number) => `  ${i + 1}. ${it.title}`)]).join("\n");
+          const fallback = sections.flatMap((s: any) => [s.title + ":", ...(s.items || s.rows || []).map((it: any, i: number) => `  ${i + 1}. ${it.title}`)]).join("\n");
           try { await sendWhatsAppText(inst, phone, replaceVariables(`${cfg.message || "Escolha:"}\n\n${fallback}`, vars)); } catch (_) {}
         }
       }
