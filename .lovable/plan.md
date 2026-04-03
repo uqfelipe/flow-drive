@@ -1,52 +1,45 @@
 
 
-## Corrigir o fluxo: usar Menu Lista (seleção) em vez de Menu Botões
+## Corrigir fluxo: saudação + menu de seleção de veículos
 
-### Problema
-O fluxo atual usa `menu_buttons`, que na API WhatsApp envia botões de resposta rápida (máximo 3, limitados). O usuário quer um **menu de seleção** (menu_list) — aquele que aparece como um botão "Ver opções" e abre uma lista para selecionar.
+### Problema atual
+O webhook tem **mensagens duplicadas/conflitantes**:
+1. Para usuários que já têm nome: linha 920 envia `"Olá, {nome}! Como posso ajudar?"` hardcoded, e depois `processFlow` executa o nó de boas-vindas que envia **outra** saudação.
+2. Para novos usuários: após capturar o nome, `processFlow` começa no nó de boas-vindas — OK, mas a saudação do nó e o menu estão desconectados do comportamento real.
+3. O menu `menu_list` pode estar caindo no fallback de texto porque a API WhatsApi espera um formato específico para `sections`.
 
 ### O que será feito
 
-**1. Atualizar os dados do fluxo no banco** (`chatbot_flows` table)
+**1. Corrigir o webhook** (`supabase/functions/whatsapp-webhook/index.ts`)
 
-Trocar o nó `node_menu` de `menu_buttons` para `menu_list`, com a estrutura correta de `sections` e `items`:
+- **Usuário com nome** (linha 913-922): Remover a mensagem hardcoded `"Olá, {nome}! Como posso ajudar?"`. Deixar o `processFlow` executar normalmente — o nó de boas-vindas já envia a saudação com `{{nome}}`.
+- **Novo usuário após captura de nome** (linha 843-865): Já está correto — inicia o fluxo no primeiro nó.
 
-```json
-{
-  "id": "node_menu",
-  "type": "flowNode",
-  "data": {
-    "label": "Menu Principal",
-    "category": "menu",
-    "nodeType": "menu_list",
-    "config": {
-      "message": "Olá, {{nome}}! Qual carro você deseja alugar?",
-      "listButton": "Ver opções",
-      "sections": [
-        {
-          "title": "Veículos disponíveis",
-          "items": [
-            { "title": "Sedan", "description": "Carros sedan confortáveis" },
-            { "title": "SUV", "description": "SUVs espaçosos" },
-            { "title": "Hatch", "description": "Carros compactos" },
-            { "title": "Pickup", "description": "Pickups robustas" }
-          ]
-        }
-      ]
-    }
-  }
-}
+**2. Ajustar o formato do menu_list na API** (mesmo arquivo)
+
+Verificar e corrigir o payload do `sendWhatsAppMenu` para `menu_list` (linhas 347-361). O formato `sections` precisa ter `rows` (não `items`) para a API WhatsApi:
+
+```typescript
+// Converter items → rows com rowId para a API
+const apiSections = sections.map(s => ({
+  title: s.title,
+  rows: (s.items || s.rows || []).map((it, i) => ({
+    title: it.title,
+    description: it.description || "",
+    rowId: it.id || `row_${i}`,
+  })),
+}));
+await sendWhatsAppMenu(inst, phone, "list", menuText, { sections: apiSections, listButton });
 ```
 
-**2. Simplificar o fluxo para 2 nós**:
-- **Nó 1 (mensagem)**: Saudação com `{{nome}}`
-- **Nó 2 (menu_list)**: Menu de seleção perguntando qual carro deseja alugar, com categorias de veículos como opções
-
-**3. Verificar o webhook** — o handler de `menu_list` já está implementado (linhas 347-361 e 520-537), usando a API `/send/menu` com `type: "list"`. Nenhuma mudança no código é necessária.
+**3. Re-deploy** a edge function `whatsapp-webhook`.
 
 ### Resultado esperado
-Ao invés de texto numerado ou botões, o usuário verá um botão "Ver opções" que abre uma lista interativa do WhatsApp para selecionar o tipo de veículo.
+1. Usuário manda "oi" → bot pergunta o nome
+2. Usuário responde "Felipe" → nome salvo, fluxo inicia
+3. Nó 1: `"Olá, Felipe! 👋 Qual carro você deseja alugar?"`
+4. Nó 2: Menu de seleção nativo do WhatsApp com botão "Ver opções" → lista com Sedan, SUV, Hatch, Pickup
 
 ### Arquivos alterados
-- Nenhum arquivo de código — apenas UPDATE na tabela `chatbot_flows` via SQL
+- `supabase/functions/whatsapp-webhook/index.ts` — remover mensagem duplicada + corrigir formato sections do menu_list
 
