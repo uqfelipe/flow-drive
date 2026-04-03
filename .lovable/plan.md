@@ -1,39 +1,52 @@
 
 
-## Criar fluxo visual de boas-vindas com captura de nome
+## Corrigir o fluxo: usar Menu Lista (seleção) em vez de Menu Botões
 
-A captura de nome já está implementada no webhook (pergunta automática antes do fluxo iniciar). Agora vou criar os **nós visuais** no Flow Builder que representam o fluxo após o nome ser capturado.
-
-### Fluxo a ser criado
-
-```text
-[Mensagem de Boas-vindas] → [Menu Principal]
-  "Olá, {{nome}}!             ├─ Alugar veículo
-   Como posso ajudar?"        ├─ Consultar reserva
-                              └─ Falar com atendente
-```
+### Problema
+O fluxo atual usa `menu_buttons`, que na API WhatsApp envia botões de resposta rápida (máximo 3, limitados). O usuário quer um **menu de seleção** (menu_list) — aquele que aparece como um botão "Ver opções" e abre uma lista para selecionar.
 
 ### O que será feito
 
-**1. Inserir nós no fluxo ativo via Supabase** (ou criar novo fluxo se não existir)
+**1. Atualizar os dados do fluxo no banco** (`chatbot_flows` table)
 
-Nós a criar:
-- **Nó 1 — Mensagem**: `"Olá, {{nome}}! 👋 Como posso te ajudar hoje?"` (usa a variável `nome` capturada pelo webhook)
-- **Nó 2 — Menu Botões**: 3 opções — "🚗 Alugar veículo", "📋 Consultar reserva", "👤 Falar com atendente"
+Trocar o nó `node_menu` de `menu_buttons` para `menu_list`, com a estrutura correta de `sections` e `items`:
 
-Edges conectando nó 1 → nó 2.
+```json
+{
+  "id": "node_menu",
+  "type": "flowNode",
+  "data": {
+    "label": "Menu Principal",
+    "category": "menu",
+    "nodeType": "menu_list",
+    "config": {
+      "message": "Olá, {{nome}}! Qual carro você deseja alugar?",
+      "listButton": "Ver opções",
+      "sections": [
+        {
+          "title": "Veículos disponíveis",
+          "items": [
+            { "title": "Sedan", "description": "Carros sedan confortáveis" },
+            { "title": "SUV", "description": "SUVs espaçosos" },
+            { "title": "Hatch", "description": "Carros compactos" },
+            { "title": "Pickup", "description": "Pickups robustas" }
+          ]
+        }
+      ]
+    }
+  }
+}
+```
 
-**2. Atualizar o fluxo no banco de dados** (`chatbot_flows` table)
+**2. Simplificar o fluxo para 2 nós**:
+- **Nó 1 (mensagem)**: Saudação com `{{nome}}`
+- **Nó 2 (menu_list)**: Menu de seleção perguntando qual carro deseja alugar, com categorias de veículos como opções
 
-Inserir os nodes e edges como JSON no fluxo existente (ou criar um novo).
+**3. Verificar o webhook** — o handler de `menu_list` já está implementado (linhas 347-361 e 520-537), usando a API `/send/menu` com `type: "list"`. Nenhuma mudança no código é necessária.
 
-### Como funciona com o webhook
+### Resultado esperado
+Ao invés de texto numerado ou botões, o usuário verá um botão "Ver opções" que abre uma lista interativa do WhatsApp para selecionar o tipo de veículo.
 
-1. Usuário manda "oi" → webhook pergunta o nome (hardcoded)
-2. Usuário responde "Marcela" → webhook salva nome, envia "Perfeito, Marcela — em que posso ajudar?"
-3. Webhook inicia o fluxo visual → **Nó 1** envia "Olá, Marcela! 👋 Como posso te ajudar hoje?"
-4. **Nó 2** mostra menu com botões interativos
-
-### Arquivo alterado
-- Nenhum arquivo de código — apenas dados inseridos na tabela `chatbot_flows` via query SQL
+### Arquivos alterados
+- Nenhum arquivo de código — apenas UPDATE na tabela `chatbot_flows` via SQL
 
