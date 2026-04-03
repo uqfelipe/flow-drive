@@ -349,10 +349,23 @@ async function processFlow(
       const sections = (cfg.sections || []) as any[];
       if (sections.length > 0) {
         try {
-          await sendWhatsAppMenu(inst, phone, "list", replaceVariables(cfg.message || "Escolha:", vars), { sections, listButton: cfg.listButton || "Ver opções" });
-        } catch (_) {
+          // Convert items → rows with rowId for WhatsApi API
+          const apiSections = sections.map((s: any) => ({
+            title: s.title,
+            rows: (s.items || s.rows || []).map((it: any, i: number) => ({
+              title: it.title,
+              description: it.description || "",
+              rowId: it.id || it.rowId || `row_${i}`,
+            })),
+          }));
+          const menuText = replaceVariables(cfg.message || "Escolha:", vars);
+          const listButton = cfg.listButton || "Ver opções";
+          console.log(`[FLOW] menu_list sections=${JSON.stringify(apiSections)} listButton=${listButton}`);
+          await sendWhatsAppMenu(inst, phone, "list", menuText, { sections: apiSections, listButton });
+        } catch (menuErr) {
+          console.error(`[FLOW] menu_list send failed:`, menuErr);
           // Fallback to text
-          const fallback = sections.flatMap((s: any) => [s.title + ":", ...(s.items || []).map((it: any, i: number) => `  ${i + 1}. ${it.title}`)]).join("\n");
+          const fallback = sections.flatMap((s: any) => [s.title + ":", ...(s.items || s.rows || []).map((it: any, i: number) => `  ${i + 1}. ${it.title}`)]).join("\n");
           try { await sendWhatsAppText(inst, phone, replaceVariables(`${cfg.message || "Escolha:"}\n\n${fallback}`, vars)); } catch (_) {}
         }
       }
@@ -520,9 +533,9 @@ function handleMenuSelection(
   // Menu list — match by item title or row id
   if (nt === "menu_list") {
     const sections = (node.data.config?.sections || []) as any[];
-    const allItems = sections.flatMap((s: any) => s.items || []);
+    const allItems = sections.flatMap((s: any) => s.items || s.rows || []);
     const lower = userInput.trim().toLowerCase();
-    const matchIdx = allItems.findIndex((it: any) => it.title?.toLowerCase() === lower || it.id === userInput.trim());
+    const matchIdx = allItems.findIndex((it: any) => it.title?.toLowerCase() === lower || it.id === userInput.trim() || it.rowId === userInput.trim());
     if (matchIdx >= 0) {
       const nextId = findNextNodeId(edges, node.id, `option-${matchIdx}`) || findNextNodeId(edges, node.id);
       return { nextNodeId: nextId, selectedOption: allItems[matchIdx].title };
@@ -917,8 +930,7 @@ async function processIncomingMessage(phone: string, text: string) {
         .insert({ customer_id: customerId, flow_id: flow.id, current_node_id: startNode.id, variables: vars, status: "active" })
         .select().single();
       if (sessError || !newSession) { console.error("[AUTO-REPLY] Failed to create session:", sessError); return; }
-      try { await sendWhatsAppText(inst, phone, `Olá, ${customerData.name}! Como posso ajudar?`); } catch (_) {}
-      await new Promise(r => setTimeout(r, 500));
+      // Let processFlow handle the greeting via the welcome node — no hardcoded message
       await processFlow(inst, phone, text, newSession.id, flowNodes, flowEdges, startNode.id, vars);
     } else {
       const { data: newSession, error: sessError } = await adminClient
