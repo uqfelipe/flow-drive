@@ -1498,7 +1498,7 @@ export default function Conversations() {
               </div>
 
               {/* ─── Input area ─── */}
-              <div className="border-t border-border/50 px-4 md:px-8 lg:px-16 py-3 bg-card/90 backdrop-blur-sm">
+              <div className="border-t border-border/30 px-4 md:px-8 lg:px-16 py-3 bg-card/95 backdrop-blur-md">
                 <AnimatePresence mode="wait">
                   {isRecording ? (
                     <motion.div
