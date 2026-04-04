@@ -871,6 +871,17 @@ function extractIncomingMessages(body: any): IncomingWebhookMessage[] {
       mediaFileName = msg.fileName || "video.mp4";
     }
 
+    // Extract location data from content object
+    let latitude: number | undefined;
+    let longitude: number | undefined;
+    if (contentObj && contentObj.degreesLatitude != null && contentObj.degreesLongitude != null) {
+      latitude = Number(contentObj.degreesLatitude);
+      longitude = Number(contentObj.degreesLongitude);
+    } else if (msgContent.locationMessage) {
+      latitude = Number(msgContent.locationMessage.degreesLatitude);
+      longitude = Number(msgContent.locationMessage.degreesLongitude);
+    }
+
     if (!chatId) continue;
 
     uniqueMessages.set(id, {
@@ -882,6 +893,7 @@ function extractIncomingMessages(body: any): IncomingWebhookMessage[] {
       ...(mediaUrl ? { mediaUrl } : {}),
       ...(mediaType ? { mediaType } : {}),
       ...(mediaFileName ? { mediaFileName } : {}),
+      ...(latitude != null ? { latitude, longitude } : {}),
     });
   }
 
