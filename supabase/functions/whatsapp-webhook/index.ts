@@ -146,6 +146,7 @@ async function processFlow(
   phone: string,
   incomingText: string,
   sessionId: string,
+  customerId: string,
   flowNodes: FlowNode[],
   flowEdges: FlowEdge[],
   currentNodeId: string | null,
@@ -156,6 +157,9 @@ async function processFlow(
   let nodeId = currentNodeId;
   let vars = { ...variables };
   
+  // Variable names that should persist as customer name
+  const NAME_VARS = ["nome_contato", "nome_usuario", "nome", "name"];
+  
   // If we have a current node that's waiting for input, process the input first
   if (nodeId) {
     const currentNode = nodesMap.get(nodeId);
@@ -165,6 +169,17 @@ async function processFlow(
         const varName = currentNode.data.config?.variable || nt.replace("capture_", "");
         vars[varName] = incomingText;
         console.log(`[FLOW] Captured ${varName} = "${incomingText}"`);
+        
+        // If this is a name variable, save to customers table
+        if (NAME_VARS.includes(varName) && isValidName(incomingText)) {
+          console.log(`[FLOW] Saving customer name: "${incomingText}"`);
+          await adminClient.from("customers").update({ name: incomingText.trim() }).eq("id", customerId);
+          vars.nome = incomingText.trim();
+          vars.name = incomingText.trim();
+          vars.nome_contato = incomingText.trim();
+          vars.nome_usuario = incomingText.trim();
+        }
+        
         nodeId = findNextNodeId(flowEdges, nodeId);
       }
     }
