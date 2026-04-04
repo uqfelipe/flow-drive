@@ -616,10 +616,15 @@ async function processFlow(
       const options = (cfg.options || []) as string[];
       if (options.length >= 2) {
         try {
-          await sendWhatsAppMenu(inst, phone, "poll", replaceVariables(question, vars), { options, selectableCount: cfg.selectableCount || 1 });
-        } catch (_) {
-          const fallback = options.map((o: string, i: number) => `${i + 1}. ${o}`).join("\n");
-          try { await sendWhatsAppText(inst, phone, replaceVariables(`${question}\n\n${fallback}`, vars)); } catch (_) {}
+          await waFetch(inst, "/send/poll", { number: phone, name: replaceVariables(question, vars), options, selectableCount: cfg.selectableCount || 1 });
+        } catch (pollErr) {
+          console.error(`[FLOW] /send/poll failed, trying /send/menu fallback:`, pollErr);
+          try {
+            await sendWhatsAppMenu(inst, phone, "poll", replaceVariables(question, vars), { options, selectableCount: cfg.selectableCount || 1 });
+          } catch (_) {
+            const fallback = options.map((o: string, i: number) => `${i + 1}. ${o}`).join("\n");
+            try { await sendWhatsAppText(inst, phone, replaceVariables(`${question}\n\n${fallback}`, vars)); } catch (_) {}
+          }
         }
       }
       await adminClient.from("chat_sessions").update({ current_node_id: nodeId, variables: vars, status: "waiting", updated_at: new Date().toISOString() }).eq("id", sessionId);
