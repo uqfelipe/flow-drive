@@ -4,8 +4,9 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Plus, Search, Phone, FileText, Pencil, Trash2, Users, Settings2 } from "lucide-react";
+import { Plus, Search, Phone, Pencil, Trash2, Users, Settings2 } from "lucide-react";
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useCustomers, type CustomerRow } from "@/hooks/use-customers";
 import { useRentals } from "@/hooks/use-rentals";
 import { CustomerFormDialog } from "@/components/CustomerFormDialog";
@@ -16,6 +17,7 @@ export default function Customers() {
   const [search, setSearch] = useState("");
   const { data: customers, isLoading } = useCustomers();
   const { data: rentals } = useRentals();
+  const navigate = useNavigate();
 
   const [formOpen, setFormOpen] = useState(false);
   const [editCustomer, setEditCustomer] = useState<CustomerRow | null>(null);
@@ -33,8 +35,7 @@ export default function Customers() {
   );
 
   const handleEdit = (customer: CustomerRow) => {
-    setEditCustomer(customer);
-    setFormOpen(true);
+    navigate(`/customers/${customer.id}`);
   };
 
   const handleNew = () => {
@@ -87,7 +88,7 @@ export default function Customers() {
                       <p className="font-medium text-sm">{customer.name}</p>
                       <div className="flex items-center gap-3 text-[11px] text-muted-foreground">
                         <span className="flex items-center gap-1"><Phone className="h-3 w-3" />{customer.phone.startsWith("+") ? customer.phone : `+${customer.phone}`}</span>
-                        <span className="flex items-center gap-1"><FileText className="h-3 w-3" />{customer.cpf}</span>
+                        
                       </div>
                     </div>
                   </div>
