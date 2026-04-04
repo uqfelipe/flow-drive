@@ -37,7 +37,7 @@ export function CustomerFormDialog({ open, onOpenChange, customer }: Props) {
 
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
-  const [cpf, setCpf] = useState("");
+  
   const [status, setStatus] = useState("active");
   const [notes, setNotes] = useState("");
   const [photo, setPhoto] = useState<string | null>(null);
@@ -48,13 +48,13 @@ export function CustomerFormDialog({ open, onOpenChange, customer }: Props) {
     if (open && customer) {
       setName(customer.name);
       setPhone(customer.phone);
-      setCpf(customer.cpf);
+      
       setStatus(customer.status);
       setNotes(customer.notes || "");
       setPhoto(customer.photo || null);
       setCustomFields(customer.custom_fields || {});
     } else if (open) {
-      setName(""); setPhone(""); setCpf(""); setStatus("active"); setNotes(""); setPhoto(null); setCustomFields({});
+      setName(""); setPhone(""); setStatus("active"); setNotes(""); setPhoto(null); setCustomFields({});
     }
   }, [open, customer]);
 
@@ -97,16 +97,16 @@ export function CustomerFormDialog({ open, onOpenChange, customer }: Props) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name || !phone || !cpf) {
+    if (!name || !phone) {
       toast({ title: "Preencha os campos obrigatórios", variant: "destructive" });
       return;
     }
     try {
       if (isEdit) {
-        await updateMutation.mutateAsync({ id: customer!.id, name, phone, cpf, status, notes: notes || null, photo, custom_fields: customFields });
+        await updateMutation.mutateAsync({ id: customer!.id, name, phone, cpf: "", status, notes: notes || null, photo, custom_fields: customFields });
         toast({ title: "Cliente atualizado com sucesso!" });
       } else {
-        await createMutation.mutateAsync({ name, phone, cpf, status, photo, custom_fields: customFields });
+        await createMutation.mutateAsync({ name, phone, cpf: "", status, photo, custom_fields: customFields });
         toast({ title: "Cliente criado com sucesso!" });
       }
       onOpenChange(false);
@@ -153,15 +153,9 @@ export function CustomerFormDialog({ open, onOpenChange, customer }: Props) {
             <Label>Nome *</Label>
             <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Nome completo" />
           </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-2">
-              <Label>Telefone *</Label>
-              <Input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+55 11 99999-9999" />
-            </div>
-            <div className="space-y-2">
-              <Label>CPF *</Label>
-              <Input value={cpf} onChange={(e) => setCpf(e.target.value)} placeholder="000.000.000-00" />
-            </div>
+          <div className="space-y-2">
+            <Label>Telefone *</Label>
+            <Input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+55 11 99999-9999" />
           </div>
           <div className="space-y-2">
             <Label>Status</Label>
