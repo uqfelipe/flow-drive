@@ -1,25 +1,54 @@
 
 
-## Exibir imagens nos Campos Personalizados e Arquivos
+## Corrigir captura de imagens do WhatsApp no fluxo e exibição no cliente
 
-### Problema
-1. **Campos Personalizados**: O campo "fotos" está com `field_type` provavelmente definido como "text", então renderiza como `<Input>` em vez de mostrar a imagem. O código já tem lógica para `field_type === "image"`, mas não detecta URLs de imagem quando o tipo é "text".
-2. **Arquivos**: A aba mostra "Nenhum arquivo recebido" porque não há registros na tabela `customer_files` para este cliente. Imagens salvas em campos personalizados não aparecem lá.
+### Problemas identificados
+
+1. **Imagem não é processada no webhook**: Os logs mostram `extracted=1 valid=0` — a mensagem de imagem foi recebida mas filtrada como inválida. O campo `mediaUrl` fica vazio porque o uazapi envia a URL em campos que o código não verifica (`msg.fileURL`, `msg.content?.url`, `msg.fileUrl`). Como `mediaUrl` fica `""` (falsy), a mensagem é descartada no filtro `!text && !mediaUrl`.
+
+2. **custom_fields sync usa texto em vez de mídia**: Linha 252 do webhook sempre grava `incomingText.trim()` no `custom_fields`, mas para captura de mídia o valor correto está em `vars[varName]` (que contém a URL da mídia). Resultado: campo "foto" nunca é preenchido.
+
+3. **URL da mídia é inacessível**: Mesmo quando extraída, a URL do WhatsApp CDN é criptografada/temporária. Precisa ser baixada via API `/message/download` e re-hospedada no imgbb para ser exibível.
 
 ### Alterações
 
-**`src/pages/CustomerEdit.tsx`** — Campos Personalizados:
+**`supabase/functions/whatsapp-webhook/index.ts`**:
 
-1. **Detecção inteligente de imagem**: Além de checar `fd.field_type === "image"`, verificar se o valor do campo é uma URL de imagem (contém `.jpg`, `.png`, `.webp`, `imgbb`, `ibb.co`, ou começa com `data:image/`). Se for, renderizar como `<img>` mesmo que o `field_type` seja "text".
+1. **Ampliar extração de mediaUrl** — na função `extractIncomingMessages`, adicionar campos do uazapi: `msg.fileURL`, `msg.fileUrl`, `msg.content?.url`, `msg.content?.fileUrl`, `msg.file`. Também detectar tipo por `msg.mimetype` (ex: `mimetype.startsWith("image")`).
 
-2. **Auto re-host para imgbb**: Se o valor do campo personalizado for base64 ou URL de WhatsApp CDN, fazer upload automático para imgbb e atualizar o valor no `customFields` state (e salvar ao submeter).
+2. **Corrigir sync de custom_fields para mídia** — na linha 252, trocar `incomingText.trim()` por `vars[varName]` para que campos de mídia recebam a URL da mídia.
 
-**`src/pages/CustomerEdit.tsx`** — Aba Arquivos:
+3. **Download + re-host de mídia** — criar função `downloadAndRehost(inst, messageId)` que:
+   - Chama `/message/download` na API uazapi com `return_link: true`
+   - Pega a `fileURL` retornada (link temporário acessível)
+   - Faz upload ao imgbb via API
+   - Retorna a URL permanente do imgbb
+   - Chamar esta função no bloco `isMediaCapture` (antes de salvar em `customer_files` e `vars`)
 
-3. **Incluir imagens dos campos personalizados**: Na aba Arquivos, além dos registros de `customer_files`, listar também os valores de campos personalizados que são imagens (detectados pela URL ou `field_type`). Renderizar como cards de imagem iguais aos de `customer_files`, com label do campo como nome.
+4. **Upload imgbb no servidor** — adicionar função `uploadToImgbb(imageUrl)` que:
+   - Faz `fetch` da URL da imagem
+   - Converte para base64
+   - POST para `https://api.imgbb.com/1/upload`
+   - Retorna URL hospedada
 
-### Detalhes técnicos
-- Função helper `isImageUrl(val)`: checa se string é URL de imagem por extensão ou domínio imgbb/ibb.co, ou se começa com `data:image/`.
-- Na aba Campos Personalizados, a condição muda de `isImageField && val` para `(isImageField || isImageUrl(val)) && val`.
-- Na aba Arquivos, após mapear `customerFiles`, adicionar seção "Imagens dos campos" iterando `fieldDefs` filtrando por valores que são URLs de imagem.
+### Fluxo corrigido
+
+```text
+Usuário envia imagem WhatsApp
+  → Webhook recebe (EventType=messages)
+  → extractIncomingMessages detecta tipo=image via mimetype/type
+  → Extrai mediaUrl de fileURL/content.url (URL temporária)
+  → Filtro valida (!text && !mediaUrl → passa agora)
+  → processIncomingMessage chamado com mediaUrl
+  → No capture_image: downloadAndRehost(inst, msgId)
+    → /message/download → link temporário
+    → Upload imgbb → URL permanente
+  → vars[foto] = URL imgbb permanente
+  → customer_files.insert(file_url = URL permanente)
+  → custom_fields sync: existing[foto] = vars[foto] (URL permanente)
+  → Imagem aparece no CustomerEdit nos Campos e Arquivos
+```
+
+### Arquivos modificados
+- `supabase/functions/whatsapp-webhook/index.ts` — todas as 4 alterações acima
 
