@@ -5,6 +5,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useCreateCustomer, useUpdateCustomer, type CustomerRow } from "@/hooks/use-customers";
+import { useCustomerFieldDefinitions } from "@/hooks/use-customer-fields";
 import { useToast } from "@/hooks/use-toast";
 import { useState, useEffect, useRef } from "react";
 import { Upload, X, ImageIcon } from "lucide-react";
@@ -30,6 +31,7 @@ export function CustomerFormDialog({ open, onOpenChange, customer }: Props) {
   const { toast } = useToast();
   const createMutation = useCreateCustomer();
   const updateMutation = useUpdateCustomer();
+  const { data: fieldDefs } = useCustomerFieldDefinitions();
   const isEdit = !!customer;
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -40,6 +42,7 @@ export function CustomerFormDialog({ open, onOpenChange, customer }: Props) {
   const [notes, setNotes] = useState("");
   const [photo, setPhoto] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [customFields, setCustomFields] = useState<Record<string, string>>({});
 
   useEffect(() => {
     if (open && customer) {
@@ -49,8 +52,9 @@ export function CustomerFormDialog({ open, onOpenChange, customer }: Props) {
       setStatus(customer.status);
       setNotes(customer.notes || "");
       setPhoto(customer.photo || null);
+      setCustomFields(customer.custom_fields || {});
     } else if (open) {
-      setName(""); setPhone(""); setCpf(""); setStatus("active"); setNotes(""); setPhoto(null);
+      setName(""); setPhone(""); setCpf(""); setStatus("active"); setNotes(""); setPhoto(null); setCustomFields({});
     }
   }, [open, customer]);
 
@@ -99,10 +103,10 @@ export function CustomerFormDialog({ open, onOpenChange, customer }: Props) {
     }
     try {
       if (isEdit) {
-        await updateMutation.mutateAsync({ id: customer!.id, name, phone, cpf, status, notes: notes || null, photo });
+        await updateMutation.mutateAsync({ id: customer!.id, name, phone, cpf, status, notes: notes || null, photo, custom_fields: customFields });
         toast({ title: "Cliente atualizado com sucesso!" });
       } else {
-        await createMutation.mutateAsync({ name, phone, cpf, status, photo });
+        await createMutation.mutateAsync({ name, phone, cpf, status, photo, custom_fields: customFields });
         toast({ title: "Cliente criado com sucesso!" });
       }
       onOpenChange(false);
@@ -115,7 +119,7 @@ export function CustomerFormDialog({ open, onOpenChange, customer }: Props) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{isEdit ? "Editar Cliente" : "Novo Cliente"}</DialogTitle>
         </DialogHeader>
@@ -173,6 +177,28 @@ export function CustomerFormDialog({ open, onOpenChange, customer }: Props) {
             <Label>Observações</Label>
             <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Notas sobre o cliente..." rows={3} />
           </div>
+
+          {/* Custom fields */}
+          {fieldDefs && fieldDefs.length > 0 && (
+            <div className="space-y-3 border-t border-border pt-4">
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Campos Personalizados</p>
+              {fieldDefs.map((fd) => (
+                <div key={fd.id} className="space-y-1.5">
+                  <Label className="text-xs">
+                    {fd.field_label}
+                    <span className="text-muted-foreground ml-1 font-normal">{`{{${fd.field_key}}}`}</span>
+                  </Label>
+                  <Input
+                    type={fd.field_type === "email" ? "email" : fd.field_type === "phone" ? "tel" : "text"}
+                    value={customFields[fd.field_key] || ""}
+                    onChange={(e) => setCustomFields(prev => ({ ...prev, [fd.field_key]: e.target.value }))}
+                    placeholder={fd.field_label}
+                  />
+                </div>
+              ))}
+            </div>
+          )}
+
           <div className="flex justify-end gap-2 pt-2">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
             <Button type="submit" disabled={loading}>{loading ? "Salvando..." : isEdit ? "Salvar" : "Criar"}</Button>

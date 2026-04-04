@@ -161,10 +161,38 @@ export type Database = {
         }
         Relationships: []
       }
+      customer_field_definitions: {
+        Row: {
+          created_at: string
+          field_key: string
+          field_label: string
+          field_type: string
+          id: string
+          sort_order: number
+        }
+        Insert: {
+          created_at?: string
+          field_key: string
+          field_label: string
+          field_type?: string
+          id?: string
+          sort_order?: number
+        }
+        Update: {
+          created_at?: string
+          field_key?: string
+          field_label?: string
+          field_type?: string
+          id?: string
+          sort_order?: number
+        }
+        Relationships: []
+      }
       customers: {
         Row: {
           cpf: string
           created_at: string
+          custom_fields: Json | null
           id: string
           name: string
           notes: string | null
@@ -177,6 +205,7 @@ export type Database = {
         Insert: {
           cpf: string
           created_at?: string
+          custom_fields?: Json | null
           id?: string
           name: string
           notes?: string | null
@@ -189,6 +218,7 @@ export type Database = {
         Update: {
           cpf?: string
           created_at?: string
+          custom_fields?: Json | null
           id?: string
           name?: string
           notes?: string | null
