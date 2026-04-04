@@ -512,7 +512,7 @@ async function processFlow(
         });
         try {
           const menuText = replaceVariables(cfg.message || "Escolha uma opção:", vars);
-          await sendWhatsAppMenu(inst, phone, "button", menuText, { choices: btnChoices }, cfg.imageButton ? { image: cfg.imageButton } : {});
+          await sendWhatsAppMenu(inst, phone, "button", menuText, { choices: btnChoices }, cfg.imageButton ? { mediaUrl: cfg.imageButton } : {});
         } catch (_) {
           // Fallback to text
           const fallback = buttons.map((b: any, i: number) => `${i + 1}. ${typeof b === "object" ? b.text : b}`).join("\n");

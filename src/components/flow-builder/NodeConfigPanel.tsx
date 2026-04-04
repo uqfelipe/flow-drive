@@ -110,7 +110,6 @@ export function NodeConfigPanel({ node, onClose, onUpdate, onDelete }: NodeConfi
         {/* ─── MENU BOTÕES ─── */}
         {nt === "menu_buttons" && (() => {
           const buttons = (data.config?.buttons || []) as any[];
-          const canAdd = buttons.length < 3;
           return (
             <div className="space-y-4">
               {/* Seção: Mensagem */}
@@ -123,7 +122,7 @@ export function NodeConfigPanel({ node, onClose, onUpdate, onDelete }: NodeConfi
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <Label className="text-xs font-medium text-muted-foreground">Botões</Label>
-                  <span className="text-[10px] text-muted-foreground">{buttons.length}/3</span>
+                  <span className="text-[10px] text-muted-foreground">{buttons.length}</span>
                 </div>
                 {buttons.map((btn: any, idx: number) => {
                   const isObj = typeof btn === "object";
@@ -137,7 +136,7 @@ export function NodeConfigPanel({ node, onClose, onUpdate, onDelete }: NodeConfi
                     </div>
                   );
                 })}
-                <Button variant="outline" size="sm" className="w-full h-9 text-xs" disabled={!canAdd} onClick={() => updateConfig({ buttons: [...buttons, { text: `Botão ${buttons.length + 1}`, type: "REPLY" }] })}><Plus className="h-3.5 w-3.5 mr-1" /> Adicionar Botão</Button>
+                <Button variant="outline" size="sm" className="w-full h-9 text-xs" onClick={() => updateConfig({ buttons: [...buttons, { text: `Botão ${buttons.length + 1}`, type: "REPLY" }] })}><Plus className="h-3.5 w-3.5 mr-1" /> Adicionar Botão</Button>
               </div>
 
               {/* Seção: Imagem */}
