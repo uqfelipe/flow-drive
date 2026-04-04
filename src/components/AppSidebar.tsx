@@ -9,6 +9,7 @@ import {
   Settings,
   LogOut,
   Smartphone,
+  Variable,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
@@ -31,6 +32,7 @@ const mainItems = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard },
   { title: "Veículos", url: "/vehicles", icon: Car },
   { title: "Clientes", url: "/customers", icon: Users },
+  { title: "Campos", url: "/customers/fields", icon: Variable },
   { title: "Reservas", url: "/rentals", icon: CalendarCheck },
   { title: "Financeiro", url: "/financial", icon: DollarSign },
 ];

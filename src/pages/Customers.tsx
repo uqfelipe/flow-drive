@@ -4,14 +4,13 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Plus, Search, Phone, Pencil, Trash2, Users, Settings2 } from "lucide-react";
+import { Plus, Search, Phone, Pencil, Trash2, Users } from "lucide-react";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useCustomers, type CustomerRow } from "@/hooks/use-customers";
 import { useRentals } from "@/hooks/use-rentals";
 import { CustomerFormDialog } from "@/components/CustomerFormDialog";
 import { CustomerDeleteDialog } from "@/components/CustomerDeleteDialog";
-import { CustomerFieldsManager } from "@/components/CustomerFieldsManager";
 
 export default function Customers() {
   const [search, setSearch] = useState("");
@@ -23,7 +22,6 @@ export default function Customers() {
   const [editCustomer, setEditCustomer] = useState<CustomerRow | null>(null);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<CustomerRow | null>(null);
-  const [fieldsOpen, setFieldsOpen] = useState(false);
 
   const rentalCounts = (rentals ?? []).reduce<Record<string, number>>((acc, r) => {
     acc[r.customer_id] = (acc[r.customer_id] || 0) + 1;
@@ -56,10 +54,7 @@ export default function Customers() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input placeholder="Buscar por nome, telefone ou CPF..." className="pl-9 bg-card" value={search} onChange={(e) => setSearch(e.target.value)} />
           </div>
-          <div className="flex gap-2">
-            <Button size="sm" variant="outline" onClick={() => setFieldsOpen(true)}><Settings2 className="h-4 w-4 mr-1" /> Campos</Button>
-            <Button size="sm" onClick={handleNew}><Plus className="h-4 w-4 mr-1" /> Novo Cliente</Button>
-          </div>
+          <Button size="sm" onClick={handleNew}><Plus className="h-4 w-4 mr-1" /> Novo Cliente</Button>
         </div>
 
         {isLoading ? (
@@ -114,7 +109,7 @@ export default function Customers() {
 
       <CustomerFormDialog open={formOpen} onOpenChange={setFormOpen} customer={editCustomer} />
       <CustomerDeleteDialog open={deleteOpen} onOpenChange={setDeleteOpen} customerId={deleteTarget?.id ?? null} customerName={deleteTarget?.name ?? ""} />
-      <CustomerFieldsManager open={fieldsOpen} onOpenChange={setFieldsOpen} />
+      
     </AdminLayout>
   );
 }
