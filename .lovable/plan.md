@@ -1,54 +1,43 @@
 
 
-## Corrigir captura de imagem no fluxo WhatsApp
+## Corrigir processamento do FileDownloaded no webhook
 
-### Problema raiz
-Quando o usuário envia uma imagem no WhatsApp, o uazapi envia **dois eventos**:
-1. `EventType=messages` — chega primeiro, mas **sem URL de mídia** (arquivo ainda encriptado)
-2. `EventType=messages_update` com `Type=FileDownloaded` — chega ~25s depois, **com a URL do arquivo**
+### Problemas identificados
 
-O código atual, ao receber o evento 1, detecta `capture_image` sem `mediaUrl` e envia "❌ Por favor, envie um arquivo válido" — **rejeitando a imagem prematuramente**. Quando o evento 2 chega, ele tenta processar mas o fluxo já enviou a mensagem de erro.
+1. **Background task é cancelada antes de completar**: O handler `FileDownloaded` (linhas 951-960) coloca o processamento em uma `bgTask` e retorna a response imediatamente. No Supabase Edge Functions, `waitUntil` não existe — a condição `globalThis.EdgeRuntime` é `undefined`, e `ctx?.waitUntil` também não existe. O `catch` faz `await bgTask`, mas o runtime já encerrou a função (os logs mostram `shutdown` logo após o evento). O processamento nunca completa.
+
+2. **Stack overflow em imagens grandes**: `btoa(String.fromCharCode(...buf))` na linha 103 estoura o stack para imagens maiores que ~100KB porque faz spread de todo o array como argumentos de função.
+
+3. **Re-download desnecessário**: O `FileDownloaded` já traz a URL do arquivo (`FileURL`), mas o código chama `downloadAndRehost` que faz outro `/message/download`. Pode usar a URL direta para upload ao imgbb.
 
 ### Solução
 
 **`supabase/functions/whatsapp-webhook/index.ts`** — 3 alterações:
 
-1. **Detectar imagem no evento inicial mesmo sem URL**: No `extractIncomingMessages`, checar se o payload tem indicadores de imagem (`imageMessage`, `type=image`, `mimetype=image/*`) mesmo sem URL. Marcar `mediaType="image"` para que o filtro `valid` não rejeite a mensagem.
+1. **FileDownloaded: processar ANTES de retornar a response** — Remover o padrão `bgTask`/`waitUntil`. Fazer `await processIncomingMessage(...)` diretamente antes do `return`, garantindo que o processamento complete antes do runtime encerrar.
 
-2. **Não rejeitar imagem na captura — aguardar FileDownloaded**: No bloco `capture_image` dentro de `processFlow` (linhas 241-279), quando `isMediaCapture && !incomingMediaUrl` **mas** `incomingMediaType === "image"` (ou audio/file), NÃO enviar "❌". Em vez disso, salvar o estado como "waiting" **silenciosamente** e retornar — aguardando o evento `FileDownloaded` trazer a URL.
+2. **Corrigir conversão base64 para imagens grandes** — Substituir `btoa(String.fromCharCode(...buf))` por um loop chunked que não estoura o stack:
+   ```typescript
+   let binary = "";
+   const chunkSize = 8192;
+   for (let i = 0; i < buf.length; i += chunkSize) {
+     binary += String.fromCharCode(...buf.subarray(i, i + chunkSize));
+   }
+   const b64 = btoa(binary);
+   ```
 
-3. **FileDownloaded deve fazer re-host e sync completo**: O handler de `messages_update` (linhas 922-958) já chama `processIncomingMessage` com a `fileUrl`. Quando isso chega, a sessão estará em "waiting" no nó `capture_image`. O `processFlow` vai executar o bloco de mídia com `incomingMediaUrl` preenchida, fazer `downloadAndRehost` → imgbb, salvar em `customer_files`, sync em `custom_fields`, e avançar o fluxo.
-
-### Mudanças específicas
-
-```text
-processFlow (linha ~274):
-  ANTES: if (isMediaCapture && !incomingMediaUrl) → envia "❌ envie arquivo válido"
-  DEPOIS: if (isMediaCapture && !incomingMediaUrl && !incomingMediaType) → envia "❌"
-           if (isMediaCapture && !incomingMediaUrl && incomingMediaType) → aguarda silenciosamente
-
-extractIncomingMessages (linha ~975):
-  ANTES: if (!text && !mediaUrl && !mediaType) return false;
-  DEPOIS: (sem mudança — mediaType já é setado pelo mime detection)
-```
+3. **Otimizar re-host no FileDownloaded** — Quando `processFlow` recebe a `mediaUrl` do FileDownloaded (URL direta do uazapi), fazer `uploadToImgbbFromUrl(incomingMediaUrl)` diretamente em vez de chamar `downloadAndRehost` (que faz outro request desnecessário ao `/message/download`). O `downloadAndRehost` via messageId continua como fallback quando a URL direta não está disponível.
 
 ### Fluxo corrigido
 ```text
-Usuário envia foto no WhatsApp
-  → Evento 1 (messages): tipo=image detectado por mimetype, mediaUrl=""
-  → processFlow capture_image: mediaType="image" mas sem URL → aguarda silenciosamente
-  → Sessão fica "waiting" no nó capture_image
-  
-  ~25s depois...
-  
-  → Evento 2 (FileDownloaded): fileUrl="https://ipazua.uazapi.com/files/xxx.png"
-  → processIncomingMessage com mediaUrl preenchida
-  → Resume sessão "waiting" no capture_image
-  → downloadAndRehost → imgbb → URL permanente
-  → vars[foto] = URL imgbb
-  → customer_files.insert
-  → custom_fields sync: {foto: "https://i.ibb.co/xxx"}
-  → Avança para próximo nó do fluxo
+FileDownloaded chega
+  → Handler extrai FileURL diretamente
+  → await processIncomingMessage (síncrono, sem bgTask)
+  → Sessão "waiting" no capture_image é encontrada
+  → processFlow recebe mediaUrl = FileURL do uazapi
+  → uploadToImgbbFromUrl(mediaUrl) direto (sem re-download)
+  → URL permanente imgbb salva em vars, customer_files, custom_fields
+  → Fluxo avança
 ```
 
 ### Arquivo modificado
