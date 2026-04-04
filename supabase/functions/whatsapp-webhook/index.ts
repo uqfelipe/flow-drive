@@ -828,12 +828,14 @@ Deno.serve(async (req) => {
       const incomingMessages = extractIncomingMessages(body);
       
       // Filter out groups, noise, fromMe, empty text
-      const validMessages = incomingMessages.filter(({ chatId, phone, text, fromMe }) => {
+      const validMessages = incomingMessages.filter(({ chatId, phone, text, fromMe, mediaUrl }) => {
         if (isGroupOrNoise(chatId)) {
           console.log(`[WEBHOOK] SKIP group/noise: ${chatId}`);
           return false;
         }
-        if (fromMe || !text || !phone) return false;
+        if (fromMe) return false;
+        if (!text && !mediaUrl) return false;
+        if (!phone) return false;
         return true;
       });
 
