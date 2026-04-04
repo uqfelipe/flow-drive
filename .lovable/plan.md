@@ -1,33 +1,31 @@
 
 
-## Simplificar configuração do Menu Botões
+## Adicionar nó "Resposta Rápida" (Sim/Não) ao Flow Builder
 
-### Problema atual
-O painel de configuração do `menu_buttons` está poluído: cada botão tem um seletor de tipo (Resposta/URL/Copiar/Ligar) que raramente é usado, os inputs estão apertados, e o campo de imagem fica misturado com o resto.
+### O que será adicionado
+Um novo tipo de nó `quick_reply` na categoria **menu** que envia uma mensagem com botões de resposta rápida (estilo da imagem: "Sim" / "Não"). Funciona como um `menu_buttons` simplificado, focado em respostas binárias/rápidas.
 
 ### Alterações
 
-**`src/components/flow-builder/NodeConfigPanel.tsx`** — bloco `menu_buttons` (linhas 109-140):
+**1. `src/components/flow-builder/nodeTypes.ts`**
+- Adicionar novo nó `quick_reply` na categoria `menu` com ícone `MessageSquare` (ou `SquareMousePointer`), cor verde, e defaultConfig com mensagem + 2 botões ("Sim", "Não")
 
-1. **Separar em seções visuais claras**: Mensagem, Botões, e Imagem (colapsada/opcional)
-2. **Simplificar botões**: mostrar apenas o campo de texto do botão + botão de remover. O tipo fica fixo como `REPLY` (o mais comum). Se precisar de URL/CALL, o usuário pode usar os nós específicos (send_link, etc.)
-3. **Remover o seletor de tipo** dos botões — simplifica drasticamente a interface
-4. **Mover campo de imagem** para baixo com label "Imagem (opcional)" mais claro
-5. **Melhorar layout dos botões**: inputs maiores, espaçamento melhor, numeração visual (1, 2, 3...)
-6. **Limite visual**: mostrar indicador "máx. 3 botões" (limite da API do WhatsApp) e desabilitar o botão de adicionar quando atingir 3
+**2. `src/components/flow-builder/FlowNode.tsx`**
+- Incluir `quick_reply` na lógica de `isMenu` para renderizar handles de saída por botão (reutiliza a mesma lógica de `menu_buttons`)
 
-### Visual esperado
-```
-Mensagem
-[__________________________]
-[__________________________]
+**3. `src/components/flow-builder/NodeConfigPanel.tsx`**
+- Adicionar bloco de configuração simplificado para `quick_reply`:
+  - Campo de mensagem (textarea)
+  - 2 botões editáveis (máx. 3), interface igual à do `menu_buttons` simplificado
 
-Botões (máx. 3)
- 1. [Botão 1____________] [x]
- 2. [Botão 2____________] [x]
- [+ Adicionar Botão]
+**4. `supabase/functions/whatsapp-webhook/index.ts`**
+- Adicionar `quick_reply` ao `SUPPORTED_NODE_TYPES`
+- Tratar `quick_reply` no processFlow igual a `menu_buttons` (envia como botões interativos)
+- Tratar `quick_reply` no `handleMenuSelection` igual a `menu_buttons`
+- Incluir `quick_reply` na lógica de seleção de menu no processamento de mensagens
 
-Imagem (opcional)
-[https://...____________]
-```
+### Comportamento
+- No canvas: mostra a mensagem + botões com handles de saída para cada opção
+- No WhatsApp: envia como botões interativos (type "button") idêntico ao menu_buttons
+- Cada botão tem um handle de saída para roteamento visual no flow
 
