@@ -13,10 +13,10 @@ import { useUpdateCustomer, useCustomers } from "@/hooks/use-customers";
 import { useCustomerFieldDefinitions } from "@/hooks/use-customer-fields";
 import { useRentals } from "@/hooks/use-rentals";
 import { useToast } from "@/hooks/use-toast";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, Upload, X, ImageIcon, Save, Calendar, DollarSign, Clock, FileText, User, Car, Paperclip, Image, Mic, File } from "lucide-react";
-import { useQuery } from "@tanstack/react-query";
+import { ArrowLeft, Upload, X, ImageIcon, Save, Calendar, DollarSign, Clock, FileText, User, Car, Paperclip, Image, Mic, File, Download, Loader2, Eye } from "lucide-react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 
@@ -32,6 +32,7 @@ async function uploadToImgbb(file: File): Promise<string> {
 }
 
 export default function CustomerEdit() {
+  const queryClient = useQueryClient();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -66,6 +67,45 @@ export default function CustomerEdit() {
   const [uploading, setUploading] = useState(false);
   const [customFields, setCustomFields] = useState<Record<string, string>>({});
   const [initialized, setInitialized] = useState(false);
+  const [rehostedUrls, setRehostedUrls] = useState<Record<string, string>>({});
+  const [rehostingIds, setRehostingIds] = useState<Set<string>>(new Set());
+
+  const reHostToImgbb = useCallback(async (fileId: string, originalUrl: string) => {
+    if (originalUrl.includes("i.ibb.co") || originalUrl.includes("imgbb.com")) {
+      setRehostedUrls(prev => ({ ...prev, [fileId]: originalUrl }));
+      return;
+    }
+    setRehostingIds(prev => new Set(prev).add(fileId));
+    try {
+      const response = await fetch(originalUrl);
+      const blob = await response.blob();
+      const form = new FormData();
+      form.append("image", blob);
+      const res = await fetch(`https://api.imgbb.com/1/upload?key=${IMGBB_API_KEY}`, { method: "POST", body: form });
+      const json = await res.json();
+      if (json.success) {
+        const newUrl = json.data.url;
+        setRehostedUrls(prev => ({ ...prev, [fileId]: newUrl }));
+        await supabase.from("customer_files").update({ file_url: newUrl }).eq("id", fileId);
+        queryClient.invalidateQueries({ queryKey: ["customer_files", id] });
+      }
+    } catch (err) {
+      console.error("Erro ao re-hospedar imagem:", err);
+      setRehostedUrls(prev => ({ ...prev, [fileId]: originalUrl }));
+    } finally {
+      setRehostingIds(prev => { const n = new Set(prev); n.delete(fileId); return n; });
+    }
+  }, [id, queryClient]);
+
+  useEffect(() => {
+    if (customerFiles) {
+      customerFiles.forEach(f => {
+        if (f.file_type === "image" && !rehostedUrls[f.id] && !rehostingIds.has(f.id)) {
+          reHostToImgbb(f.id, f.file_url);
+        }
+      });
+    }
+  }, [customerFiles, reHostToImgbb, rehostedUrls, rehostingIds]);
 
   useEffect(() => {
     if (customer && !initialized) {
@@ -354,26 +394,61 @@ export default function CustomerEdit() {
                           {customerFiles.map((f) => {
                             const isImage = f.file_type === "image";
                             const isAudio = f.file_type === "audio";
-                            const TypeIcon = isImage ? Image : isAudio ? Mic : File;
-                            const typeLabel = isImage ? "Imagem" : isAudio ? "Áudio" : "Arquivo";
-                            const typeBg = isImage ? "bg-emerald-500/10 text-emerald-500" : isAudio ? "bg-amber-500/10 text-amber-500" : "bg-indigo-500/10 text-indigo-500";
+                            const isPdf = f.file_name?.toLowerCase().endsWith(".pdf") || f.file_url?.toLowerCase().includes(".pdf");
+                            const TypeIcon = isImage ? Image : isAudio ? Mic : isPdf ? FileText : File;
+                            const typeLabel = isImage ? "Imagem" : isAudio ? "Áudio" : isPdf ? "PDF" : "Arquivo";
+                            const typeBg = isImage ? "bg-emerald-500/10 text-emerald-500" : isAudio ? "bg-amber-500/10 text-amber-500" : isPdf ? "bg-red-500/10 text-red-500" : "bg-indigo-500/10 text-indigo-500";
+                            const imageUrl = rehostedUrls[f.id] || f.file_url;
+                            const isRehosting = rehostingIds.has(f.id);
 
                             return (
                               <div key={f.id} className="rounded-lg border border-border bg-muted/30 overflow-hidden">
                                 {isImage ? (
-                                  <a href={f.file_url} target="_blank" rel="noopener noreferrer" className="block">
-                                    <img src={f.file_url} alt={f.file_name || "Imagem"} className="w-full h-32 object-cover hover:opacity-80 transition-opacity" />
-                                  </a>
+                                  <div className="relative">
+                                    {isRehosting && (
+                                      <div className="absolute inset-0 bg-background/70 flex items-center justify-center z-10">
+                                        <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                                      </div>
+                                    )}
+                                    <a href={imageUrl} target="_blank" rel="noopener noreferrer" className="block">
+                                      <img src={imageUrl} alt={f.file_name || "Imagem"} className="w-full h-40 object-cover hover:opacity-80 transition-opacity" loading="lazy" />
+                                    </a>
+                                  </div>
                                 ) : isAudio ? (
                                   <div className="p-3">
                                     <audio controls src={f.file_url} className="w-full h-8" />
                                   </div>
+                                ) : isPdf ? (
+                                  <div className="relative">
+                                    <iframe
+                                      src={`https://docs.google.com/gview?url=${encodeURIComponent(f.file_url)}&embedded=true`}
+                                      className="w-full h-48 border-0"
+                                      title={f.file_name || "PDF"}
+                                    />
+                                    <div className="absolute top-1 right-1 flex gap-1">
+                                      <a href={f.file_url} target="_blank" rel="noopener noreferrer">
+                                        <Button type="button" variant="secondary" size="icon" className="h-6 w-6">
+                                          <Eye className="h-3 w-3" />
+                                        </Button>
+                                      </a>
+                                      <a href={f.file_url} download>
+                                        <Button type="button" variant="secondary" size="icon" className="h-6 w-6">
+                                          <Download className="h-3 w-3" />
+                                        </Button>
+                                      </a>
+                                    </div>
+                                  </div>
                                 ) : (
                                   <div className="h-32 flex items-center justify-center">
-                                    <a href={f.file_url} target="_blank" rel="noopener noreferrer" className="flex flex-col items-center gap-2 text-muted-foreground hover:text-foreground transition-colors">
-                                      <File className="h-10 w-10" />
-                                      <span className="text-xs">Abrir arquivo</span>
-                                    </a>
+                                    <div className="flex flex-col items-center gap-2">
+                                      <File className="h-10 w-10 text-muted-foreground" />
+                                      <span className="text-xs text-muted-foreground truncate max-w-[120px]">{f.file_name || "Arquivo"}</span>
+                                      <a href={f.file_url} download>
+                                        <Button type="button" variant="outline" size="sm" className="h-7 text-xs gap-1">
+                                          <Download className="h-3 w-3" /> Baixar
+                                        </Button>
+                                      </a>
+                                    </div>
                                   </div>
                                 )}
                                 <div className="p-2 border-t border-border flex items-center justify-between">
