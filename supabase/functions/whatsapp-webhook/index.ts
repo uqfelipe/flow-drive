@@ -271,7 +271,12 @@ async function processFlow(
           } catch (e) {
             console.log(`[FLOW] Error saving customer_file: ${e}`);
           }
-        } else if (isMediaCapture && !incomingMediaUrl) {
+        } else if (isMediaCapture && !incomingMediaUrl && incomingMediaType) {
+          // Media detected (e.g. image) but URL not yet available — uazapi will send FileDownloaded later
+          console.log(`[FLOW] Media type "${incomingMediaType}" detected without URL, waiting for FileDownloaded event...`);
+          await adminClient.from("chat_sessions").update({ current_node_id: nodeId, variables: vars, status: "waiting", updated_at: new Date().toISOString() }).eq("id", sessionId);
+          return { nextNodeId: nodeId, variables: vars, status: "waiting" };
+        } else if (isMediaCapture && !incomingMediaUrl && !incomingMediaType) {
           // User sent text instead of media — ask again
           const promptMsg = currentNode.data.config?.message || "Por favor, envie um arquivo válido.";
           try { await sendWhatsAppText(inst, phone, "❌ " + replaceVariables(promptMsg, vars)); } catch (_) {}
