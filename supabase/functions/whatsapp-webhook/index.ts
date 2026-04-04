@@ -732,7 +732,7 @@ function handleMenuSelection(
   }
 
   // Menu buttons
-  if (nt === "menu_buttons" || nt === "quick_reply") {
+  if (nt === "menu_buttons") {
     const buttons = (node.data.config?.buttons || []) as any[];
     const num = parseInt(userInput.trim());
     if (!isNaN(num) && num >= 1 && num <= buttons.length) {
