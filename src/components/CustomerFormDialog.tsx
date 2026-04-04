@@ -97,7 +97,7 @@ export function CustomerFormDialog({ open, onOpenChange, customer }: Props) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name || !phone || !cpf) {
+    if (!name || !phone) {
       toast({ title: "Preencha os campos obrigatórios", variant: "destructive" });
       return;
     }
