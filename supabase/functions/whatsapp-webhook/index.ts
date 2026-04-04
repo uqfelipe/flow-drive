@@ -90,6 +90,24 @@ async function sendWhatsAppPresence(inst: Inst, phone: string, presence: string,
   await waFetch(inst, "/message/presence", { number: phone, presence, ...(delay ? { delay } : {}) });
 }
 
+// ── Profile picture helper ────────────────────────────────────────────
+async function fetchProfilePicUrl(inst: Inst, phone: string): Promise<string | null> {
+  try {
+    const res = await fetch(`${inst.server_url}/chat/details`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", token: inst.instance_token },
+      body: JSON.stringify({ number: phone, preview: false }),
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    const url = data?.image || data?.imagePreview || data?.wa_profilePicUrl || "";
+    return url || null;
+  } catch (e) {
+    console.log(`[PROFILE-PIC] Failed to fetch for ${phone}:`, e);
+    return null;
+  }
+}
+
 // ── Name memory helpers ──────────────────────────────────────────────
 function detectNameChange(text: string): string | null {
   const patterns = [
