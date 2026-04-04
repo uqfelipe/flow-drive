@@ -180,6 +180,33 @@ async function processFlow(
           vars.nome_usuario = incomingText.trim();
         }
         
+        // Auto-sync custom fields: check if varName matches a field definition
+        if (!NAME_VARS.includes(varName)) {
+          try {
+            const { data: fieldDef } = await adminClient
+              .from("customer_field_definitions")
+              .select("field_key")
+              .eq("field_key", varName)
+              .maybeSingle();
+            if (fieldDef) {
+              console.log(`[FLOW] Syncing custom field ${varName} = "${incomingText}"`);
+              // Merge into custom_fields JSONB
+              const { data: cust } = await adminClient
+                .from("customers")
+                .select("custom_fields")
+                .eq("id", customerId)
+                .single();
+              const existing = (cust?.custom_fields as Record<string, string>) || {};
+              existing[varName] = incomingText.trim();
+              await adminClient.from("customers")
+                .update({ custom_fields: existing })
+                .eq("id", customerId);
+            }
+          } catch (e) {
+            console.log(`[FLOW] Error syncing custom field: ${e}`);
+          }
+        }
+        
         nodeId = findNextNodeId(flowEdges, nodeId);
       }
     }
