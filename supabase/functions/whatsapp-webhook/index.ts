@@ -239,7 +239,8 @@ async function processFlow(
         
         // Media capture nodes: save file URL to customer_files and variable
         const isMediaCapture = nt === "capture_image" || nt === "capture_audio" || nt === "capture_file";
-        if (isMediaCapture && incomingMediaUrl) {
+        const hasMedia = !!incomingMediaUrl || (isMediaCapture && incomingMediaType && incomingId);
+        if (isMediaCapture && hasMedia) {
           const fileType = nt === "capture_image" ? "image" : nt === "capture_audio" ? "audio" : "file";
           
           // Download and re-host to imgbb for permanent URL
