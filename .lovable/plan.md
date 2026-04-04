@@ -1,68 +1,75 @@
 
 
-## Corrigir perda de imagens no webhook: dois bugs
+## Corrigir detecção de imagem no webhook — diagnóstico + fix robusto
 
-### Diagnóstico dos logs
+### Problema confirmado
 
-1. **09:16:38** — Flow chega no nó `capture_image` (node 135), envia "qual sua foto", sessão fica "waiting"
-2. **09:16:44** — Imagem chega: `extracted=1 valid=0` — imagem foi **detectada** mas **filtrada como inválida**
-3. **09:17:24** — Próximo log é um evento "chats", sem nenhum `FileDownloaded` no meio
-4. **Nenhum log de `FileDownloaded`** — o evento nunca chegou ou chegou com formato diferente
+Os logs mostram claramente:
+- **09:21:44** — Flow chega no nó `capture_image` (node 135), sessão fica `waiting`
+- **09:21:50** — Imagem chega: `extracted=1 valid=0` — imagem detectada mas **filtrada como inválida**
+- **Nenhum evento `FileDownloaded`** jamais chegou
+- A sessão permanece em `waiting` no nó 135 indefinidamente
+- O `custom_fields` do cliente tem apenas `{comida: "fgf"}` — **sem `foto`**
+- `customer_files` está vazio para esse cliente
 
-### Bug 1: `mediaType` descartado quando `mediaUrl` está vazio
+### Causa raiz
 
-Na linha 866-868 do `extractIncomingMessages`:
+O `extractIncomingMessages` (linhas 833-857) verifica:
+- `msg.mimetype` / `msg.mimeType` — uazapi **não** coloca mimetype no nível root da mensagem
+- `msg.type === "image"` — uazapi pode usar outro valor ou case diferente
+- `msg.message.imageMessage` — pode não existir no formato uazapi
+- `msg.mediatype` — pode não existir
+
+O que uazapi **provavelmente** envia:
+- `msg.content` como objeto com `mimetype` (similar ao que `Conversations.tsx` usa via `c?.mimetype?.startsWith("image")`)
+- `msg.type` como string tipo `"image"`, `"Image"`, ou similar  
+- O conteúdo da mídia fica dentro de `msg.content` ou campos específicos
+
+### Solução — `supabase/functions/whatsapp-webhook/index.ts`
+
+**1. Adicionar log de diagnóstico quando `valid=0`** (temporário mas essencial):
 ```typescript
-...(mediaUrl ? { mediaUrl, mediaType, mediaFileName } : {}),
-```
-Quando a imagem chega sem URL (uazapi ainda decriptando), `mediaUrl=""` é falsy, então `mediaType` NÃO é incluído no objeto. O filtro na linha 996 vê `!text && !mediaUrl && !mediaType` = true e descarta a mensagem.
-
-**Correção**: Sempre incluir `mediaType` independente de `mediaUrl`:
-```typescript
-...(mediaUrl ? { mediaUrl } : {}),
-...(mediaType ? { mediaType } : {}),
-...(mediaFileName ? { mediaFileName } : {}),
-```
-
-### Bug 2: `FileDownloaded` pode não chegar ou ter formato diferente
-
-Os logs mostram que **nenhum** evento `FileDownloaded` chegou nos ~40s após a imagem. Possibilidades:
-- uazapi não envia `FileDownloaded` como `messages_update` mas sim como outro `EventType`
-- O campo `Type` pode ter case diferente (`filedownloaded` vs `FileDownloaded`)
-
-**Correção**: Adicionar case-insensitive check no handler de `messages_update` e também detectar `FileDownloaded` em qualquer `EventType` (pode vir como evento de nível root):
-```typescript
-const evtType = (evt.Type || evt.type || body.state || body.type || "").toString().toLowerCase();
-if (evtType === "filedownloaded") { ... }
-```
-
-E adicionar log extra para qualquer `messages_update` que tenha `FileURL`:
-```typescript
-if (body.FileURL || evt.FileURL) {
-  console.log("[WEBHOOK] Found FileURL in event:", body.FileURL || evt.FileURL);
+// Após o filter, se valid=0 mas extracted>0:
+if (validMessages.length === 0 && incomingMessages.length > 0) {
+  for (const m of incomingMessages) {
+    console.log(`[WEBHOOK] FILTERED msg: fromMe=${m.fromMe} text="${m.text?.substring(0,30)}" mediaType=${m.mediaType} mediaUrl=${m.mediaUrl?.substring(0,50)} phone=${m.phone}`);
+  }
 }
 ```
 
-### Resumo das alterações
-
-**`supabase/functions/whatsapp-webhook/index.ts`** — 3 mudanças:
-
-1. **Linha 866-868**: Separar spread de `mediaType` do `mediaUrl` para que imagens sem URL ainda sejam reconhecidas como tipo "image"
-2. **Linha 949-950**: Case-insensitive comparison para `FileDownloaded` e buscar `FileURL` em mais campos do body
-3. **Após linha 980**: Adicionar fallback para detectar `FileDownloaded` como `EventType` de nível root (não só dentro de `messages_update`), caso uazapi envie assim
-
-### Fluxo após correção
-```text
-Imagem chega (sem URL):
-  → extractIncomingMessages: mediaType="image", mediaUrl=""
-  → Filtro válido: mediaType presente → NÃO filtra
-  → processFlow capture_image: sem URL mas mediaType="image" → aguarda silenciosamente
-  → Sessão fica "waiting"
-
-FileDownloaded chega (~25s depois):
-  → Detectado por case-insensitive check
-  → await processIncomingMessage (síncrono)
-  → Re-host imgbb → URL permanente
-  → Salva em vars, customer_files, custom_fields
+**2. Expandir detecção de mimetype** no `extractIncomingMessages`:
+```typescript
+// Linha 835 — adicionar mais fontes de mimetype:
+const contentObj = typeof msg.content === "object" ? msg.content : null;
+const mimetype = (
+  msg.mimetype || msg.mimeType || msg.MimeType ||
+  contentObj?.mimetype || contentObj?.mimeType ||
+  msgContent.imageMessage?.mimetype ||
+  msgContent.audioMessage?.mimetype ||
+  msgContent.documentMessage?.mimetype ||
+  msgContent.videoMessage?.mimetype ||
+  ""
+).toString();
 ```
+
+**3. Expandir detecção de tipo** na condição de image:
+```typescript
+// Linha 841 — adicionar checagem de msg.type case-insensitive e content.mimetype:
+const msgTypeLower = (msg.type || msg.Type || "").toString().toLowerCase();
+
+if (msgContent.imageMessage || msgTypeLower === "image" || msg.mediatype === "image" 
+    || detectedTypeByMime === "image") {
+```
+
+**4. Adicionar log do raw message** quando é mídia para debug:
+```typescript
+// Antes do filtro de mídia, loggar keys do msg para entender o formato
+console.log(`[WEBHOOK] msg keys=${Object.keys(msg).join(",")} type=${msg.type} mimetype=${mimetype} content_type=${typeof msg.content} content_keys=${contentObj ? Object.keys(contentObj).join(",") : "n/a"}`);
+```
+
+### Arquivo modificado
+- `supabase/functions/whatsapp-webhook/index.ts` — 4 alterações na função `extractIncomingMessages` e no handler de mensagens
+
+### Por que isso vai funcionar
+O fix anterior separou `mediaType` do `mediaUrl` no spread (linha 867-869), mas o `mediaType` nunca era definido porque nenhuma das condições de detecção (linhas 841-857) matchava. Ao expandir a detecção para incluir `msg.content?.mimetype`, `msg.Type`, e case-insensitive checks, a imagem será reconhecida. O log de diagnóstico vai confirmar exatamente quais campos o uazapi envia.
 
