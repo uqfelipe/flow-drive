@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Plus, Search, Phone, Pencil, Trash2, Users } from "lucide-react";
+import { Plus, Search, Phone, Pencil, Trash2, Users, Settings2 } from "lucide-react";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useCustomers, type CustomerRow } from "@/hooks/use-customers";
