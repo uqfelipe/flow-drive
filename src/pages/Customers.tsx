@@ -35,8 +35,7 @@ export default function Customers() {
   );
 
   const handleEdit = (customer: CustomerRow) => {
-    setEditCustomer(customer);
-    setFormOpen(true);
+    navigate(`/customers/${customer.id}`);
   };
 
   const handleNew = () => {
