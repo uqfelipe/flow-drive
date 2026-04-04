@@ -326,24 +326,57 @@ export default function CustomerEdit() {
                       <TabsContent value="campos">
                         <TooltipProvider>
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            {fieldDefs.map((fd) => (
-                              <div key={fd.id} className="space-y-1.5">
-                                <Tooltip>
-                                  <TooltipTrigger asChild>
-                                    <Label className="text-xs cursor-help">{fd.field_label}</Label>
-                                  </TooltipTrigger>
-                                  <TooltipContent side="top">
-                                    <p className="text-xs font-mono">{`{{${fd.field_key}}}`}</p>
-                                  </TooltipContent>
-                                </Tooltip>
-                                <Input
-                                  type={fd.field_type === "email" ? "email" : fd.field_type === "phone" ? "tel" : "text"}
-                                  value={customFields[fd.field_key] || ""}
-                                  onChange={(e) => setCustomFields(prev => ({ ...prev, [fd.field_key]: e.target.value }))}
-                                  placeholder={fd.field_label}
-                                />
-                              </div>
-                            ))}
+                            {fieldDefs.map((fd) => {
+                              const val = customFields[fd.field_key] || "";
+                              const isImageField = fd.field_type === "image";
+                              const isAudioField = fd.field_type === "audio";
+                              const isFileField = fd.field_type === "file";
+
+                              return (
+                                <div key={fd.id} className="space-y-1.5">
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <Label className="text-xs cursor-help">{fd.field_label}</Label>
+                                    </TooltipTrigger>
+                                    <TooltipContent side="top">
+                                      <p className="text-xs font-mono">{`{{${fd.field_key}}}`}</p>
+                                    </TooltipContent>
+                                  </Tooltip>
+
+                                  {isImageField && val ? (
+                                    <div className="relative group rounded-lg overflow-hidden border border-border bg-muted/30">
+                                      <img src={val} alt={fd.field_label} className="w-full h-32 object-cover" loading="lazy" />
+                                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                                        <a href={val} target="_blank" rel="noopener noreferrer">
+                                          <Button type="button" variant="secondary" size="icon" className="h-7 w-7"><Eye className="h-3.5 w-3.5" /></Button>
+                                        </a>
+                                        <Button type="button" variant="destructive" size="icon" className="h-7 w-7" onClick={() => setCustomFields(prev => ({ ...prev, [fd.field_key]: "" }))}>
+                                          <X className="h-3.5 w-3.5" />
+                                        </Button>
+                                      </div>
+                                    </div>
+                                  ) : isImageField && !val ? (
+                                    <div className="h-20 rounded-lg border border-dashed border-border bg-muted/20 flex items-center justify-center">
+                                      <ImageIcon className="h-6 w-6 text-muted-foreground/40" />
+                                    </div>
+                                  ) : isAudioField && val ? (
+                                    <audio controls src={val} className="w-full h-8" />
+                                  ) : isFileField && val ? (
+                                    <a href={val} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 p-2 rounded-lg border border-border bg-muted/30 hover:bg-muted/50 transition-colors text-xs text-primary">
+                                      <Download className="h-4 w-4" />
+                                      <span className="truncate">{fd.field_label}</span>
+                                    </a>
+                                  ) : (
+                                    <Input
+                                      type={fd.field_type === "email" ? "email" : fd.field_type === "phone" ? "tel" : "text"}
+                                      value={val}
+                                      onChange={(e) => setCustomFields(prev => ({ ...prev, [fd.field_key]: e.target.value }))}
+                                      placeholder={fd.field_label}
+                                    />
+                                  )}
+                                </div>
+                              );
+                            })}
                           </div>
                         </TooltipProvider>
                       </TabsContent>

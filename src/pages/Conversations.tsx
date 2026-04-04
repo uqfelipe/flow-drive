@@ -127,6 +127,17 @@ function extractContent(msg: WhatsAppMessage): ExtractedContent {
     return "";
   };
 
+  // Base64 image detection (data:image/* in content string or object fields)
+  if (typeof content === "string" && content.startsWith("data:image/")) {
+    return { text: "", type: "image", fileUrl: content, mimetype: "" };
+  }
+  if (c?.data?.startsWith?.("data:image/")) {
+    return { text: resolveText(), type: "image", fileUrl: c.data, mimetype: resolveMimetype(), thumbnail: resolveThumbnail() };
+  }
+  if (c?.base64?.startsWith?.("data:image/")) {
+    return { text: resolveText(), type: "image", fileUrl: c.base64, mimetype: resolveMimetype(), thumbnail: resolveThumbnail() };
+  }
+
   // Base64 video detection (data:video/* in content string or object fields)
   if (typeof content === "string" && content.startsWith("data:video/")) {
     return { text: "", type: "video", fileUrl: content, mimetype: "" };
@@ -140,7 +151,8 @@ function extractContent(msg: WhatsAppMessage): ExtractedContent {
 
   // Image
   if (msgType.includes("image") || c?.mimetype?.startsWith("image")) {
-    return { text: resolveText(), type: "image", fileUrl: resolveFileUrl(), mimetype: resolveMimetype(), thumbnail: resolveThumbnail() };
+    const base64Url = c?.data?.startsWith?.("data:") ? c.data : c?.base64?.startsWith?.("data:") ? c.base64 : null;
+    return { text: resolveText(), type: "image", fileUrl: base64Url || resolveFileUrl(), mimetype: resolveMimetype(), thumbnail: resolveThumbnail() };
   }
 
   // Video
@@ -221,6 +233,18 @@ function formatDateSeparator(ts: number) {
 
 // ─── Media Bubble Components ───
 
+const IMGBB_API_KEY = "218e4f96aa83bbfd4e78abb8d60bad52";
+
+async function uploadBase64ToImgbb(dataUri: string): Promise<string> {
+  const base64Data = dataUri.includes(",") ? dataUri.split(",")[1] : dataUri;
+  const form = new FormData();
+  form.append("image", base64Data);
+  const res = await fetch(`https://api.imgbb.com/1/upload?key=${IMGBB_API_KEY}`, { method: "POST", body: form });
+  const json = await res.json();
+  if (!json.success) throw new Error("imgbb upload failed");
+  return json.data.url;
+}
+
 function MediaImage({ url, caption, fromMe, onClickImage, thumbnail, messageId }: { url: string; caption?: string; fromMe: boolean; onClickImage: (url: string) => void; thumbnail?: string; messageId?: string }) {
   const [displayUrl, setDisplayUrl] = useState(() => {
     if (messageId && mediaUrlCache.has(messageId)) return mediaUrlCache.get(messageId)!;
@@ -231,6 +255,20 @@ function MediaImage({ url, caption, fromMe, onClickImage, thumbnail, messageId }
   const [isDownloading, setIsDownloading] = useState(false);
 
   const isEncrypted = url && url.includes(".enc") && !mediaUrlCache.has(messageId || "");
+  const isBase64 = displayUrl?.startsWith("data:");
+
+  // Auto-upload base64 to imgbb
+  useEffect(() => {
+    if (!isBase64 || !displayUrl || !messageId) return;
+    if (mediaUrlCache.has(messageId)) { setDisplayUrl(mediaUrlCache.get(messageId)!); return; }
+    let cancelled = false;
+    uploadBase64ToImgbb(displayUrl).then(hostedUrl => {
+      if (cancelled) return;
+      mediaUrlCache.set(messageId, hostedUrl);
+      setDisplayUrl(hostedUrl);
+    }).catch(e => console.error("imgbb re-host failed:", e));
+    return () => { cancelled = true; };
+  }, [isBase64, displayUrl, messageId]);
 
   const handleClick = async () => {
     // If we already have a good URL, open lightbox
