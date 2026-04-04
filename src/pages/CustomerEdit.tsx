@@ -304,6 +304,7 @@ export default function CustomerEdit() {
                           const total = (customerFiles?.length || 0) + cfImgCount;
                           return total > 0 ? <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-[10px]">{total}</Badge> : null;
                         })()}
+                      </TabsTrigger>
                     </TabsList>
 
                     {/* Tab: Dados */}
