@@ -1,16 +1,18 @@
 import { AdminLayout } from "@/components/AdminLayout";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useCreateCustomer } from "@/hooks/use-customers";
 import { useCustomerFieldDefinitions } from "@/hooks/use-customer-fields";
 import { useToast } from "@/hooks/use-toast";
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Upload, X, ImageIcon, Save } from "lucide-react";
+import { ArrowLeft, Upload, X, ImageIcon, Save, User, FileText } from "lucide-react";
 
 const IMGBB_API_KEY = "218e4f96aa83bbfd4e78abb8d60bad52";
 
@@ -38,7 +40,6 @@ export default function CustomerNew() {
   const [uploading, setUploading] = useState(false);
   const [customFields, setCustomFields] = useState<Record<string, string>>({});
 
-  // Ctrl+V paste
   useEffect(() => {
     const handlePaste = async (e: ClipboardEvent) => {
       const items = e.clipboardData?.items;
@@ -91,106 +92,132 @@ export default function CustomerNew() {
 
   return (
     <AdminLayout title="Novo Cliente" subtitle="Cadastrar novo cliente">
-      <div className="p-6 animate-fade-in">
-        <Button variant="ghost" size="sm" className="mb-4" onClick={() => navigate("/customers")}>
-          <ArrowLeft className="h-4 w-4 mr-1" /> Voltar para Clientes
+      <div className="p-4 md:p-6 animate-fade-in">
+        <Button variant="ghost" size="sm" className="mb-3" onClick={() => navigate("/customers")}>
+          <ArrowLeft className="h-4 w-4 mr-1" /> Voltar
         </Button>
 
-        <div className="max-w-2xl">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Informações do Cliente</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <form onSubmit={handleSubmit} className="space-y-5">
+        <form onSubmit={handleSubmit}>
+          {/* Compact Header */}
+          <Card className="mb-4">
+            <CardContent className="py-4">
+              <div className="flex items-center gap-4">
                 {/* Photo */}
-                <div className="flex items-center gap-4">
-                  <div className="relative h-20 w-20 rounded-full bg-muted flex items-center justify-center overflow-hidden border-2 border-border shrink-0">
+                <div className="relative group shrink-0">
+                  <div className="h-14 w-14 rounded-full bg-muted flex items-center justify-center overflow-hidden border-2 border-border">
                     {photo ? (
                       <img src={photo} alt="Foto" className="h-full w-full object-cover" />
                     ) : (
-                      <ImageIcon className="h-8 w-8 text-muted-foreground" />
+                      <ImageIcon className="h-6 w-6 text-muted-foreground" />
                     )}
                   </div>
-                  <div className="flex flex-col gap-2">
-                    <div className="flex gap-2">
-                      <Button type="button" size="sm" variant="outline" disabled={uploading} onClick={() => fileRef.current?.click()}>
-                        <Upload className="h-3.5 w-3.5 mr-1" />{uploading ? "Enviando..." : "Upload"}
-                      </Button>
-                      {photo && (
-                        <Button type="button" size="sm" variant="ghost" onClick={() => setPhoto(null)}>
-                          <X className="h-3.5 w-3.5 mr-1" />Remover
-                        </Button>
-                      )}
-                    </div>
-                    <p className="text-[11px] text-muted-foreground">Ou cole com Ctrl+V</p>
+                  <div className="absolute inset-0 rounded-full bg-background/80 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1">
+                    <button type="button" className="p-1 hover:text-primary transition-colors" onClick={() => fileRef.current?.click()} disabled={uploading}>
+                      <Upload className="h-3.5 w-3.5" />
+                    </button>
+                    {photo && (
+                      <button type="button" className="p-1 hover:text-destructive transition-colors" onClick={() => setPhoto(null)}>
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+                    )}
                   </div>
                   <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>Nome *</Label>
-                    <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Nome completo" />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Telefone *</Label>
-                    <Input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+55 11 99999-9999" />
-                  </div>
+                {/* Info */}
+                <div className="flex-1 min-w-0">
+                  <h2 className="text-lg font-semibold text-foreground">{name || "Novo Cliente"}</h2>
+                  <p className="text-sm text-muted-foreground">{phone || "Preencha os dados abaixo"}</p>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>Status</Label>
-                    <Select value={status} onValueChange={setStatus}>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="active">Ativo</SelectItem>
-                        <SelectItem value="inactive">Inativo</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Observações</Label>
-                  <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Notas sobre o cliente..." rows={4} />
-                </div>
-
-                {/* Custom fields */}
-                {fieldDefs && fieldDefs.length > 0 && (
-                  <div className="space-y-4 border-t border-border pt-5">
-                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Campos Personalizados</p>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      {fieldDefs.map((fd) => (
-                        <div key={fd.id} className="space-y-1.5">
-                          <Label className="text-xs">
-                            {fd.field_label}
-                            <span className="text-muted-foreground ml-1 font-normal">{`{{${fd.field_key}}}`}</span>
-                          </Label>
-                          <Input
-                            type={fd.field_type === "email" ? "email" : fd.field_type === "phone" ? "tel" : "text"}
-                            value={customFields[fd.field_key] || ""}
-                            onChange={(e) => setCustomFields(prev => ({ ...prev, [fd.field_key]: e.target.value }))}
-                            placeholder={fd.field_label}
-                          />
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                <div className="flex justify-end gap-2 pt-3 border-t border-border">
-                  <Button type="button" variant="outline" onClick={() => navigate("/customers")}>Cancelar</Button>
-                  <Button type="submit" disabled={createMutation.isPending}>
-                    <Save className="h-4 w-4 mr-1" />
-                    {createMutation.isPending ? "Criando..." : "Criar Cliente"}
+                {/* Actions */}
+                <div className="flex gap-2 shrink-0">
+                  <Button type="button" variant="outline" size="sm" onClick={() => navigate("/customers")}>Cancelar</Button>
+                  <Button type="submit" size="sm" disabled={createMutation.isPending}>
+                    <Save className="h-3.5 w-3.5 mr-1" />
+                    {createMutation.isPending ? "Criando..." : "Criar"}
                   </Button>
                 </div>
-              </form>
+              </div>
             </CardContent>
           </Card>
-        </div>
+
+          {/* Main content */}
+          <div className="max-w-3xl">
+            <Card>
+              <CardContent className="pt-5">
+                <Tabs defaultValue="dados">
+                  <TabsList className="mb-4">
+                    <TabsTrigger value="dados" className="gap-1.5">
+                      <User className="h-3.5 w-3.5" /> Dados
+                    </TabsTrigger>
+                    {fieldDefs && fieldDefs.length > 0 && (
+                      <TabsTrigger value="campos" className="gap-1.5">
+                        <FileText className="h-3.5 w-3.5" /> Campos Personalizados
+                      </TabsTrigger>
+                    )}
+                  </TabsList>
+
+                  {/* Tab: Dados */}
+                  <TabsContent value="dados" className="space-y-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                      <div className="space-y-1.5">
+                        <Label className="text-xs">Nome *</Label>
+                        <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Nome completo" />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs">Telefone *</Label>
+                        <Input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+55 11 99999-9999" />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs">Status</Label>
+                        <Select value={status} onValueChange={setStatus}>
+                          <SelectTrigger><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="active">Ativo</SelectItem>
+                            <SelectItem value="inactive">Inativo</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">Observações</Label>
+                      <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Notas sobre o cliente..." rows={2} />
+                    </div>
+                  </TabsContent>
+
+                  {/* Tab: Campos Personalizados */}
+                  {fieldDefs && fieldDefs.length > 0 && (
+                    <TabsContent value="campos">
+                      <TooltipProvider>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                          {fieldDefs.map((fd) => (
+                            <div key={fd.id} className="space-y-1.5">
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Label className="text-xs cursor-help">{fd.field_label}</Label>
+                                </TooltipTrigger>
+                                <TooltipContent side="top">
+                                  <p className="text-xs font-mono">{`{{${fd.field_key}}}`}</p>
+                                </TooltipContent>
+                              </Tooltip>
+                              <Input
+                                type={fd.field_type === "email" ? "email" : fd.field_type === "phone" ? "tel" : "text"}
+                                value={customFields[fd.field_key] || ""}
+                                onChange={(e) => setCustomFields(prev => ({ ...prev, [fd.field_key]: e.target.value }))}
+                                placeholder={fd.field_label}
+                              />
+                            </div>
+                          ))}
+                        </div>
+                      </TooltipProvider>
+                    </TabsContent>
+                  )}
+                </Tabs>
+              </CardContent>
+            </Card>
+          </div>
+        </form>
       </div>
     </AdminLayout>
   );
