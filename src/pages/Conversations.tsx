@@ -1334,10 +1334,12 @@ export default function Conversations() {
                             return (
                               <div key={msg.id} id={`msg-${msg.id}`}>
                                 {showDate && (
-                                  <div className="flex justify-center my-5">
-                                    <span className="bg-card/95 backdrop-blur-md text-muted-foreground/80 text-[10px] uppercase tracking-wider px-4 py-1.5 rounded-full border border-border/30 shadow-sm font-semibold">
+                                  <div className="flex items-center gap-3 my-6 px-4">
+                                    <div className="flex-1 h-px bg-border/40" />
+                                    <span className="text-[10px] uppercase tracking-widest text-muted-foreground/60 font-medium select-none">
                                       {formatDateSeparator(msg.timestamp)}
                                     </span>
+                                    <div className="flex-1 h-px bg-border/40" />
                                   </div>
                                 )}
 
