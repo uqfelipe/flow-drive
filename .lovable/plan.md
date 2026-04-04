@@ -1,46 +1,39 @@
 
 
-## Mensagem de boas-vindas para primeiro contato
+## Corrigir: Mensagem de boas-vindas antes da verificação do fluxo
 
-### Objetivo
-Criar um sistema de mensagem de boas-vindas (texto ou áudio) que é enviada **apenas na primeira vez** que o usuário entra em contato. Após isso, nunca mais aparece.
+### Problema identificado
+Nos logs do webhook, vemos que ao receber "oi" do número `553399653956`:
+1. O fetch do fluxo ativo retornou um **502 Bad Gateway** (erro temporário do Supabase)
+2. O código logou `[AUTO-REPLY] No active flow found` e **retornou antes** de chegar na lógica de boas-vindas (linha 873)
 
-### Como funciona
+A lógica de welcome está posicionada **depois** da verificação do fluxo — se o fluxo falha ou não existe, a welcome nunca é enviada.
 
-1. **Banco de dados** — Adicionar coluna `welcomed` (boolean, default false) na tabela `customers` para rastrear quem já recebeu a mensagem de boas-vindas.
+### Solução
+Reorganizar o código em `supabase/functions/whatsapp-webhook/index.ts` na função `processIncomingMessage`:
 
-2. **Configuração** — Adicionar registros na tabela `settings` para o admin configurar:
-   - `welcome_type`: `"text"` ou `"audio"`
-   - `welcome_text`: conteúdo da mensagem de texto
-   - `welcome_audio_url`: URL do áudio de boas-vindas
-   - `welcome_enabled`: ativar/desativar
+1. **Mover a lógica de welcome para ANTES da verificação do fluxo** — buscar o customer, verificar `welcomed`, enviar a mensagem de boas-vindas, e marcar como `welcomed = true`
+2. **Só depois** buscar o fluxo ativo e continuar o processamento normal
+3. A welcome precisa apenas do WhatsApp instance e do customer — não depende do fluxo
 
-3. **Página de Configurações** (`src/pages/SettingsPage.tsx`) — Adicionar seção "Mensagem de Boas-Vindas" com:
-   - Toggle ativar/desativar
-   - Seletor tipo: Texto ou Áudio
-   - Campo de texto para mensagem
-   - Campo de URL para áudio
-   - Botão salvar
-
-4. **Webhook** (`supabase/functions/whatsapp-webhook/index.ts`) — Na função `processIncomingMessage`, ao criar um novo customer ou detectar `welcomed = false`:
-   - Buscar configurações de welcome da tabela `settings`
-   - Se habilitado e `welcomed === false`: enviar texto ou áudio conforme configurado
-   - Marcar `welcomed = true` no customer
-   - Continuar o fluxo normal (perguntar nome, etc.)
-
-### Fluxo do usuário
+### Ordem atual (quebrada)
 ```text
-Usuário manda "oi" (primeiro contato)
-  → Bot envia mensagem/áudio de boas-vindas
-  → Bot pergunta o nome
-  → Fluxo normal continua
-
-Usuário manda "oi" (segundo contato em diante)
-  → Pula direto para o fluxo (sem boas-vindas)
+1. Fetch flow          ← falha = return (welcome nunca roda)
+2. Get WhatsApp instance
+3. Get/create customer
+4. Send welcome        ← nunca chega aqui
+5. Process flow
 ```
 
-### Arquivos alterados
-- **Migração SQL** — `ALTER TABLE customers ADD COLUMN welcomed boolean DEFAULT false`
-- **`src/pages/SettingsPage.tsx`** — Seção de configuração da mensagem de boas-vindas
-- **`supabase/functions/whatsapp-webhook/index.ts`** — Lógica de envio condicional antes do fluxo
+### Ordem corrigida
+```text
+1. Get WhatsApp instance
+2. Get/create customer
+3. Send welcome (if !welcomed)  ← roda independente do fluxo
+4. Fetch flow
+5. Process flow (se existir)
+```
+
+### Arquivo alterado
+- `supabase/functions/whatsapp-webhook/index.ts` — reordenar blocos dentro de `processIncomingMessage`
 
