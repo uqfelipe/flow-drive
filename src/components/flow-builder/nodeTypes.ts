@@ -43,7 +43,7 @@ export const nodeTypes: NodeTypeConfig[] = [
   // Menus
 
 
-  { type: "menu_buttons", label: "Menu Botões", category: "menu", icon: SquareMousePointer, description: "Menu com botões interativos", color: "#3B82F6", defaultConfig: { buttons: [{ text: "Botão 1", type: "REPLY" }, { text: "Botão 2", type: "REPLY" }], imageButton: "" } },
+  { type: "menu_buttons", label: "Menu Respostas", category: "menu", icon: SquareMousePointer, description: "Menu com botões interativos", color: "#3B82F6", defaultConfig: { buttons: [{ text: "Botão 1", type: "REPLY" }, { text: "Botão 2", type: "REPLY" }], imageButton: "" } },
   { type: "menu_list", label: "Menu Lista", category: "menu", icon: List, description: "Menu lista com seções", color: "#8B5CF6", defaultConfig: { listButton: "Ver opções", sections: [{ title: "Seção 1", items: [{ title: "Item 1", id: "1", description: "" }] }] } },
   
   { type: "poll", label: "Enquete", category: "menu", icon: BarChart3, description: "Criar enquete", color: "#14B8A6", defaultConfig: { question: "", options: ["Opção 1", "Opção 2"], selectableCount: 1 } },
