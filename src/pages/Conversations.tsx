@@ -1102,11 +1102,11 @@ export default function Conversations() {
                     <div
                       key={chat.wa_chatid}
                       className={cn(
-                        "group relative w-full flex items-center gap-3 px-3 py-3 text-left rounded-xl transition-all duration-200 border-l-[3px] cursor-pointer",
+                        "group relative w-full flex items-center gap-3 px-3 py-3.5 text-left rounded-xl transition-all duration-200 cursor-pointer",
                         isActive
-                          ? "bg-primary/12 shadow-sm shadow-primary/10 border-primary"
-                          : "hover:bg-accent/40 active:scale-[0.99] border-transparent",
-                        hasUnread && !isActive && "bg-accent/20"
+                          ? "bg-primary/10 border border-primary/20 shadow-sm"
+                          : "hover:bg-muted/60 border border-transparent",
+                        hasUnread && !isActive && "bg-accent/10"
                       )}
                       onClick={() => setSelectedChat(chat)}
                     >
