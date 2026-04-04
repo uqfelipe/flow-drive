@@ -834,9 +834,10 @@ async function processIncomingMessage(phone: string, text: string) {
     }
 
     let customerId: string;
+    let customerWelcomed = true; // default true so we skip welcome if unknown
     const { data: existingCustomer } = await adminClient
       .from("customers")
-      .select("id")
+      .select("id, welcomed")
       .eq("phone", phone)
       .limit(1)
       .maybeSingle();
