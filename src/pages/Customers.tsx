@@ -39,8 +39,7 @@ export default function Customers() {
   };
 
   const handleNew = () => {
-    setEditCustomer(null);
-    setFormOpen(true);
+    navigate("/customers/new");
   };
 
   const handleDelete = (customer: CustomerRow, e: React.MouseEvent) => {
