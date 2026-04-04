@@ -1035,13 +1035,13 @@ Deno.serve(async (req) => {
       const incomingMessages = extractIncomingMessages(body);
       
       // Filter out groups, noise, fromMe, empty text
-      const validMessages = incomingMessages.filter(({ chatId, phone, text, fromMe, mediaUrl, mediaType }) => {
+      const validMessages = incomingMessages.filter(({ chatId, phone, text, fromMe, mediaUrl, mediaType, latitude }) => {
         if (isGroupOrNoise(chatId)) {
           console.log(`[WEBHOOK] SKIP group/noise: ${chatId}`);
           return false;
         }
         if (fromMe) return false;
-        if (!text && !mediaUrl && !mediaType) return false;
+        if (!text && !mediaUrl && !mediaType && latitude == null) return false;
         if (!phone) return false;
         return true;
       });
