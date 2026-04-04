@@ -11,7 +11,6 @@ import { useCustomers, type CustomerRow } from "@/hooks/use-customers";
 import { useRentals } from "@/hooks/use-rentals";
 import { CustomerFormDialog } from "@/components/CustomerFormDialog";
 import { CustomerDeleteDialog } from "@/components/CustomerDeleteDialog";
-import { CustomerFieldsManager } from "@/components/CustomerFieldsManager";
 
 export default function Customers() {
   const [search, setSearch] = useState("");
