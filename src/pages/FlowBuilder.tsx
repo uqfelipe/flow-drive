@@ -45,6 +45,8 @@ function FlowBuilderContent() {
   const [currentFlowStatus, setCurrentFlowStatus] = useState<string>("draft");
   const [isActive, setIsActive] = useState(false);
   const [dbLoaded, setDbLoaded] = useState(false);
+  const [clipboard, setClipboard] = useState<Node[]>([]);
+  const [pasteCount, setPasteCount] = useState(0);
 
   const { data: flows, isLoading } = useFlows();
   const { data: flowDetail } = useFlow(currentFlowId);
@@ -95,6 +97,75 @@ function FlowBuilderContent() {
     [setEdges]
   );
 
+  // Copy/paste/duplicate logic
+  const handleCopy = useCallback((targetNodes?: Node[]) => {
+    const toCopy = targetNodes || nodes.filter((n) => n.selected);
+    if (toCopy.length === 0) return;
+    setClipboard(toCopy.map((n) => ({ ...n })));
+    setPasteCount(0);
+    toast.success(`${toCopy.length} componente(s) copiado(s)`);
+  }, [nodes]);
+
+  const handlePaste = useCallback(() => {
+    if (clipboard.length === 0) return;
+    const offset = (pasteCount + 1) * 50;
+    const idMap: Record<string, string> = {};
+    const newNodes = clipboard.map((n) => {
+      const newId = String(nodeIdCounter++);
+      idMap[n.id] = newId;
+      return {
+        ...n,
+        id: newId,
+        position: { x: n.position.x + offset, y: n.position.y + offset },
+        selected: true,
+        data: { ...n.data },
+      };
+    });
+    // Preserve internal edges between copied nodes
+    const internalEdges = edges.filter(
+      (e) => idMap[e.source] && idMap[e.target]
+    ).map((e) => ({
+      ...e,
+      id: `e-${idMap[e.source]}-${idMap[e.target]}-${Date.now()}`,
+      source: idMap[e.source],
+      target: idMap[e.target],
+    }));
+    setNodes((nds) => [...nds.map((n) => ({ ...n, selected: false })), ...newNodes]);
+    setEdges((eds) => [...eds, ...internalEdges]);
+    setPasteCount((c) => c + 1);
+    toast.success(`${newNodes.length} componente(s) colado(s)`);
+  }, [clipboard, pasteCount, edges, setNodes, setEdges]);
+
+  const handleDuplicate = useCallback(() => {
+    const selected = nodes.filter((n) => n.selected);
+    if (selected.length === 0) return;
+    // Copy then immediately paste
+    const offset = 50;
+    const idMap: Record<string, string> = {};
+    const newNodes = selected.map((n) => {
+      const newId = String(nodeIdCounter++);
+      idMap[n.id] = newId;
+      return {
+        ...n,
+        id: newId,
+        position: { x: n.position.x + offset, y: n.position.y + offset },
+        selected: true,
+        data: { ...n.data },
+      };
+    });
+    const internalEdges = edges.filter(
+      (e) => idMap[e.source] && idMap[e.target]
+    ).map((e) => ({
+      ...e,
+      id: `e-${idMap[e.source]}-${idMap[e.target]}-${Date.now()}`,
+      source: idMap[e.source],
+      target: idMap[e.target],
+    }));
+    setNodes((nds) => [...nds.map((n) => ({ ...n, selected: false })), ...newNodes]);
+    setEdges((eds) => [...eds, ...internalEdges]);
+    toast.success(`${newNodes.length} componente(s) duplicado(s)`);
+  }, [nodes, edges, setNodes, setEdges]);
+
   // Only open config panel via pencil icon (custom event), not on selection
   useEffect(() => {
     const handler = (e: Event) => {
@@ -102,9 +173,31 @@ function FlowBuilderContent() {
       const node = nodes.find((n) => n.id === nodeId);
       if (node) setSelectedNode(node);
     };
+    const copyHandler = (e: Event) => {
+      const nodeId = (e as CustomEvent).detail;
+      const node = nodes.find((n) => n.id === nodeId);
+      if (node) handleCopy([node]);
+    };
     window.addEventListener("flow-edit-node", handler);
-    return () => window.removeEventListener("flow-edit-node", handler);
-  }, [nodes]);
+    window.addEventListener("flow-copy-node", copyHandler);
+    return () => {
+      window.removeEventListener("flow-edit-node", handler);
+      window.removeEventListener("flow-copy-node", copyHandler);
+    };
+  }, [nodes, handleCopy]);
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement;
+      if (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable) return;
+      if ((e.ctrlKey || e.metaKey) && e.key === "c") { e.preventDefault(); handleCopy(); }
+      if ((e.ctrlKey || e.metaKey) && e.key === "v") { e.preventDefault(); handlePaste(); }
+      if ((e.ctrlKey || e.metaKey) && e.key === "d") { e.preventDefault(); handleDuplicate(); }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [handleCopy, handlePaste, handleDuplicate]);
 
   const onDragOver = useCallback((event: React.DragEvent) => {
     event.preventDefault();

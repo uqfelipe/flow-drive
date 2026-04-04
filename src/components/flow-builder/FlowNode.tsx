@@ -2,7 +2,7 @@ import { memo, useCallback } from "react";
 import { Handle, Position, type NodeProps, useReactFlow } from "@xyflow/react";
 import { getNodeTypeConfig } from "./nodeTypes";
 import type { FlowNodeData } from "@/types";
-import { X, GripHorizontal, Pencil, Mic, Image, Video, File, Sticker } from "lucide-react";
+import { X, GripHorizontal, Pencil, Mic, Image, Video, File, Sticker, Copy } from "lucide-react";
 
 function FlowNode({ data, selected, id }: NodeProps) {
   const nodeData = data as unknown as FlowNodeData;
@@ -77,6 +77,16 @@ function FlowNode({ data, selected, id }: NodeProps) {
         <span className="text-xs font-semibold flex-1 truncate" style={{ color }}>
           {config?.label || nodeData.nodeType}
         </span>
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            window.dispatchEvent(new CustomEvent("flow-copy-node", { detail: id }));
+          }}
+          className="p-0.5 rounded hover:bg-black/10 dark:hover:bg-white/10 transition-colors"
+          title="Copiar"
+        >
+          <Copy className="h-3.5 w-3.5 text-muted-foreground" />
+        </button>
         <button
           onClick={(e) => {
             e.stopPropagation();
