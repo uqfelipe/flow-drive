@@ -1396,10 +1396,10 @@ export default function Conversations() {
                                       )}
 
                                       <div className={cn(
-                                        "relative max-w-[70%] px-3 py-2 text-[13px] leading-[1.45] break-words",
+                                        "relative max-w-[75%] px-3 py-2 text-[13px] leading-[1.5] break-words",
                                         msg.fromMe
-                                          ? "bg-gradient-to-br from-primary to-primary/90 text-primary-foreground rounded-2xl rounded-br-md shadow-md shadow-primary/10"
-                                          : "bg-card text-card-foreground border border-border/50 rounded-2xl rounded-bl-md shadow-sm"
+                                          ? "bg-primary text-primary-foreground rounded-2xl rounded-br-sm shadow-sm"
+                                          : "bg-card text-card-foreground rounded-2xl rounded-bl-sm shadow-sm border border-border/30"
                                       )}>
 
                                         {/* Media content */}
