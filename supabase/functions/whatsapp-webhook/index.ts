@@ -967,17 +967,13 @@ Deno.serve(async (req) => {
             );
           }
           
-          // Process as media message in background
-          const bgTask = (async () => {
-            try {
-              await processIncomingMessage(phone, "", fileUrl, "image", "", msgId);
-            } catch (err) {
-              console.error(`[AUTO-REPLY] FileDownloaded error:`, err);
-            }
-          })();
-          // @ts-ignore: waitUntil available in Deno deploy
-          if (typeof globalThis.EdgeRuntime !== "undefined") { /* noop */ }
-          try { (globalThis as any).ctx?.waitUntil?.(bgTask); } catch (_) { await bgTask; }
+          // Process as media message synchronously (must complete before response)
+          try {
+            await processIncomingMessage(phone, "", fileUrl, "image", "", msgId);
+            console.log(`[WEBHOOK] FileDownloaded processed successfully for ${phone}`);
+          } catch (err) {
+            console.error(`[AUTO-REPLY] FileDownloaded error:`, err);
+          }
         }
         return new Response(JSON.stringify({ ok: true }), { headers: { "Content-Type": "application/json" } });
       }
