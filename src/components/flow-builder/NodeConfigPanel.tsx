@@ -1,10 +1,14 @@
 import { getNodeTypeConfig } from "./nodeTypes";
+import { AudioRecorder } from "./AudioRecorder";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { X, Trash2, Plus } from "lucide-react";
+import { X, Trash2, Plus, Link as LinkIcon, Upload, Mic as MicIcon } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 import type { Node } from "@xyflow/react";
 import type { FlowNodeData } from "@/types";
 
