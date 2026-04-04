@@ -1108,9 +1108,9 @@ Deno.serve(async (req) => {
 });
 
 // ── Process incoming message through active flow ─────────────────────
-async function processIncomingMessage(phone: string, text: string, mediaUrl?: string, mediaType?: string, mediaFileName?: string, messageId?: string) {
+async function processIncomingMessage(phone: string, text: string, mediaUrl?: string, mediaType?: string, mediaFileName?: string, messageId?: string, latitude?: number, longitude?: number) {
   try {
-    console.log(`[AUTO-REPLY] Processing message from ${phone}: "${text}"${mediaUrl ? ` media=${mediaType}` : ""}`);
+    console.log(`[AUTO-REPLY] Processing message from ${phone}: "${text}"${mediaUrl ? ` media=${mediaType}` : ""}${latitude != null ? ` location=${latitude},${longitude}` : ""}`);
 
     // 1. Get WhatsApp instance FIRST (needed for welcome + flow)
     const inst = await getWhatsAppInstance();
