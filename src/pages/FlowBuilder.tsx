@@ -15,7 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ArrowLeft, Undo2, Redo2, Download, Save } from "lucide-react";
+import { ArrowLeft, Undo2, Redo2, Download, Save, Clipboard } from "lucide-react";
 import type { NodeTypeConfig } from "@/components/flow-builder/nodeTypes";
 import type { FlowNodeData } from "@/types";
 import { useFlows, useFlow, useSaveFlow, useCreateFlow } from "@/hooks/use-flows";
@@ -47,6 +47,7 @@ function FlowBuilderContent() {
   const [dbLoaded, setDbLoaded] = useState(false);
   const [clipboard, setClipboard] = useState<Node[]>([]);
   const [pasteCount, setPasteCount] = useState(0);
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
 
   const { data: flows, isLoading } = useFlows();
   const { data: flowDetail } = useFlow(currentFlowId);
@@ -344,7 +345,18 @@ function FlowBuilderContent() {
 
         <div className="flex flex-1 overflow-hidden">
           <NodePalette onDragStart={onDragStart} />
-          <div className="flex-1 relative" ref={reactFlowWrapper}>
+          <div
+            className="flex-1 relative"
+            ref={reactFlowWrapper}
+            onContextMenu={(e) => {
+              // Only show custom context menu on canvas (not on nodes)
+              const target = e.target as HTMLElement;
+              if (target.closest('.react-flow__node')) return;
+              e.preventDefault();
+              setContextMenu({ x: e.clientX, y: e.clientY });
+            }}
+            onClick={() => setContextMenu(null)}
+          >
             <ReactFlow
               nodes={nodes} edges={edges}
               onNodesChange={onNodesChange} onEdgesChange={onEdgesChange}
@@ -365,7 +377,26 @@ function FlowBuilderContent() {
                 color="hsl(220 13% 82%)"
               />
             </ReactFlow>
-            
+
+            {/* Context menu (right-click) */}
+            {contextMenu && (
+              <div
+                className="fixed z-50 min-w-[160px] rounded-lg border border-border bg-popover text-popover-foreground shadow-lg py-1 animate-in fade-in-0 zoom-in-95"
+                style={{ left: contextMenu.x, top: contextMenu.y }}
+              >
+                <button
+                  className="flex w-full items-center gap-2 px-3 py-2 text-sm hover:bg-accent hover:text-accent-foreground transition-colors disabled:opacity-50 disabled:pointer-events-none"
+                  disabled={clipboard.length === 0}
+                  onClick={() => {
+                    handlePaste();
+                    setContextMenu(null);
+                  }}
+                >
+                  <Clipboard className="h-4 w-4" />
+                  Colar {clipboard.length > 0 ? `(${clipboard.length})` : ""}
+                </button>
+              </div>
+            )}
           </div>
           {selectedNode && (
             <NodeConfigPanel node={selectedNode} onClose={() => setSelectedNode(null)} onUpdate={onUpdateNode} onDelete={onDeleteNode} />
