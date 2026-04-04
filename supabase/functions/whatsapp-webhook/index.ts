@@ -244,8 +244,8 @@ async function processFlow(
           const fileType = nt === "capture_image" ? "image" : nt === "capture_audio" ? "audio" : "file";
           
           // Download and re-host to imgbb for permanent URL
-          let permanentUrl = incomingMediaUrl;
-          if (nt === "capture_image") {
+          let permanentUrl = incomingMediaUrl || "";
+          if (nt === "capture_image" && incomingId) {
             const rehosted = await downloadAndRehost(inst, incomingId);
             if (rehosted) {
               permanentUrl = rehosted;
