@@ -594,21 +594,6 @@ async function processFlow(
       return { nextNodeId: nodeId, variables: vars, status: "waiting" };
     }
 
-    // ─── Menu carousel ───
-    if (nt === "menu_carousel") {
-      const cards = (cfg.cards || []) as any[];
-      if (cards.length > 0) {
-        try {
-          await sendWhatsAppCarousel(inst, phone, replaceVariables(cfg.message || "", vars), cards);
-        } catch (_) {
-          // Fallback to text with numbered cards
-          const fallback = cards.map((c: any, i: number) => `${i + 1}. ${c.text}`).join("\n");
-          try { await sendWhatsAppText(inst, phone, replaceVariables(`${cfg.message || ""}\n\n${fallback}`, vars)); } catch (_) {}
-        }
-      }
-      await adminClient.from("chat_sessions").update({ current_node_id: nodeId, variables: vars, status: "waiting", updated_at: new Date().toISOString() }).eq("id", sessionId);
-      return { nextNodeId: nodeId, variables: vars, status: "waiting" };
-    }
 
     // ─── Poll ───
     if (nt === "poll") {
