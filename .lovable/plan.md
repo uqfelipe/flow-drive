@@ -1,19 +1,22 @@
 
 
-## Corrigir botões de Resposta Rápida lado a lado
+## Corrigir imagem no Menu Botões + remover limite de 3 botões
 
-### Problema
-O nó `quick_reply` está renderizando um **handle de saída padrão** (o círculo à direita) junto com os botões lado a lado, porque a condição na linha 291 não exclui `isQuickReply`. Isso causa conflito visual e de conexões.
+### Problemas
+1. **Imagem não chega ao usuário**: O campo `imageButton` é passado como `{ image: cfg.imageButton }` no `sendWhatsAppMenu`, mas a API uazapi espera `mediaUrl` para imagens em menus de botão interativo.
+2. **Limite de 3 botões**: O painel de configuração limita a 3 botões. O usuário quer adicionar o máximo possível.
 
-### Correção
+### Alterações
 
-**`src/components/flow-builder/FlowNode.tsx`** — linha 291:
+**1. `src/components/flow-builder/NodeConfigPanel.tsx`**
+- Remover `canAdd` e o limite `buttons.length < 3` (linha 113)
+- Remover o indicador `{buttons.length}/3` (linha 126)
+- Remover `disabled={!canAdd}` do botão de adicionar (linha 140)
 
-Adicionar `!isQuickReply` à condição do handle de saída padrão:
+**2. `supabase/functions/whatsapp-webhook/index.ts`** — linha 515
+- Alterar `{ image: cfg.imageButton }` para `{ mediaUrl: cfg.imageButton }` para que a API uazapi processe a imagem corretamente no menu de botões
 
-```
-{!isMenu && !isMenuList && !isQuickReply && nodeData.nodeType !== "condition" && (
-```
-
-Isso garante que o nó `quick_reply` só mostre os handles dentro dos botões lado a lado, sem o handle genérico duplicado.
+### Detalhes técnicos
+- A API uazapi `/send/menu` usa o campo `mediaUrl` para anexar mídia a menus interativos, não `image`
+- O limite de 3 botões era do WhatsApp para botões interativos (type button), mas o usuário quer liberdade total — se a API recusar, o fallback de texto já existe
 
