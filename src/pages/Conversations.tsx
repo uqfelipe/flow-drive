@@ -1035,10 +1035,10 @@ export default function Conversations() {
                   const isActive = selectedChat?.wa_chatid === chat.wa_chatid;
                   const hasUnread = (chat.wa_unreadCount ?? 0) > 0;
                   return (
-                    <button
+                    <div
                       key={chat.wa_chatid}
                       className={cn(
-                        "w-full flex items-center gap-3 px-3 py-3 text-left rounded-xl transition-all duration-200 border-l-[3px]",
+                        "group relative w-full flex items-center gap-3 px-3 py-3 text-left rounded-xl transition-all duration-200 border-l-[3px] cursor-pointer",
                         isActive
                           ? "bg-primary/12 shadow-sm shadow-primary/10 border-primary"
                           : "hover:bg-accent/40 active:scale-[0.99] border-transparent",
@@ -1102,7 +1102,18 @@ export default function Conversations() {
                           )}
                         </div>
                       </div>
-                    </button>
+                      {/* Delete button - appears on hover */}
+                      <button
+                        className="absolute right-2 top-2 opacity-0 group-hover:opacity-100 transition-opacity p-1.5 rounded-lg hover:bg-destructive/15 text-muted-foreground hover:text-destructive"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setDeleteChatTarget(chat);
+                        }}
+                        title="Remover conversa"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
                   );
                 })}
               </div>
