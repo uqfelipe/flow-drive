@@ -508,7 +508,7 @@ async function processFlow(
       if (buttons.length > 0) {
         const btnChoices = buttons.map((b: any) => {
           const label = replaceVariables(typeof b === "object" ? b.text : b, vars);
-          return `${label}|${label}`;
+          return `${label}|reply:${label}`;
         });
         try {
           const menuText = replaceVariables(cfg.message || "Escolha uma opção:", vars);
