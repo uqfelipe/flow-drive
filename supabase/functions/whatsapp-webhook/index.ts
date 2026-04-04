@@ -991,7 +991,7 @@ Deno.serve(async (req) => {
 });
 
 // ── Process incoming message through active flow ─────────────────────
-async function processIncomingMessage(phone: string, text: string, mediaUrl?: string, mediaType?: string, mediaFileName?: string) {
+async function processIncomingMessage(phone: string, text: string, mediaUrl?: string, mediaType?: string, mediaFileName?: string, messageId?: string) {
   try {
     console.log(`[AUTO-REPLY] Processing message from ${phone}: "${text}"${mediaUrl ? ` media=${mediaType}` : ""}`);
 
