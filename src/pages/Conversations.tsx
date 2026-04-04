@@ -1291,7 +1291,7 @@ export default function Conversations() {
 
               {/* ─── Messages area ─── */}
               <div className="flex-1 overflow-hidden relative">
-                <div className="absolute inset-0 bg-background" style={{ backgroundImage: chatBgPattern }} />
+                <div className="absolute inset-0" style={chatBgStyle} />
 
                 <ScrollArea className="h-full relative z-10" ref={scrollAreaRef} onScrollCapture={(e) => {
                   const target = e.currentTarget.querySelector('[data-radix-scroll-area-viewport]') as HTMLElement;
