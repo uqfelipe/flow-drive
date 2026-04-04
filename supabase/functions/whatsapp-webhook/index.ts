@@ -1070,9 +1070,9 @@ Deno.serve(async (req) => {
       }
 
       const backgroundTask = (async () => {
-        for (const { id: msgId, phone, text, mediaUrl, mediaType, mediaFileName } of toProcess) {
+        for (const { id: msgId, phone, text, mediaUrl, mediaType, mediaFileName, latitude, longitude } of toProcess) {
           try {
-            await processIncomingMessage(phone, text, mediaUrl, mediaType, mediaFileName, msgId);
+            await processIncomingMessage(phone, text, mediaUrl, mediaType, mediaFileName, msgId, latitude, longitude);
           } catch (err) {
             console.error(`[AUTO-REPLY] Error for ${phone}:`, err);
           }
