@@ -132,9 +132,9 @@ export function AudioRecorder({ onAudioReady }: AudioRecorderProps) {
       )}
 
       {state === "recording" && (
-        <div className="flex items-center gap-3 p-3 rounded-lg bg-red-500/10 border border-red-500/20">
-          <div className="h-3 w-3 rounded-full bg-red-500 animate-pulse" />
-          <span className="text-sm font-mono font-medium text-red-400 flex-1">
+        <div className="flex items-center gap-3 p-3 rounded-lg bg-destructive/10 border border-destructive/20">
+          <div className="h-3 w-3 rounded-full bg-destructive animate-pulse" />
+          <span className="text-sm font-mono font-medium text-destructive flex-1">
             {formatTime(elapsed)}
           </span>
           <Button
