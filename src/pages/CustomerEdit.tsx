@@ -245,6 +245,12 @@ export default function CustomerEdit() {
                           <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-[10px]">{customerRentals.length}</Badge>
                         )}
                       </TabsTrigger>
+                      <TabsTrigger value="arquivos" className="gap-1.5">
+                        <Paperclip className="h-3.5 w-3.5" /> Arquivos
+                        {customerFiles && customerFiles.length > 0 && (
+                          <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-[10px]">{customerFiles.length}</Badge>
+                        )}
+                      </TabsTrigger>
                     </TabsList>
 
                     {/* Tab: Dados */}
