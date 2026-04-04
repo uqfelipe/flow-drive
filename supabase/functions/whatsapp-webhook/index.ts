@@ -171,6 +171,9 @@ async function processFlow(
   flowEdges: FlowEdge[],
   currentNodeId: string | null,
   variables: Record<string, string>,
+  incomingMediaUrl?: string,
+  incomingMediaType?: string,
+  incomingMediaFileName?: string,
 ): Promise<{ nextNodeId: string | null; variables: Record<string, string>; status: string }> {
   
   const nodesMap = new Map(flowNodes.map(n => [n.id, n]));
