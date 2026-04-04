@@ -17,6 +17,7 @@ export default function SettingsPage() {
   const updateSetting = useUpdateSetting();
 
   const [form, setForm] = useState({ company_name: "", company_cnpj: "", company_phone: "" });
+  const [welcomeForm, setWelcomeForm] = useState({ welcome_enabled: "false", welcome_type: "text", welcome_text: "", welcome_audio_url: "" });
 
   useEffect(() => {
     if (settings) {
