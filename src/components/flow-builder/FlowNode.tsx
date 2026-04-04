@@ -33,7 +33,7 @@ function FlowNode({ data, selected, id }: NodeProps) {
   }, [id, deleteElements]);
 
   const isMenu = nodeData.nodeType === "menu_text" || nodeData.nodeType === "menu_buttons";
-  const isQuickReply = nodeData.nodeType === "quick_reply";
+  
   const isMenuList = nodeData.nodeType === "menu_list";
   const options = nodeData.nodeType === "menu_text" ? menuOptions : menuButtons;
 
