@@ -288,7 +288,7 @@ function FlowNode({ data, selected, id }: NodeProps) {
         )}
 
         {/* Default source handle (non-menu, non-condition, non-menu_list) */}
-        {!isMenu && !isMenuList && nodeData.nodeType !== "condition" && (
+        {!isMenu && !isMenuList && !isQuickReply && nodeData.nodeType !== "condition" && (
           <div className="flex justify-end pr-0">
             <Handle
               type="source"
