@@ -233,6 +233,18 @@ function formatDateSeparator(ts: number) {
 
 // ─── Media Bubble Components ───
 
+const IMGBB_API_KEY = "218e4f96aa83bbfd4e78abb8d60bad52";
+
+async function uploadBase64ToImgbb(dataUri: string): Promise<string> {
+  const base64Data = dataUri.includes(",") ? dataUri.split(",")[1] : dataUri;
+  const form = new FormData();
+  form.append("image", base64Data);
+  const res = await fetch(`https://api.imgbb.com/1/upload?key=${IMGBB_API_KEY}`, { method: "POST", body: form });
+  const json = await res.json();
+  if (!json.success) throw new Error("imgbb upload failed");
+  return json.data.url;
+}
+
 function MediaImage({ url, caption, fromMe, onClickImage, thumbnail, messageId }: { url: string; caption?: string; fromMe: boolean; onClickImage: (url: string) => void; thumbnail?: string; messageId?: string }) {
   const [displayUrl, setDisplayUrl] = useState(() => {
     if (messageId && mediaUrlCache.has(messageId)) return mediaUrlCache.get(messageId)!;
@@ -243,6 +255,20 @@ function MediaImage({ url, caption, fromMe, onClickImage, thumbnail, messageId }
   const [isDownloading, setIsDownloading] = useState(false);
 
   const isEncrypted = url && url.includes(".enc") && !mediaUrlCache.has(messageId || "");
+  const isBase64 = displayUrl?.startsWith("data:");
+
+  // Auto-upload base64 to imgbb
+  useEffect(() => {
+    if (!isBase64 || !displayUrl || !messageId) return;
+    if (mediaUrlCache.has(messageId)) { setDisplayUrl(mediaUrlCache.get(messageId)!); return; }
+    let cancelled = false;
+    uploadBase64ToImgbb(displayUrl).then(hostedUrl => {
+      if (cancelled) return;
+      mediaUrlCache.set(messageId, hostedUrl);
+      setDisplayUrl(hostedUrl);
+    }).catch(e => console.error("imgbb re-host failed:", e));
+    return () => { cancelled = true; };
+  }, [isBase64, displayUrl, messageId]);
 
   const handleClick = async () => {
     // If we already have a good URL, open lightbox
