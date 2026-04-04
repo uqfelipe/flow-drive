@@ -92,6 +92,50 @@ async function sendWhatsAppPresence(inst: Inst, phone: string, presence: string,
   await waFetch(inst, "/message/presence", { number: phone, presence, ...(delay ? { delay } : {}) });
 }
 
+// ── imgbb re-host helper ──────────────────────────────────────────────
+async function uploadToImgbbFromUrl(imageUrl: string): Promise<string | null> {
+  const IMGBB_KEY = Deno.env.get("IMGBB_API_KEY");
+  if (!IMGBB_KEY) { console.error("[IMGBB] No API key"); return null; }
+  try {
+    const imgRes = await fetch(imageUrl);
+    if (!imgRes.ok) { console.error(`[IMGBB] fetch failed ${imgRes.status}`); return null; }
+    const buf = new Uint8Array(await imgRes.arrayBuffer());
+    const b64 = btoa(String.fromCharCode(...buf));
+    const form = new FormData();
+    form.append("image", b64);
+    const res = await fetch(`https://api.imgbb.com/1/upload?key=${IMGBB_KEY}`, { method: "POST", body: form });
+    const json = await res.json();
+    if (json.success) {
+      console.log(`[IMGBB] Uploaded: ${json.data.url}`);
+      return json.data.url as string;
+    }
+    console.error(`[IMGBB] Upload failed:`, JSON.stringify(json));
+    return null;
+  } catch (e) {
+    console.error(`[IMGBB] Error:`, e);
+    return null;
+  }
+}
+
+async function downloadAndRehost(inst: Inst, messageId: string): Promise<string | null> {
+  try {
+    const res = await fetch(`${inst.server_url}/message/download`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", token: inst.instance_token },
+      body: JSON.stringify({ id: messageId, return_link: true }),
+    });
+    if (!res.ok) { console.error(`[DOWNLOAD] failed ${res.status}`); return null; }
+    const data = await res.json();
+    const fileUrl = data?.fileURL || data?.fileUrl || data?.url || data?.file || "";
+    if (!fileUrl) { console.error("[DOWNLOAD] No fileURL in response"); return null; }
+    console.log(`[DOWNLOAD] Got temp URL, uploading to imgbb...`);
+    return await uploadToImgbbFromUrl(fileUrl);
+  } catch (e) {
+    console.error(`[DOWNLOAD] Error:`, e);
+    return null;
+  }
+}
+
 // ── Profile picture helper ────────────────────────────────────────────
 async function fetchProfilePicUrl(inst: Inst, phone: string): Promise<string | null> {
   try {
@@ -174,6 +218,7 @@ async function processFlow(
   incomingMediaUrl?: string,
   incomingMediaType?: string,
   incomingMediaFileName?: string,
+  incomingId?: string,
 ): Promise<{ nextNodeId: string | null; variables: Record<string, string>; status: string }> {
   
   const nodesMap = new Map(flowNodes.map(n => [n.id, n]));
@@ -194,17 +239,31 @@ async function processFlow(
         
         // Media capture nodes: save file URL to customer_files and variable
         const isMediaCapture = nt === "capture_image" || nt === "capture_audio" || nt === "capture_file";
-        if (isMediaCapture && incomingMediaUrl) {
+        const hasMedia = !!incomingMediaUrl || (isMediaCapture && incomingMediaType && incomingId);
+        if (isMediaCapture && hasMedia) {
           const fileType = nt === "capture_image" ? "image" : nt === "capture_audio" ? "audio" : "file";
-          vars[varName] = incomingMediaUrl;
-          console.log(`[FLOW] Captured media ${varName} = "${incomingMediaUrl}" (${fileType})`);
+          
+          // Download and re-host to imgbb for permanent URL
+          let permanentUrl = incomingMediaUrl || "";
+          if (nt === "capture_image" && incomingId) {
+            const rehosted = await downloadAndRehost(inst, incomingId);
+            if (rehosted) {
+              permanentUrl = rehosted;
+              console.log(`[FLOW] Re-hosted image to imgbb: ${permanentUrl}`);
+            } else {
+              console.log(`[FLOW] Re-host failed, using original URL`);
+            }
+          }
+          
+          vars[varName] = permanentUrl;
+          console.log(`[FLOW] Captured media ${varName} = "${permanentUrl}" (${fileType})`);
           
           // Save to customer_files table
           try {
             await adminClient.from("customer_files").insert({
               customer_id: customerId,
               file_type: fileType,
-              file_url: incomingMediaUrl,
+              file_url: permanentUrl,
               file_name: incomingMediaFileName || "",
               variable_name: varName,
             });
@@ -241,7 +300,8 @@ async function processFlow(
               .eq("field_key", varName)
               .maybeSingle();
             if (fieldDef) {
-              console.log(`[FLOW] Syncing custom field ${varName} = "${incomingText}"`);
+              const syncValue = vars[varName] || incomingText.trim();
+              console.log(`[FLOW] Syncing custom field ${varName} = "${syncValue}"`);
               // Merge into custom_fields JSONB
               const { data: cust } = await adminClient
                 .from("customers")
@@ -249,7 +309,7 @@ async function processFlow(
                 .eq("id", customerId)
                 .single();
               const existing = (cust?.custom_fields as Record<string, string>) || {};
-              existing[varName] = incomingText.trim();
+              existing[varName] = syncValue;
               await adminClient.from("customers")
                 .update({ custom_fields: existing })
                 .eq("id", customerId);
@@ -746,20 +806,27 @@ function extractIncomingMessages(body: any): IncomingWebhookMessage[] {
     let mediaFileName: string | undefined;
 
     const msgContent = msg.message || msg;
-    if (msgContent.imageMessage || msg.type === "image" || msg.mediatype === "image") {
-      mediaUrl = msgContent.imageMessage?.url || msg.mediaUrl || msg.media || msg.file || msg.image || "";
+    // Detect mimetype-based type
+    const mimetype = (msg.mimetype || msg.mimeType || "").toString();
+    const detectedTypeByMime = mimetype.startsWith("image") ? "image"
+      : mimetype.startsWith("audio") ? "audio"
+      : mimetype.startsWith("video") ? "video"
+      : mimetype.startsWith("application") ? "document" : "";
+
+    if (msgContent.imageMessage || msg.type === "image" || msg.mediatype === "image" || detectedTypeByMime === "image") {
+      mediaUrl = msgContent.imageMessage?.url || msg.fileURL || msg.fileUrl || msg.mediaUrl || msg.media || msg.file || msg.image || msg.content?.url || msg.content?.fileUrl || "";
       mediaType = "image";
       mediaFileName = msgContent.imageMessage?.fileName || msg.fileName || "";
-    } else if (msgContent.audioMessage || msg.type === "audio" || msg.type === "ptt" || msg.mediatype === "audio" || msg.mediatype === "ptt") {
-      mediaUrl = msgContent.audioMessage?.url || msg.mediaUrl || msg.media || msg.file || msg.audio || "";
+    } else if (msgContent.audioMessage || msg.type === "audio" || msg.type === "ptt" || msg.mediatype === "audio" || msg.mediatype === "ptt" || detectedTypeByMime === "audio") {
+      mediaUrl = msgContent.audioMessage?.url || msg.fileURL || msg.fileUrl || msg.mediaUrl || msg.media || msg.file || msg.audio || msg.content?.url || "";
       mediaType = "audio";
       mediaFileName = msg.fileName || "audio.ogg";
-    } else if (msgContent.documentMessage || msg.type === "document" || msg.mediatype === "document") {
-      mediaUrl = msgContent.documentMessage?.url || msg.mediaUrl || msg.media || msg.file || "";
+    } else if (msgContent.documentMessage || msg.type === "document" || msg.mediatype === "document" || detectedTypeByMime === "document") {
+      mediaUrl = msgContent.documentMessage?.url || msg.fileURL || msg.fileUrl || msg.mediaUrl || msg.media || msg.file || msg.content?.url || "";
       mediaType = "file";
       mediaFileName = msgContent.documentMessage?.fileName || msg.fileName || "document";
-    } else if (msgContent.videoMessage || msg.type === "video" || msg.mediatype === "video") {
-      mediaUrl = msgContent.videoMessage?.url || msg.mediaUrl || msg.media || msg.file || "";
+    } else if (msgContent.videoMessage || msg.type === "video" || msg.mediatype === "video" || detectedTypeByMime === "video") {
+      mediaUrl = msgContent.videoMessage?.url || msg.fileURL || msg.fileUrl || msg.mediaUrl || msg.media || msg.file || msg.content?.url || "";
       mediaType = "file";
       mediaFileName = msg.fileName || "video.mp4";
     }
@@ -859,13 +926,13 @@ Deno.serve(async (req) => {
       const incomingMessages = extractIncomingMessages(body);
       
       // Filter out groups, noise, fromMe, empty text
-      const validMessages = incomingMessages.filter(({ chatId, phone, text, fromMe, mediaUrl }) => {
+      const validMessages = incomingMessages.filter(({ chatId, phone, text, fromMe, mediaUrl, mediaType }) => {
         if (isGroupOrNoise(chatId)) {
           console.log(`[WEBHOOK] SKIP group/noise: ${chatId}`);
           return false;
         }
         if (fromMe) return false;
-        if (!text && !mediaUrl) return false;
+        if (!text && !mediaUrl && !mediaType) return false;
         if (!phone) return false;
         return true;
       });
@@ -887,9 +954,9 @@ Deno.serve(async (req) => {
       }
 
       const backgroundTask = (async () => {
-        for (const { phone, text, mediaUrl, mediaType, mediaFileName } of toProcess) {
+        for (const { id: msgId, phone, text, mediaUrl, mediaType, mediaFileName } of toProcess) {
           try {
-            await processIncomingMessage(phone, text, mediaUrl, mediaType, mediaFileName);
+            await processIncomingMessage(phone, text, mediaUrl, mediaType, mediaFileName, msgId);
           } catch (err) {
             console.error(`[AUTO-REPLY] Error for ${phone}:`, err);
           }
@@ -925,7 +992,7 @@ Deno.serve(async (req) => {
 });
 
 // ── Process incoming message through active flow ─────────────────────
-async function processIncomingMessage(phone: string, text: string, mediaUrl?: string, mediaType?: string, mediaFileName?: string) {
+async function processIncomingMessage(phone: string, text: string, mediaUrl?: string, mediaType?: string, mediaFileName?: string, messageId?: string) {
   try {
     console.log(`[AUTO-REPLY] Processing message from ${phone}: "${text}"${mediaUrl ? ` media=${mediaType}` : ""}`);
 
@@ -1089,7 +1156,7 @@ async function processIncomingMessage(phone: string, text: string, mediaUrl?: st
           
           // Handle capture nodes
           if (nt.startsWith("capture_") || nt === "wait") {
-            await processFlow(inst, phone, text, session.id, customerId, flowNodes, flowEdges, currentNodeId, variables, mediaUrl, mediaType, mediaFileName);
+            await processFlow(inst, phone, text, session.id, customerId, flowNodes, flowEdges, currentNodeId, variables, mediaUrl, mediaType, mediaFileName, messageId);
             return;
           }
         }
