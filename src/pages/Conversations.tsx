@@ -329,7 +329,7 @@ function MediaImage({ url, caption, fromMe, onClickImage, thumbnail, messageId }
           onClick={handleClick}
           className={cn(
             "rounded-xl max-w-[280px] w-full h-auto cursor-pointer hover:opacity-90 transition-opacity",
-            isEncrypted && "blur-[1px]"
+            isDownloading && "blur-[1px]"
           )}
         />
       ) : (
