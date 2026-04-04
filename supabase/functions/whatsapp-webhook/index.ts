@@ -669,6 +669,14 @@ async function processFlow(
       continue;
     }
     
+    // ─── Capture location node ───
+    if (nt === "capture_location") {
+      const prompt = cfg.message || "Compartilhe sua localização";
+      try { await sendWhatsAppLocationButton(inst, phone, replaceVariables(prompt, vars)); } catch (e) { console.error(`[FLOW]`, e.message); }
+      await adminClient.from("chat_sessions").update({ current_node_id: nodeId, variables: vars, status: "waiting", updated_at: new Date().toISOString() }).eq("id", sessionId);
+      return { nextNodeId: nodeId, variables: vars, status: "waiting" };
+    }
+
     // ─── Input capture nodes ───
     if (nt.startsWith("capture_") || nt === "wait") {
       const prompt = cfg.message || cfg.prompt || "";
