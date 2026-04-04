@@ -439,7 +439,7 @@ export default function CustomerEdit() {
                           })
                           .map(fd => ({ label: fd.field_label, url: customFields[fd.field_key], key: fd.field_key }));
 
-                        const hasFiles = (customerFiles && customerFiles.length > 0) || customFieldImages.length > 0;
+                        const hasFiles = customFieldImages.length > 0;
 
                         if (!hasFiles) {
                           return (
