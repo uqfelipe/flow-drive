@@ -513,8 +513,6 @@ export default function CustomerEdit() {
     </AdminLayout>
   );
 }
-                            const typeLabel = isImage ? "Imagem" : isAudio ? "Áudio" : "Arquivo";
-                            const typeBg = isImage ? "bg-emerald-500/10 text-emerald-500" : isAudio ? "bg-amber-500/10 text-amber-500" : "bg-indigo-500/10 text-indigo-500";
 
                             return (
                               <div key={f.id} className="rounded-lg border border-border bg-muted/30 overflow-hidden">
