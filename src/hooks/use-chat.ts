@@ -37,6 +37,21 @@ export interface WhatsAppMessage {
   mimetype?: string;
 }
 
+// Hidden chats stored in localStorage
+const HIDDEN_CHATS_KEY = "hidden_chats";
+
+function getHiddenChats(): Record<string, number> {
+  try {
+    return JSON.parse(localStorage.getItem(HIDDEN_CHATS_KEY) || "{}");
+  } catch { return {}; }
+}
+
+export function hideChat(chatId: string) {
+  const hidden = getHiddenChats();
+  hidden[chatId] = Math.floor(Date.now() / 1000);
+  localStorage.setItem(HIDDEN_CHATS_KEY, JSON.stringify(hidden));
+}
+
 export function useWhatsAppChats() {
   return useQuery<WhatsAppChat[]>({
     queryKey: ["whatsapp-chats"],
@@ -56,9 +71,9 @@ export function useWhatsAppChats() {
 
       const chats = chatData?.chats ?? [];
       const readStatuses = readStatusResult.data ?? [];
+      const hiddenChats = getHiddenChats();
 
       // Marco zero: só mostrar conversas com atividade após este timestamp (04/04/2026 ~agora)
-      const resetTimestamp = Math.floor(Date.now() / 1000);
       const CONVERSATIONS_EPOCH = 1775282400; // 2026-04-04T06:00:00Z — marco zero
 
       return chats
@@ -70,6 +85,9 @@ export function useWhatsAppChats() {
           const lastMsg = c.wa_lastMsgTimestamp ?? 0;
           const lastMsgSec = lastMsg > 9999999999 ? Math.floor(lastMsg / 1000) : lastMsg;
           if (!lastMsgSec || lastMsgSec < CONVERSATIONS_EPOCH) return false;
+          // Hide deleted chats — only show again if new message arrived after deletion
+          const hiddenAt = hiddenChats[chatId];
+          if (hiddenAt && lastMsgSec <= hiddenAt) return false;
           return true;
         })
         .map((c: any) => {
