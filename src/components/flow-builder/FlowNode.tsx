@@ -2,7 +2,7 @@ import { memo, useCallback } from "react";
 import { Handle, Position, type NodeProps, useReactFlow } from "@xyflow/react";
 import { getNodeTypeConfig } from "./nodeTypes";
 import type { FlowNodeData } from "@/types";
-import { X, GripHorizontal, Pencil } from "lucide-react";
+import { X, GripHorizontal, Pencil, Mic } from "lucide-react";
 
 function FlowNode({ data, selected, id }: NodeProps) {
   const nodeData = data as unknown as FlowNodeData;
