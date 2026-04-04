@@ -1250,8 +1250,8 @@ async function processIncomingMessage(phone: string, text: string, mediaUrl?: st
         if (currentNode) {
           const nt = currentNode.data.nodeType;
           
-          // Handle menu/list/carousel/request_location selection
-          if (nt === "menu_text" || nt === "menu_buttons" || nt === "menu_list" || nt === "request_location" || nt === "poll") {
+          // Handle menu/list/request_location selection
+          if (nt === "menu_text" || nt === "menu_buttons" || nt === "menu_list" || nt === "poll") {
             // For dynamic menu_list, inject cached sections from session variables
             if (nt === "menu_list" && currentNode.data.config?.dynamic === "vehicles" && variables["__dynamic_sections"]) {
               try {
@@ -1266,6 +1266,31 @@ async function processIncomingMessage(phone: string, text: string, mediaUrl?: st
               try { await sendWhatsAppText(inst, phone, "❌ Opção inválida. Por favor, escolha uma opção válida."); } catch (_) {}
               await new Promise(r => setTimeout(r, 500));
               await processFlow(inst, phone, "", session.id, customerId, flowNodes, flowEdges, currentNodeId, variables);
+            }
+            return;
+          }
+
+          // Handle request_location — save coordinates to {{localizacao}}
+          if (nt === "request_location") {
+            if (latitude != null && longitude != null) {
+              const locationStr = `${latitude},${longitude}`;
+              variables["localizacao"] = locationStr;
+              console.log(`[FLOW] Saved location: ${locationStr}`);
+              
+              // Also save to customer custom_fields if field exists
+              try {
+                const { data: cust } = await adminClient.from("customers").select("custom_fields").eq("id", customerId).single();
+                const cf = (cust?.custom_fields as Record<string, string>) || {};
+                cf["localizacao"] = locationStr;
+                await adminClient.from("customers").update({ custom_fields: cf }).eq("id", customerId);
+                console.log(`[FLOW] Saved location to customer custom_fields`);
+              } catch (e) { console.error("[FLOW] Error saving location to customer:", e.message); }
+            } else {
+              variables["localizacao"] = text || "Localização não detectada";
+            }
+            const { nextNodeId } = handleMenuSelection(currentNode, text || "location", flowEdges);
+            if (nextNodeId) {
+              await processFlow(inst, phone, text, session.id, customerId, flowNodes, flowEdges, nextNodeId, variables);
             }
             return;
           }
