@@ -32,7 +32,6 @@ const mainItems = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard },
   { title: "Veículos", url: "/vehicles", icon: Car },
   { title: "Clientes", url: "/customers", icon: Users },
-  { title: "Campos", url: "/customers/fields", icon: Variable },
   { title: "Reservas", url: "/rentals", icon: CalendarCheck },
   { title: "Financeiro", url: "/financial", icon: DollarSign },
 ];

@@ -54,7 +54,10 @@ export default function Customers() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input placeholder="Buscar por nome, telefone ou CPF..." className="pl-9 bg-card" value={search} onChange={(e) => setSearch(e.target.value)} />
           </div>
-          <Button size="sm" onClick={handleNew}><Plus className="h-4 w-4 mr-1" /> Novo Cliente</Button>
+          <div className="flex gap-2">
+            <Button size="sm" variant="outline" onClick={() => navigate("/customers/fields")}><Settings2 className="h-4 w-4 mr-1" /> Campos</Button>
+            <Button size="sm" onClick={handleNew}><Plus className="h-4 w-4 mr-1" /> Novo Cliente</Button>
+          </div>
         </div>
 
         {isLoading ? (
