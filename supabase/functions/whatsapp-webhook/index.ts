@@ -11,7 +11,7 @@ const SUPPORTED_NODE_TYPES = new Set([
   "delay", "set_variable", "condition",
   "menu_text", "menu_buttons", "menu_list", "poll",
   "capture_text", "capture_name", "capture_email", "capture_phone", "capture_cpf", "capture_number", "capture_date",
-  "capture_image", "capture_audio", "capture_file",
+  "capture_image", "capture_audio", "capture_file", "capture_location",
   "wait",
   "transfer_human", "end",
   "send_image", "send_audio", "send_video", "send_file", "send_sticker",
@@ -299,6 +299,14 @@ async function processFlow(
           try { await sendWhatsAppText(inst, phone, "❌ " + replaceVariables(promptMsg, vars)); } catch (_) {}
           await adminClient.from("chat_sessions").update({ current_node_id: nodeId, variables: vars, status: "waiting", updated_at: new Date().toISOString() }).eq("id", sessionId);
           return { nextNodeId: nodeId, variables: vars, status: "waiting" };
+        } else if (nt === "capture_location") {
+          // If location was already saved in variables (from request_location handler), keep it
+          if (vars[varName] && vars[varName].match(/^-?\d+\.?\d*,-?\d+\.?\d*$/)) {
+            console.log(`[FLOW] capture_location: keeping existing ${varName} = "${vars[varName]}"`);
+          } else {
+            vars[varName] = incomingText || vars[varName] || "";
+            console.log(`[FLOW] Captured ${varName} = "${vars[varName]}"`);
+          }
         } else {
           vars[varName] = incomingText;
           console.log(`[FLOW] Captured ${varName} = "${incomingText}"`);
@@ -661,6 +669,14 @@ async function processFlow(
       continue;
     }
     
+    // ─── Capture location node ───
+    if (nt === "capture_location") {
+      const prompt = cfg.message || "Compartilhe sua localização";
+      try { await sendWhatsAppLocationButton(inst, phone, replaceVariables(prompt, vars)); } catch (e) { console.error(`[FLOW]`, e.message); }
+      await adminClient.from("chat_sessions").update({ current_node_id: nodeId, variables: vars, status: "waiting", updated_at: new Date().toISOString() }).eq("id", sessionId);
+      return { nextNodeId: nodeId, variables: vars, status: "waiting" };
+    }
+
     // ─── Input capture nodes ───
     if (nt.startsWith("capture_") || nt === "wait") {
       const prompt = cfg.message || cfg.prompt || "";
@@ -1297,6 +1313,20 @@ async function processIncomingMessage(phone: string, text: string, mediaUrl?: st
           
           // Handle capture nodes
           if (nt.startsWith("capture_") || nt === "wait") {
+            // For capture_location, pre-set the variable with coordinates before processFlow
+            if (nt === "capture_location" && latitude != null && longitude != null) {
+              const varName = (currentNode.data.config?.variable || "localizacao").replace(/^\{\{/, "").replace(/\}\}$/, "").trim();
+              const locationStr = `${latitude},${longitude}`;
+              variables[varName] = locationStr;
+              // Also save to customer custom_fields
+              try {
+                const { data: cust } = await adminClient.from("customers").select("custom_fields").eq("id", customerId).single();
+                const cf = (cust?.custom_fields as Record<string, string>) || {};
+                cf[varName] = locationStr;
+                await adminClient.from("customers").update({ custom_fields: cf }).eq("id", customerId);
+                console.log(`[FLOW] capture_location: saved ${varName} = "${locationStr}" to customer`);
+              } catch (e) { console.error("[FLOW] Error saving location to customer:", e); }
+            }
             await processFlow(inst, phone, text, session.id, customerId, flowNodes, flowEdges, currentNodeId, variables, mediaUrl, mediaType, mediaFileName, messageId);
             return;
           }
