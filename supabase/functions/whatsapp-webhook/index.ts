@@ -218,6 +218,7 @@ async function processFlow(
   incomingMediaUrl?: string,
   incomingMediaType?: string,
   incomingMediaFileName?: string,
+  incomingId?: string,
 ): Promise<{ nextNodeId: string | null; variables: Record<string, string>; status: string }> {
   
   const nodesMap = new Map(flowNodes.map(n => [n.id, n]));
