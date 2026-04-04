@@ -20,7 +20,7 @@ import {
   MapPin, User, Download, Play, Pause, File, ExternalLink, Loader2, Trash2, Square
 } from "lucide-react";
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
-import { useWhatsAppChats, useChatMessages, useSendMessage, useSendImage, useSendMedia, usePresence, useRealtimeMessages, useMarkAsRead, useDeleteMessage, type WhatsAppChat, type WhatsAppMessage } from "@/hooks/use-chat";
+import { useWhatsAppChats, useChatMessages, useSendMessage, useSendImage, useSendMedia, usePresence, useRealtimeMessages, useMarkAsRead, useDeleteMessage, useDeleteChat, type WhatsAppChat, type WhatsAppMessage } from "@/hooks/use-chat";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription
 } from "@/components/ui/dialog";
@@ -818,6 +818,8 @@ export default function Conversations() {
   const sendMediaMutation = useSendMedia();
   const markAsRead = useMarkAsRead();
   const deleteMessageMutation = useDeleteMessage();
+  const deleteChatMutation = useDeleteChat();
+  const [deleteChatTarget, setDeleteChatTarget] = useState<WhatsAppChat | null>(null);
   const lastMessageId = messages?.[messages.length - 1]?.id;
 
   useEffect(() => {
@@ -1033,10 +1035,10 @@ export default function Conversations() {
                   const isActive = selectedChat?.wa_chatid === chat.wa_chatid;
                   const hasUnread = (chat.wa_unreadCount ?? 0) > 0;
                   return (
-                    <button
+                    <div
                       key={chat.wa_chatid}
                       className={cn(
-                        "w-full flex items-center gap-3 px-3 py-3 text-left rounded-xl transition-all duration-200 border-l-[3px]",
+                        "group relative w-full flex items-center gap-3 px-3 py-3 text-left rounded-xl transition-all duration-200 border-l-[3px] cursor-pointer",
                         isActive
                           ? "bg-primary/12 shadow-sm shadow-primary/10 border-primary"
                           : "hover:bg-accent/40 active:scale-[0.99] border-transparent",
@@ -1100,7 +1102,18 @@ export default function Conversations() {
                           )}
                         </div>
                       </div>
-                    </button>
+                      {/* Delete button - appears on hover */}
+                      <button
+                        className="absolute right-2 top-2 opacity-0 group-hover:opacity-100 transition-opacity p-1.5 rounded-lg hover:bg-destructive/15 text-muted-foreground hover:text-destructive"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setDeleteChatTarget(chat);
+                        }}
+                        title="Remover conversa"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
                   );
                 })}
               </div>
@@ -1674,6 +1687,45 @@ export default function Conversations() {
             onClick={handleSendMedia}
           >
             {sendMediaMutation.isPending ? "Enviando..." : "Enviar"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+
+    {/* Delete chat confirmation dialog */}
+    <Dialog open={!!deleteChatTarget} onOpenChange={(open) => !open && setDeleteChatTarget(null)}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Remover conversa</DialogTitle>
+          <DialogDescription>
+            Tem certeza que deseja remover a conversa com{" "}
+            <span className="font-semibold text-foreground">
+              {deleteChatTarget ? chatName(deleteChatTarget, customerMap) : ""}
+            </span>
+            ? A sessão do chatbot será encerrada e a próxima mensagem será tratada como uma nova conversa.
+          </DialogDescription>
+        </DialogHeader>
+        <DialogFooter className="gap-2 sm:gap-0">
+          <Button variant="outline" onClick={() => setDeleteChatTarget(null)}>
+            Cancelar
+          </Button>
+          <Button
+            variant="destructive"
+            disabled={deleteChatMutation.isPending}
+            onClick={() => {
+              if (!deleteChatTarget) return;
+              const phone = phoneFromChatId(deleteChatTarget.wa_chatid);
+              deleteChatMutation.mutate(phone, {
+                onSuccess: () => {
+                  if (selectedChat?.wa_chatid === deleteChatTarget.wa_chatid) {
+                    setSelectedChat(null);
+                  }
+                  setDeleteChatTarget(null);
+                },
+              });
+            }}
+          >
+            {deleteChatMutation.isPending ? "Removendo..." : "Remover"}
           </Button>
         </DialogFooter>
       </DialogContent>

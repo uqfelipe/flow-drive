@@ -184,6 +184,43 @@ Deno.serve(async (req) => {
       return json(data);
     }
 
+    if (action === "delete-chat") {
+      if (!phone) return json({ error: "phone required" }, 400);
+      const supabaseAdmin = createClient(
+        Deno.env.get("SUPABASE_URL")!,
+        Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+      );
+
+      // Find customer by phone and close active sessions
+      const digits = phone.replace(/\D/g, "");
+      const { data: customer } = await supabaseAdmin
+        .from("customers")
+        .select("id")
+        .eq("phone", digits)
+        .maybeSingle();
+
+      if (customer) {
+        await supabaseAdmin
+          .from("chat_sessions")
+          .update({ status: "completed", updated_at: new Date().toISOString() })
+          .eq("customer_id", customer.id)
+          .in("status", ["active", "waiting"]);
+      }
+
+      // Delete local read status
+      const chatid = phone.includes("@") ? phone : `${phone}@s.whatsapp.net`;
+      await supabaseAdmin.from("chat_read_status").delete().eq("chat_id", chatid);
+
+      // Try to delete from WhatsApp API (optional, may not be supported)
+      try {
+        await apiCall(inst.server_url, inst.instance_token, "/chat/delete", { chatid });
+      } catch (_e) {
+        console.log("[delete-chat] API delete not supported or failed, ignoring");
+      }
+
+      return json({ success: true });
+    }
+
     return json({ error: "Invalid action" }, 400);
   } catch (e: any) {
     console.error("whatsapp-chat error:", e);
