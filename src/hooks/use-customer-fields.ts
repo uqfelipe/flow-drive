@@ -28,11 +28,11 @@ export function useCreateFieldDefinition() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (def: { field_key: string; field_label: string; field_type?: string }) => {
-      const { data, error } = await supabase
+      const { data, error } = await (supabase
         .from("customer_field_definitions" as any)
         .insert(def as any)
         .select()
-        .single();
+        .single() as any);
       if (error) throw error;
       return data as FieldDefinition;
     },
