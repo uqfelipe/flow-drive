@@ -760,17 +760,6 @@ function handleMenuSelection(
     return { nextNodeId: null, selectedOption: null };
   }
 
-  // Menu carousel — match by card index
-  if (nt === "menu_carousel") {
-    const cards = (node.data.config?.cards || []) as any[];
-    const num = parseInt(userInput.trim());
-    if (!isNaN(num) && num >= 1 && num <= cards.length) {
-      const idx = num - 1;
-      const nextId = findNextNodeId(edges, node.id, `option-${idx}`) || findNextNodeId(edges, node.id);
-      return { nextNodeId: nextId, selectedOption: cards[idx].text };
-    }
-    return { nextNodeId: null, selectedOption: null };
-  }
 
   // Request location — any response continues
   if (nt === "request_location") {
