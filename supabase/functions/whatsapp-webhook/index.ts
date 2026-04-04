@@ -794,6 +794,8 @@ type IncomingWebhookMessage = {
   mediaUrl?: string;
   mediaType?: string;
   mediaFileName?: string;
+  latitude?: number;
+  longitude?: number;
 };
 
 function extractIncomingMessages(body: any): IncomingWebhookMessage[] {
