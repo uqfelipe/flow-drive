@@ -404,11 +404,3 @@ export function useDeleteChat() {
     onSettled: () => qc.invalidateQueries({ queryKey: ["whatsapp-chats"] }),
   });
 }
-    onError: (_, __, context) => {
-      if (context?.previous) {
-        qc.setQueryData(["whatsapp-chats"], context.previous);
-      }
-    },
-    onSettled: () => qc.invalidateQueries({ queryKey: ["whatsapp-chats"] }),
-  });
-}
