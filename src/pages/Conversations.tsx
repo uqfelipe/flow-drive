@@ -20,7 +20,7 @@ import {
   MapPin, User, Download, Play, Pause, File, ExternalLink, Loader2, Trash2, Square
 } from "lucide-react";
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
-import { useWhatsAppChats, useChatMessages, useSendMessage, useSendImage, useSendMedia, usePresence, useRealtimeMessages, useMarkAsRead, useDeleteMessage, type WhatsAppChat, type WhatsAppMessage } from "@/hooks/use-chat";
+import { useWhatsAppChats, useChatMessages, useSendMessage, useSendImage, useSendMedia, usePresence, useRealtimeMessages, useMarkAsRead, useDeleteMessage, useDeleteChat, type WhatsAppChat, type WhatsAppMessage } from "@/hooks/use-chat";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription
 } from "@/components/ui/dialog";
