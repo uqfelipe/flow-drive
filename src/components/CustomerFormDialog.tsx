@@ -54,7 +54,7 @@ export function CustomerFormDialog({ open, onOpenChange, customer }: Props) {
       setPhoto(customer.photo || null);
       setCustomFields(customer.custom_fields || {});
     } else if (open) {
-      setName(""); setPhone(""); setCpf(""); setStatus("active"); setNotes(""); setPhoto(null); setCustomFields({});
+      setName(""); setPhone(""); setStatus("active"); setNotes(""); setPhoto(null); setCustomFields({});
     }
   }, [open, customer]);
 
