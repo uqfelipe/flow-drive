@@ -517,7 +517,8 @@ async function processFlow(
         });
         try {
           const menuText = replaceVariables(cfg.message || "Escolha uma opção:", vars);
-          await sendWhatsAppMenu(inst, phone, "button", menuText, { choices: btnChoices }, cfg.imageButton ? { mediaUrl: cfg.imageButton } : {});
+          const imgUrl = cfg.imageButton ? replaceVariables(cfg.imageButton, vars) : "";
+          await sendWhatsAppMenu(inst, phone, "button", menuText, { choices: btnChoices }, imgUrl ? { image: imgUrl } : {});
         } catch (_) {
           // Fallback to text
           const fallback = buttons.map((b: any, i: number) => `${i + 1}. ${typeof b === "object" ? b.text : b}`).join("\n");
