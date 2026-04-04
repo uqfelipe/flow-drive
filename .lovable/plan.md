@@ -1,27 +1,19 @@
 
 
-## Botões de Resposta Rápida lado a lado no FlowNode
+## Corrigir botões de Resposta Rápida lado a lado
 
-### O que muda
-No nó `quick_reply`, os botões "Sim" / "Não" passam a ser exibidos **lado a lado** (horizontal), igual ao visual do WhatsApp na imagem, em vez de empilhados verticalmente como os outros menus.
+### Problema
+O nó `quick_reply` está renderizando um **handle de saída padrão** (o círculo à direita) junto com os botões lado a lado, porque a condição na linha 291 não exclui `isQuickReply`. Isso causa conflito visual e de conexões.
 
-### Alteração
+### Correção
 
-**`src/components/flow-builder/FlowNode.tsx`**
+**`src/components/flow-builder/FlowNode.tsx`** — linha 291:
 
-1. Separar a renderização do `quick_reply` da lógica genérica `isMenu`
-2. Criar um bloco específico para `quick_reply` que renderiza os botões em `flex-row` (lado a lado), com uma linha divisória no topo (estilo WhatsApp) e cada botão ocupando espaço igual
-3. Cada botão mantém seu handle de saída (`option-{idx}`) posicionado à direita
-4. Remover `quick_reply` do `isMenu` e usar `isQuickReply` separado
+Adicionar `!isQuickReply` à condição do handle de saída padrão:
 
-### Visual esperado no canvas
-```text
-┌──────────────────────────┐
-│ ⚡ Resposta Rápida    ✏ ✕│
-├──────────────────────────┤
-│  Você está de acordo?    │
-│ ─────────────────────────│
-│   Sim  ●  │   Não  ●    │
-└──────────────────────────┘
 ```
+{!isMenu && !isMenuList && !isQuickReply && nodeData.nodeType !== "condition" && (
+```
+
+Isso garante que o nó `quick_reply` só mostre os handles dentro dos botões lado a lado, sem o handle genérico duplicado.
 
