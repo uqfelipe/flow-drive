@@ -65,6 +65,9 @@ export const nodeTypes: NodeTypeConfig[] = [
   { type: "capture_phone", label: "Capturar Telefone", category: "entrada", icon: Phone, description: "Capturar número de telefone", color: "#10B981", defaultConfig: { variable: "", message: "" } },
   { type: "capture_name", label: "Capturar Nome", category: "entrada", icon: User, description: "Capturar nome completo", color: "#EC4899", defaultConfig: { variable: "", message: "" } },
   { type: "capture_cpf", label: "Capturar CPF", category: "entrada", icon: CreditCard, description: "Capturar CPF válido", color: "#EF4444", defaultConfig: { variable: "", message: "" } },
+  { type: "capture_image", label: "Capturar Imagem", category: "entrada", icon: Image, description: "Capturar foto ou imagem", color: "#10B981", defaultConfig: { variable: "", message: "" } },
+  { type: "capture_audio", label: "Capturar Áudio", category: "entrada", icon: Mic, description: "Capturar mensagem de áudio", color: "#F59E0B", defaultConfig: { variable: "", message: "" } },
+  { type: "capture_file", label: "Capturar Arquivo", category: "entrada", icon: File, description: "Capturar documento ou arquivo", color: "#6366F1", defaultConfig: { variable: "", message: "" } },
 
   // Lógica
   { type: "condition", label: "Condição", category: "logica", icon: GitBranch, description: "Desvio condicional", color: "#F59E0B", defaultConfig: { condition: "" } },

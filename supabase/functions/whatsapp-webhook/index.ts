@@ -10,7 +10,9 @@ const SUPPORTED_NODE_TYPES = new Set([
   "message", "send_link", "pix", "copy_paste",
   "delay", "set_variable", "condition",
   "menu_text", "menu_buttons", "menu_list", "menu_carousel", "poll",
-  "capture_text", "capture_name", "capture_email", "capture_phone", "capture_cpf", "capture_number", "capture_date", "wait",
+  "capture_text", "capture_name", "capture_email", "capture_phone", "capture_cpf", "capture_number", "capture_date",
+  "capture_image", "capture_audio", "capture_file",
+  "wait",
   "transfer_human", "end",
   "send_image", "send_audio", "send_video", "send_file", "send_sticker",
   "send_location", "contact_card", "request_location", "request_payment",
@@ -169,6 +171,9 @@ async function processFlow(
   flowEdges: FlowEdge[],
   currentNodeId: string | null,
   variables: Record<string, string>,
+  incomingMediaUrl?: string,
+  incomingMediaType?: string,
+  incomingMediaFileName?: string,
 ): Promise<{ nextNodeId: string | null; variables: Record<string, string>; status: string }> {
   
   const nodesMap = new Map(flowNodes.map(n => [n.id, n]));
@@ -186,9 +191,37 @@ async function processFlow(
       if (nt.startsWith("capture_") || nt === "wait") {
         let varName = currentNode.data.config?.variable || nt.replace("capture_", "");
         varName = varName.replace(/^\{\{/, "").replace(/\}\}$/, "").trim();
-        vars[varName] = incomingText;
-        console.log(`[FLOW] Captured ${varName} = "${incomingText}"`);
         
+        // Media capture nodes: save file URL to customer_files and variable
+        const isMediaCapture = nt === "capture_image" || nt === "capture_audio" || nt === "capture_file";
+        if (isMediaCapture && incomingMediaUrl) {
+          const fileType = nt === "capture_image" ? "image" : nt === "capture_audio" ? "audio" : "file";
+          vars[varName] = incomingMediaUrl;
+          console.log(`[FLOW] Captured media ${varName} = "${incomingMediaUrl}" (${fileType})`);
+          
+          // Save to customer_files table
+          try {
+            await adminClient.from("customer_files").insert({
+              customer_id: customerId,
+              file_type: fileType,
+              file_url: incomingMediaUrl,
+              file_name: incomingMediaFileName || "",
+              variable_name: varName,
+            });
+            console.log(`[FLOW] Saved file to customer_files for ${customerId}`);
+          } catch (e) {
+            console.log(`[FLOW] Error saving customer_file: ${e}`);
+          }
+        } else if (isMediaCapture && !incomingMediaUrl) {
+          // User sent text instead of media — ask again
+          const promptMsg = currentNode.data.config?.message || "Por favor, envie um arquivo válido.";
+          try { await sendWhatsAppText(inst, phone, "❌ " + replaceVariables(promptMsg, vars)); } catch (_) {}
+          await adminClient.from("chat_sessions").update({ current_node_id: nodeId, variables: vars, status: "waiting", updated_at: new Date().toISOString() }).eq("id", sessionId);
+          return { nextNodeId: nodeId, variables: vars, status: "waiting" };
+        } else {
+          vars[varName] = incomingText;
+          console.log(`[FLOW] Captured ${varName} = "${incomingText}"`);
+        }
         // If this is a name variable, save to customers table
         if (NAME_VARS.includes(varName) && isValidName(incomingText)) {
           console.log(`[FLOW] Saving customer name: "${incomingText}"`);
@@ -678,6 +711,9 @@ type IncomingWebhookMessage = {
   phone: string;
   text: string;
   fromMe: boolean;
+  mediaUrl?: string;
+  mediaType?: string;
+  mediaFileName?: string;
 };
 
 function extractIncomingMessages(body: any): IncomingWebhookMessage[] {
@@ -704,6 +740,30 @@ function extractIncomingMessages(body: any): IncomingWebhookMessage[] {
     const phone = chatId.replace(/@.*$/, "");
     const id = (msg.id ?? msg.key?.id ?? `${chatId}:${text}:${fromMe}`).toString();
 
+    // Extract media URL from various message formats
+    let mediaUrl: string | undefined;
+    let mediaType: string | undefined;
+    let mediaFileName: string | undefined;
+
+    const msgContent = msg.message || msg;
+    if (msgContent.imageMessage || msg.type === "image" || msg.mediatype === "image") {
+      mediaUrl = msgContent.imageMessage?.url || msg.mediaUrl || msg.media || msg.file || msg.image || "";
+      mediaType = "image";
+      mediaFileName = msgContent.imageMessage?.fileName || msg.fileName || "";
+    } else if (msgContent.audioMessage || msg.type === "audio" || msg.type === "ptt" || msg.mediatype === "audio" || msg.mediatype === "ptt") {
+      mediaUrl = msgContent.audioMessage?.url || msg.mediaUrl || msg.media || msg.file || msg.audio || "";
+      mediaType = "audio";
+      mediaFileName = msg.fileName || "audio.ogg";
+    } else if (msgContent.documentMessage || msg.type === "document" || msg.mediatype === "document") {
+      mediaUrl = msgContent.documentMessage?.url || msg.mediaUrl || msg.media || msg.file || "";
+      mediaType = "file";
+      mediaFileName = msgContent.documentMessage?.fileName || msg.fileName || "document";
+    } else if (msgContent.videoMessage || msg.type === "video" || msg.mediatype === "video") {
+      mediaUrl = msgContent.videoMessage?.url || msg.mediaUrl || msg.media || msg.file || "";
+      mediaType = "file";
+      mediaFileName = msg.fileName || "video.mp4";
+    }
+
     if (!chatId) continue;
 
     uniqueMessages.set(id, {
@@ -712,6 +772,7 @@ function extractIncomingMessages(body: any): IncomingWebhookMessage[] {
       phone,
       text,
       fromMe,
+      ...(mediaUrl ? { mediaUrl, mediaType, mediaFileName } : {}),
     });
   }
 
@@ -798,12 +859,14 @@ Deno.serve(async (req) => {
       const incomingMessages = extractIncomingMessages(body);
       
       // Filter out groups, noise, fromMe, empty text
-      const validMessages = incomingMessages.filter(({ chatId, phone, text, fromMe }) => {
+      const validMessages = incomingMessages.filter(({ chatId, phone, text, fromMe, mediaUrl }) => {
         if (isGroupOrNoise(chatId)) {
           console.log(`[WEBHOOK] SKIP group/noise: ${chatId}`);
           return false;
         }
-        if (fromMe || !text || !phone) return false;
+        if (fromMe) return false;
+        if (!text && !mediaUrl) return false;
+        if (!phone) return false;
         return true;
       });
 
@@ -824,9 +887,9 @@ Deno.serve(async (req) => {
       }
 
       const backgroundTask = (async () => {
-        for (const { phone, text } of toProcess) {
+        for (const { phone, text, mediaUrl, mediaType, mediaFileName } of toProcess) {
           try {
-            await processIncomingMessage(phone, text);
+            await processIncomingMessage(phone, text, mediaUrl, mediaType, mediaFileName);
           } catch (err) {
             console.error(`[AUTO-REPLY] Error for ${phone}:`, err);
           }
@@ -862,9 +925,9 @@ Deno.serve(async (req) => {
 });
 
 // ── Process incoming message through active flow ─────────────────────
-async function processIncomingMessage(phone: string, text: string) {
+async function processIncomingMessage(phone: string, text: string, mediaUrl?: string, mediaType?: string, mediaFileName?: string) {
   try {
-    console.log(`[AUTO-REPLY] Processing message from ${phone}: "${text}"`);
+    console.log(`[AUTO-REPLY] Processing message from ${phone}: "${text}"${mediaUrl ? ` media=${mediaType}` : ""}`);
 
     // 1. Get WhatsApp instance FIRST (needed for welcome + flow)
     const inst = await getWhatsAppInstance();
@@ -1026,7 +1089,7 @@ async function processIncomingMessage(phone: string, text: string) {
           
           // Handle capture nodes
           if (nt.startsWith("capture_") || nt === "wait") {
-            await processFlow(inst, phone, text, session.id, customerId, flowNodes, flowEdges, currentNodeId, variables);
+            await processFlow(inst, phone, text, session.id, customerId, flowNodes, flowEdges, currentNodeId, variables, mediaUrl, mediaType, mediaFileName);
             return;
           }
         }

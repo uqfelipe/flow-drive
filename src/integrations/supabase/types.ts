@@ -188,6 +188,36 @@ export type Database = {
         }
         Relationships: []
       }
+      customer_files: {
+        Row: {
+          created_at: string
+          customer_id: string
+          file_name: string | null
+          file_type: string
+          file_url: string
+          id: string
+          variable_name: string | null
+        }
+        Insert: {
+          created_at?: string
+          customer_id: string
+          file_name?: string | null
+          file_type?: string
+          file_url: string
+          id?: string
+          variable_name?: string | null
+        }
+        Update: {
+          created_at?: string
+          customer_id?: string
+          file_name?: string | null
+          file_type?: string
+          file_url?: string
+          id?: string
+          variable_name?: string | null
+        }
+        Relationships: []
+      }
       customers: {
         Row: {
           cpf: string | null
