@@ -126,7 +126,7 @@ export function AudioRecorder({ onAudioReady }: AudioRecorderProps) {
           className="w-full gap-2 h-12 border-dashed"
           onClick={startRecording}
         >
-          <Mic className="h-4 w-4 text-red-500" />
+          <Mic className="h-4 w-4 text-destructive" />
           Iniciar gravação
         </Button>
       )}
