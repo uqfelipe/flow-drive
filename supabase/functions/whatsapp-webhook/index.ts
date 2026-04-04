@@ -250,13 +250,28 @@ async function processFlow(
           
           // Download and re-host to imgbb for permanent URL
           let permanentUrl = incomingMediaUrl || "";
-          if (nt === "capture_image" && incomingId) {
-            const rehosted = await downloadAndRehost(inst, incomingId);
-            if (rehosted) {
-              permanentUrl = rehosted;
-              console.log(`[FLOW] Re-hosted image to imgbb: ${permanentUrl}`);
-            } else {
-              console.log(`[FLOW] Re-host failed, using original URL`);
+          if (nt === "capture_image") {
+            // Try direct URL upload first (faster, avoids re-download)
+            if (incomingMediaUrl) {
+              const rehosted = await uploadToImgbbFromUrl(incomingMediaUrl);
+              if (rehosted) {
+                permanentUrl = rehosted;
+                console.log(`[FLOW] Re-hosted image via direct URL to imgbb: ${permanentUrl}`);
+              } else {
+                console.log(`[FLOW] Direct re-host failed, trying downloadAndRehost fallback`);
+                if (incomingId) {
+                  const fallback = await downloadAndRehost(inst, incomingId);
+                  if (fallback) permanentUrl = fallback;
+                }
+              }
+            } else if (incomingId) {
+              const rehosted = await downloadAndRehost(inst, incomingId);
+              if (rehosted) {
+                permanentUrl = rehosted;
+                console.log(`[FLOW] Re-hosted image via downloadAndRehost: ${permanentUrl}`);
+              } else {
+                console.log(`[FLOW] Re-host failed, using original URL`);
+              }
             }
           }
           
