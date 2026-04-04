@@ -701,8 +701,10 @@ function MediaContact({ contactName, fromMe }: { contactName?: string; fromMe: b
   );
 }
 
-// WhatsApp-style chat background SVG pattern
-const chatBgPattern = `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%239C92AC' fill-opacity='0.03'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`;
+// Subtle chat background — clean gradient instead of SVG pattern
+const chatBgStyle = {
+  background: "linear-gradient(180deg, hsl(var(--background)) 0%, hsl(var(--muted) / 0.3) 100%)",
+};
 
 export default function Conversations() {
   const { data: customers } = useCustomers();
@@ -1092,7 +1094,7 @@ export default function Conversations() {
                 <p className="text-xs font-medium">Nenhuma conversa encontrada</p>
               </div>
             ) : (
-              <div className="p-1.5 space-y-0.5">
+              <div className="p-2 space-y-1">
                 {filtered.map((chat) => {
                   const isActive = selectedChat?.wa_chatid === chat.wa_chatid;
                   const hasUnread = (chat.wa_unreadCount ?? 0) > 0;
@@ -1100,11 +1102,11 @@ export default function Conversations() {
                     <div
                       key={chat.wa_chatid}
                       className={cn(
-                        "group relative w-full flex items-center gap-3 px-3 py-3 text-left rounded-xl transition-all duration-200 border-l-[3px] cursor-pointer",
+                        "group relative w-full flex items-center gap-3 px-3 py-3.5 text-left rounded-xl transition-all duration-200 cursor-pointer",
                         isActive
-                          ? "bg-primary/12 shadow-sm shadow-primary/10 border-primary"
-                          : "hover:bg-accent/40 active:scale-[0.99] border-transparent",
-                        hasUnread && !isActive && "bg-accent/20"
+                          ? "bg-primary/10 border border-primary/20 shadow-sm"
+                          : "hover:bg-muted/60 border border-transparent",
+                        hasUnread && !isActive && "bg-accent/10"
                       )}
                       onClick={() => setSelectedChat(chat)}
                     >
@@ -1130,10 +1132,9 @@ export default function Conversations() {
                             {getInitials(chatName(chat, customerMap))}
                           </AvatarFallback>
                         </Avatar>
-                        <span className={cn(
-                          "absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-card",
-                          hasUnread ? "bg-success" : "bg-muted-foreground/30"
-                        )} />
+                        {hasUnread && (
+                          <span className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full border-2 border-card bg-success" />
+                        )}
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between gap-2">
@@ -1193,7 +1194,7 @@ export default function Conversations() {
         )}>
           {!selectedChat ? (
             /* Empty state */
-            <div className="flex-1 flex flex-col items-center justify-center gap-6" style={{ backgroundImage: chatBgPattern }}>
+            <div className="flex-1 flex flex-col items-center justify-center gap-6" style={chatBgStyle}>
               <motion.div
                 initial={{ scale: 0.8, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
@@ -1217,17 +1218,17 @@ export default function Conversations() {
           ) : (
             <>
               {/* ─── Chat header ─── */}
-              <div className="h-[68px] border-b border-border/50 flex items-center justify-between px-4 bg-card/90 backdrop-blur-sm">
+              <div className="h-[64px] border-b border-border/40 flex items-center justify-between px-4 bg-card/95 backdrop-blur-md">
                 <div className="flex items-center gap-3">
                   <button
-                    className="md:hidden p-2 hover:bg-accent rounded-xl transition-colors"
+                    className="md:hidden p-2 hover:bg-muted rounded-xl transition-colors"
                     onClick={() => setSelectedChat(null)}
                   >
                     <ArrowLeft className="h-5 w-5" />
                   </button>
                   <Avatar
                     className={cn(
-                      "h-10 w-10 ring-2 ring-primary/20 ring-offset-2 ring-offset-card",
+                      "h-10 w-10 ring-1 ring-border",
                       (selectedChat.image || selectedChat.imagePreview || selectedChat.wa_profilePicUrl) && "cursor-pointer hover:opacity-80"
                     )}
                     onClick={() => {
@@ -1236,22 +1237,22 @@ export default function Conversations() {
                     }}
                   >
                     {(selectedChat.image || selectedChat.imagePreview || selectedChat.wa_profilePicUrl) && <AvatarImage src={selectedChat.image || selectedChat.imagePreview || selectedChat.wa_profilePicUrl} />}
-                    <AvatarFallback className="bg-primary/15 text-primary text-xs font-bold">
+                    <AvatarFallback className="bg-primary/10 text-primary text-xs font-bold">
                       {getInitials(chatName(selectedChat, customerMap))}
                     </AvatarFallback>
                   </Avatar>
                   <div>
-                    <p className="text-sm font-display font-bold">{chatName(selectedChat, customerMap)}</p>
-                    <p className="text-[11px] text-muted-foreground flex items-center gap-1">
-                      <span className="h-1.5 w-1.5 rounded-full bg-success inline-block" />
-                      {formatPhone(phoneFromChatId(selectedChat.wa_chatid))}
+                    <p className="text-sm font-display font-bold leading-tight">{chatName(selectedChat, customerMap)}</p>
+                    <p className="text-[11px] text-muted-foreground/80">
+                      {presence?.isOnline ? (
+                        <span className="text-success font-medium">online</span>
+                      ) : (
+                        formatPhone(phoneFromChatId(selectedChat.wa_chatid))
+                      )}
                     </p>
                   </div>
                 </div>
-                <div className="flex items-center gap-1">
-                  <Button variant="ghost" size="icon" className="h-9 w-9 rounded-xl text-muted-foreground hover:text-foreground">
-                    <Video className="h-4 w-4" />
-                  </Button>
+                <div className="flex items-center gap-0.5">
                   <Popover open={calendarOpen} onOpenChange={setCalendarOpen}>
                     <PopoverTrigger asChild>
                       <Button variant="ghost" size="icon" className="h-9 w-9 rounded-xl text-muted-foreground hover:text-foreground">
@@ -1289,7 +1290,7 @@ export default function Conversations() {
 
               {/* ─── Messages area ─── */}
               <div className="flex-1 overflow-hidden relative">
-                <div className="absolute inset-0 bg-background" style={{ backgroundImage: chatBgPattern }} />
+                <div className="absolute inset-0" style={chatBgStyle} />
 
                 <ScrollArea className="h-full relative z-10" ref={scrollAreaRef} onScrollCapture={(e) => {
                   const target = e.currentTarget.querySelector('[data-radix-scroll-area-viewport]') as HTMLElement;
@@ -1323,7 +1324,7 @@ export default function Conversations() {
                           initial={{ opacity: 0, y: 12 }}
                           animate={{ opacity: 1, y: 0 }}
                           transition={{ duration: 0.25 }}
-                          className="space-y-0.5"
+                          className="space-y-px"
                         >
                           {(messages ?? []).map((msg, idx) => {
                             const extracted = extractContent(msg);
@@ -1333,10 +1334,12 @@ export default function Conversations() {
                             return (
                               <div key={msg.id} id={`msg-${msg.id}`}>
                                 {showDate && (
-                                  <div className="flex justify-center my-5">
-                                    <span className="bg-card/95 backdrop-blur-md text-muted-foreground/80 text-[10px] uppercase tracking-wider px-4 py-1.5 rounded-full border border-border/30 shadow-sm font-semibold">
+                                  <div className="flex items-center gap-3 my-6 px-4">
+                                    <div className="flex-1 h-px bg-border/40" />
+                                    <span className="text-[10px] uppercase tracking-widest text-muted-foreground/60 font-medium select-none">
                                       {formatDateSeparator(msg.timestamp)}
                                     </span>
+                                    <div className="flex-1 h-px bg-border/40" />
                                   </div>
                                 )}
 
@@ -1393,10 +1396,10 @@ export default function Conversations() {
                                       )}
 
                                       <div className={cn(
-                                        "relative max-w-[70%] px-3 py-2 text-[13px] leading-[1.45] break-words",
+                                        "relative max-w-[75%] px-3 py-2 text-[13px] leading-[1.5] break-words",
                                         msg.fromMe
-                                          ? "bg-gradient-to-br from-primary to-primary/90 text-primary-foreground rounded-2xl rounded-br-md shadow-md shadow-primary/10"
-                                          : "bg-card text-card-foreground border border-border/50 rounded-2xl rounded-bl-md shadow-sm"
+                                          ? "bg-primary text-primary-foreground rounded-2xl rounded-br-sm shadow-sm"
+                                          : "bg-card text-card-foreground rounded-2xl rounded-bl-sm shadow-sm border border-border/30"
                                       )}>
 
                                         {/* Media content */}
@@ -1495,7 +1498,7 @@ export default function Conversations() {
               </div>
 
               {/* ─── Input area ─── */}
-              <div className="border-t border-border/50 px-4 md:px-8 lg:px-16 py-3 bg-card/90 backdrop-blur-sm">
+              <div className="border-t border-border/30 px-4 md:px-8 lg:px-16 py-3 bg-card/95 backdrop-blur-md">
                 <AnimatePresence mode="wait">
                   {isRecording ? (
                     <motion.div
