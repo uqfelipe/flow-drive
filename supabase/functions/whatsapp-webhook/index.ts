@@ -1038,6 +1038,13 @@ Deno.serve(async (req) => {
 
       console.log(`[WEBHOOK] extracted=${incomingMessages.length} valid=${validMessages.length}`);
 
+      // Diagnostic: log filtered messages when extracted > 0 but valid = 0
+      if (validMessages.length === 0 && incomingMessages.length > 0) {
+        for (const m of incomingMessages) {
+          console.log(`[WEBHOOK] FILTERED msg: fromMe=${m.fromMe} text="${(m.text || "").substring(0,30)}" mediaType=${m.mediaType} mediaUrl=${(m.mediaUrl || "").substring(0,50)} phone=${m.phone}`);
+        }
+      }
+
       // Signal updates for ALL non-group messages (even fromMe) for UI refresh
       for (const { chatId } of incomingMessages.filter(m => !isGroupOrNoise(m.chatId))) {
         await adminClient.from("message_signals").upsert(
