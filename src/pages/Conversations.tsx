@@ -127,6 +127,17 @@ function extractContent(msg: WhatsAppMessage): ExtractedContent {
     return "";
   };
 
+  // Base64 image detection (data:image/* in content string or object fields)
+  if (typeof content === "string" && content.startsWith("data:image/")) {
+    return { text: "", type: "image", fileUrl: content, mimetype: "" };
+  }
+  if (c?.data?.startsWith?.("data:image/")) {
+    return { text: resolveText(), type: "image", fileUrl: c.data, mimetype: resolveMimetype(), thumbnail: resolveThumbnail() };
+  }
+  if (c?.base64?.startsWith?.("data:image/")) {
+    return { text: resolveText(), type: "image", fileUrl: c.base64, mimetype: resolveMimetype(), thumbnail: resolveThumbnail() };
+  }
+
   // Base64 video detection (data:video/* in content string or object fields)
   if (typeof content === "string" && content.startsWith("data:video/")) {
     return { text: "", type: "video", fileUrl: content, mimetype: "" };
@@ -140,7 +151,8 @@ function extractContent(msg: WhatsAppMessage): ExtractedContent {
 
   // Image
   if (msgType.includes("image") || c?.mimetype?.startsWith("image")) {
-    return { text: resolveText(), type: "image", fileUrl: resolveFileUrl(), mimetype: resolveMimetype(), thumbnail: resolveThumbnail() };
+    const base64Url = c?.data?.startsWith?.("data:") ? c.data : c?.base64?.startsWith?.("data:") ? c.base64 : null;
+    return { text: resolveText(), type: "image", fileUrl: base64Url || resolveFileUrl(), mimetype: resolveMimetype(), thumbnail: resolveThumbnail() };
   }
 
   // Video
