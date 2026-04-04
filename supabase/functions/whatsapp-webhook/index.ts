@@ -680,6 +680,9 @@ type IncomingWebhookMessage = {
   phone: string;
   text: string;
   fromMe: boolean;
+  mediaUrl?: string;
+  mediaType?: string;
+  mediaFileName?: string;
 };
 
 function extractIncomingMessages(body: any): IncomingWebhookMessage[] {
