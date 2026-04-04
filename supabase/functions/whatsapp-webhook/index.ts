@@ -831,27 +831,44 @@ function extractIncomingMessages(body: any): IncomingWebhookMessage[] {
     let mediaFileName: string | undefined;
 
     const msgContent = msg.message || msg;
-    // Detect mimetype-based type
-    const mimetype = (msg.mimetype || msg.mimeType || "").toString();
+    // Detect mimetype-based type — expand to check msg.content object and case variants
+    const contentObj = typeof msg.content === "object" && msg.content !== null ? msg.content : null;
+    const mimetype = (
+      msg.mimetype || msg.mimeType || msg.MimeType ||
+      contentObj?.mimetype || contentObj?.mimeType || contentObj?.MimeType ||
+      msgContent.imageMessage?.mimetype ||
+      msgContent.audioMessage?.mimetype ||
+      msgContent.documentMessage?.mimetype ||
+      msgContent.videoMessage?.mimetype ||
+      ""
+    ).toString();
     const detectedTypeByMime = mimetype.startsWith("image") ? "image"
       : mimetype.startsWith("audio") ? "audio"
       : mimetype.startsWith("video") ? "video"
       : mimetype.startsWith("application") ? "document" : "";
 
-    if (msgContent.imageMessage || msg.type === "image" || msg.mediatype === "image" || detectedTypeByMime === "image") {
-      mediaUrl = msgContent.imageMessage?.url || msg.fileURL || msg.fileUrl || msg.mediaUrl || msg.media || msg.file || msg.image || msg.content?.url || msg.content?.fileUrl || "";
+    // Case-insensitive msg.type check
+    const msgTypeLower = (msg.type || msg.Type || "").toString().toLowerCase();
+
+    // Log raw message keys for media debugging
+    if (mimetype || msgTypeLower === "image" || msgTypeLower === "audio" || msgTypeLower === "video" || msgTypeLower === "document" || msgTypeLower === "ptt" || contentObj) {
+      console.log(`[WEBHOOK] msg keys=${Object.keys(msg).join(",")} type=${msg.type} mimetype=${mimetype} content_type=${typeof msg.content} content_keys=${contentObj ? Object.keys(contentObj).join(",") : "n/a"}`);
+    }
+
+    if (msgContent.imageMessage || msgTypeLower === "image" || msg.mediatype === "image" || detectedTypeByMime === "image") {
+      mediaUrl = msgContent.imageMessage?.url || msg.fileURL || msg.fileUrl || msg.mediaUrl || msg.media || msg.file || msg.image || contentObj?.url || contentObj?.fileUrl || contentObj?.fileURL || "";
       mediaType = "image";
       mediaFileName = msgContent.imageMessage?.fileName || msg.fileName || "";
-    } else if (msgContent.audioMessage || msg.type === "audio" || msg.type === "ptt" || msg.mediatype === "audio" || msg.mediatype === "ptt" || detectedTypeByMime === "audio") {
-      mediaUrl = msgContent.audioMessage?.url || msg.fileURL || msg.fileUrl || msg.mediaUrl || msg.media || msg.file || msg.audio || msg.content?.url || "";
+    } else if (msgContent.audioMessage || msgTypeLower === "audio" || msgTypeLower === "ptt" || msg.mediatype === "audio" || msg.mediatype === "ptt" || detectedTypeByMime === "audio") {
+      mediaUrl = msgContent.audioMessage?.url || msg.fileURL || msg.fileUrl || msg.mediaUrl || msg.media || msg.file || msg.audio || contentObj?.url || "";
       mediaType = "audio";
       mediaFileName = msg.fileName || "audio.ogg";
-    } else if (msgContent.documentMessage || msg.type === "document" || msg.mediatype === "document" || detectedTypeByMime === "document") {
-      mediaUrl = msgContent.documentMessage?.url || msg.fileURL || msg.fileUrl || msg.mediaUrl || msg.media || msg.file || msg.content?.url || "";
+    } else if (msgContent.documentMessage || msgTypeLower === "document" || msg.mediatype === "document" || detectedTypeByMime === "document") {
+      mediaUrl = msgContent.documentMessage?.url || msg.fileURL || msg.fileUrl || msg.mediaUrl || msg.media || msg.file || contentObj?.url || "";
       mediaType = "file";
       mediaFileName = msgContent.documentMessage?.fileName || msg.fileName || "document";
-    } else if (msgContent.videoMessage || msg.type === "video" || msg.mediatype === "video" || detectedTypeByMime === "video") {
-      mediaUrl = msgContent.videoMessage?.url || msg.fileURL || msg.fileUrl || msg.mediaUrl || msg.media || msg.file || msg.content?.url || "";
+    } else if (msgContent.videoMessage || msgTypeLower === "video" || msg.mediatype === "video" || detectedTypeByMime === "video") {
+      mediaUrl = msgContent.videoMessage?.url || msg.fileURL || msg.fileUrl || msg.mediaUrl || msg.media || msg.file || contentObj?.url || "";
       mediaType = "file";
       mediaFileName = msg.fileName || "video.mp4";
     }
