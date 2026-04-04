@@ -252,18 +252,59 @@ function isWhatsAppCdnUrl(u: string) {
 function MediaImage({ url, caption, fromMe, onClickImage, thumbnail, messageId }: { url: string; caption?: string; fromMe: boolean; onClickImage: (url: string) => void; thumbnail?: string; messageId?: string }) {
   const [displayUrl, setDisplayUrl] = useState(() => {
     if (messageId && mediaUrlCache.has(messageId)) return mediaUrlCache.get(messageId)!;
-    // If URL is from WhatsApp CDN (not directly accessible), use thumbnail
     if (url && isWhatsAppCdnUrl(url)) return thumbnail || "";
     return url || thumbnail || "";
   });
   const [isDownloading, setIsDownloading] = useState(false);
 
-  const isEncrypted = url && isWhatsAppCdnUrl(url) && !mediaUrlCache.has(messageId || "");
+  const needsHdDownload = url && isWhatsAppCdnUrl(url) && !mediaUrlCache.has(messageId || "");
   const isBase64 = displayUrl?.startsWith("data:");
 
-  // Auto-upload base64 to imgbb
+  // Auto-download HD image from WhatsApp CDN and re-host to imgbb
   useEffect(() => {
-    if (!isBase64 || !displayUrl || !messageId) return;
+    if (!needsHdDownload || !messageId) return;
+    if (mediaUrlCache.has(messageId)) { setDisplayUrl(mediaUrlCache.get(messageId)!); return; }
+    let cancelled = false;
+    setIsDownloading(true);
+    (async () => {
+      try {
+        const { data } = await supabase.functions.invoke("whatsapp-chat", {
+          body: { action: "download-media", phone: messageId },
+        });
+        if (cancelled) return;
+        if (data?.fileURL) {
+          try {
+            const resp = await fetch(data.fileURL);
+            const blob = await resp.blob();
+            const base64 = await new Promise<string>((resolve) => {
+              const reader = new FileReader();
+              reader.onloadend = () => resolve(reader.result as string);
+              reader.readAsDataURL(blob);
+            });
+            if (cancelled) return;
+            const hostedUrl = await uploadBase64ToImgbb(base64);
+            if (cancelled) return;
+            mediaUrlCache.set(messageId, hostedUrl);
+            setDisplayUrl(hostedUrl);
+          } catch {
+            if (!cancelled) {
+              mediaUrlCache.set(messageId, data.fileURL);
+              setDisplayUrl(data.fileURL);
+            }
+          }
+        }
+      } catch (e) {
+        console.error("Auto HD download failed:", e);
+      } finally {
+        if (!cancelled) setIsDownloading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [needsHdDownload, messageId]);
+
+  // Auto-upload standalone base64 (non-CDN) to imgbb
+  useEffect(() => {
+    if (!isBase64 || !displayUrl || !messageId || needsHdDownload) return;
     if (mediaUrlCache.has(messageId)) { setDisplayUrl(mediaUrlCache.get(messageId)!); return; }
     let cancelled = false;
     uploadBase64ToImgbb(displayUrl).then(hostedUrl => {
@@ -272,31 +313,10 @@ function MediaImage({ url, caption, fromMe, onClickImage, thumbnail, messageId }
       setDisplayUrl(hostedUrl);
     }).catch(e => console.error("imgbb re-host failed:", e));
     return () => { cancelled = true; };
-  }, [isBase64, displayUrl, messageId]);
+  }, [isBase64, displayUrl, messageId, needsHdDownload]);
 
-  const handleClick = async () => {
-    // If we already have a good URL, open lightbox
-    if (!isEncrypted || mediaUrlCache.has(messageId || "")) {
-      onClickImage(displayUrl);
-      return;
-    }
-    // Download decrypted version
-    if (!messageId) return;
-    setIsDownloading(true);
-    try {
-      const { data } = await supabase.functions.invoke("whatsapp-chat", {
-        body: { action: "download-media", phone: messageId },
-      });
-      if (data?.fileURL) {
-        mediaUrlCache.set(messageId, data.fileURL);
-        setDisplayUrl(data.fileURL);
-        onClickImage(data.fileURL);
-      }
-    } catch (e) {
-      console.error("Failed to download image:", e);
-    } finally {
-      setIsDownloading(false);
-    }
+  const handleClick = () => {
+    if (displayUrl) onClickImage(displayUrl);
   };
 
   return (
@@ -309,7 +329,7 @@ function MediaImage({ url, caption, fromMe, onClickImage, thumbnail, messageId }
           onClick={handleClick}
           className={cn(
             "rounded-xl max-w-[280px] w-full h-auto cursor-pointer hover:opacity-90 transition-opacity",
-            isEncrypted && "blur-[1px]"
+            isDownloading && "blur-[1px]"
           )}
         />
       ) : (
