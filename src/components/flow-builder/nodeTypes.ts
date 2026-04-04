@@ -42,6 +42,7 @@ export const nodeTypes: NodeTypeConfig[] = [
 
   // Menus
   
+  { type: "quick_reply", label: "Resposta Rápida", category: "menu", icon: SquareMousePointer, description: "Botões de resposta rápida (Sim/Não)", color: "#22C55E", defaultConfig: { message: "", buttons: [{ text: "Sim", type: "REPLY" }, { text: "Não", type: "REPLY" }] } },
   { type: "menu_buttons", label: "Menu Botões", category: "menu", icon: SquareMousePointer, description: "Menu com botões interativos", color: "#3B82F6", defaultConfig: { buttons: [{ text: "Botão 1", type: "REPLY" }, { text: "Botão 2", type: "REPLY" }], imageButton: "" } },
   { type: "menu_list", label: "Menu Lista", category: "menu", icon: List, description: "Menu lista com seções", color: "#8B5CF6", defaultConfig: { listButton: "Ver opções", sections: [{ title: "Seção 1", items: [{ title: "Item 1", id: "1", description: "" }] }] } },
   { type: "menu_carousel", label: "Menu Carrossel", category: "menu", icon: GalleryHorizontalEnd, description: "Carrossel de cards", color: "#EC4899", defaultConfig: { cards: [{ text: "Card 1", image: "", buttons: [{ text: "Botão 1", type: "REPLY" }] }] } },

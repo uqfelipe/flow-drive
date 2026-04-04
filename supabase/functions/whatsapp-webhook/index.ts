@@ -9,7 +9,7 @@ const adminClient = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
 const SUPPORTED_NODE_TYPES = new Set([
   "message", "send_link", "pix", "copy_paste",
   "delay", "set_variable", "condition",
-  "menu_text", "menu_buttons", "menu_list", "menu_carousel", "poll",
+  "menu_text", "menu_buttons", "quick_reply", "menu_list", "menu_carousel", "poll",
   "capture_text", "capture_name", "capture_email", "capture_phone", "capture_cpf", "capture_number", "capture_date",
   "capture_image", "capture_audio", "capture_file",
   "wait",
@@ -503,7 +503,7 @@ async function processFlow(
     }
     
     // ─── Menu buttons (interactive) ───
-    if (nt === "menu_buttons") {
+    if (nt === "menu_buttons" || nt === "quick_reply") {
       const buttons = (cfg.buttons || []) as any[];
       if (buttons.length > 0) {
         const btnChoices = buttons.map((b: any) => {
@@ -732,7 +732,7 @@ function handleMenuSelection(
   }
 
   // Menu buttons
-  if (nt === "menu_buttons") {
+  if (nt === "menu_buttons" || nt === "quick_reply") {
     const buttons = (node.data.config?.buttons || []) as any[];
     const num = parseInt(userInput.trim());
     if (!isNaN(num) && num >= 1 && num <= buttons.length) {
@@ -1244,7 +1244,7 @@ async function processIncomingMessage(phone: string, text: string, mediaUrl?: st
           const nt = currentNode.data.nodeType;
           
           // Handle menu/list/carousel/request_location selection
-          if (nt === "menu_text" || nt === "menu_buttons" || nt === "menu_list" || nt === "menu_carousel" || nt === "request_location") {
+          if (nt === "menu_text" || nt === "menu_buttons" || nt === "quick_reply" || nt === "menu_list" || nt === "menu_carousel" || nt === "request_location") {
             // For dynamic menu_list, inject cached sections from session variables
             if (nt === "menu_list" && currentNode.data.config?.dynamic === "vehicles" && variables["__dynamic_sections"]) {
               try {
