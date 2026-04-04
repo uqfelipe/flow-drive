@@ -110,7 +110,6 @@ export function NodeConfigPanel({ node, onClose, onUpdate, onDelete }: NodeConfi
         {/* ─── MENU BOTÕES ─── */}
         {nt === "menu_buttons" && (() => {
           const buttons = (data.config?.buttons || []) as any[];
-          const canAdd = buttons.length < 3;
           return (
             <div className="space-y-4">
               {/* Seção: Mensagem */}
@@ -123,7 +122,7 @@ export function NodeConfigPanel({ node, onClose, onUpdate, onDelete }: NodeConfi
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <Label className="text-xs font-medium text-muted-foreground">Botões</Label>
-                  <span className="text-[10px] text-muted-foreground">{buttons.length}/3</span>
+                  <span className="text-[10px] text-muted-foreground">{buttons.length}</span>
                 </div>
                 {buttons.map((btn: any, idx: number) => {
                   const isObj = typeof btn === "object";
