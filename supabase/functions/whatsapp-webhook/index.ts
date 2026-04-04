@@ -954,7 +954,7 @@ async function processIncomingMessage(phone: string, text: string) {
             const { nextNodeId, selectedOption } = handleMenuSelection(currentNode, text, flowEdges);
             if (nextNodeId) {
               variables["menu_selection"] = selectedOption || text;
-              await processFlow(inst, phone, text, session.id, flowNodes, flowEdges, nextNodeId, variables);
+              await processFlow(inst, phone, text, session.id, customerId, flowNodes, flowEdges, nextNodeId, variables);
             } else {
               try { await sendWhatsAppText(inst, phone, "❌ Opção inválida. Por favor, escolha uma opção válida."); } catch (_) {}
               await new Promise(r => setTimeout(r, 500));
