@@ -12,6 +12,9 @@ function FlowNode({ data, selected, id }: NodeProps) {
   const menuOptions = nodeData.config?.options as string[] | undefined;
   const menuButtons = nodeData.config?.buttons as Array<string | { text: string; type: string }> | undefined;
   const messageText = nodeData.config?.message as string | undefined;
+  const audioFile = nodeData.config?.file as string | undefined;
+  const isAudioNode = nodeData.nodeType === "send_audio";
+  const hasAudio = isAudioNode && !!audioFile;
   const { deleteElements } = useReactFlow();
 
   const handleDelete = useCallback((e: React.MouseEvent) => {
