@@ -22,6 +22,15 @@ import { format } from "date-fns";
 
 const IMGBB_API_KEY = "218e4f96aa83bbfd4e78abb8d60bad52";
 
+function isImageUrl(val: string): boolean {
+  if (!val) return false;
+  if (val.startsWith("data:image/")) return true;
+  const lower = val.toLowerCase();
+  if (/\.(jpg|jpeg|png|webp|gif|bmp|svg)(\?.*)?$/i.test(lower)) return true;
+  if (lower.includes("ibb.co") || lower.includes("imgbb.com")) return true;
+  return false;
+}
+
 async function uploadToImgbb(file: File): Promise<string> {
   const form = new FormData();
   form.append("image", file);
