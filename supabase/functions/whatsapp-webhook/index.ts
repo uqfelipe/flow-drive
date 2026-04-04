@@ -1003,7 +1003,7 @@ async function processIncomingMessage(phone: string, text: string) {
       .insert({ customer_id: customerId, flow_id: flow.id, current_node_id: startNode.id, variables: vars, status: "active" })
       .select().single();
     if (sessError || !newSession) { console.error("[AUTO-REPLY] Failed to create session:", sessError); return; }
-    await processFlow(inst, phone, text, newSession.id, flowNodes, flowEdges, startNode.id, vars);
+    await processFlow(inst, phone, text, newSession.id, customerId, flowNodes, flowEdges, startNode.id, vars);
     
   } catch (err) {
     console.error("[AUTO-REPLY] Error:", err);
