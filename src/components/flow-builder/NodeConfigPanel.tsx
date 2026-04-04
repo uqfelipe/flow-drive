@@ -106,37 +106,6 @@ export function NodeConfigPanel({ node, onClose, onUpdate, onDelete }: NodeConfi
         )}
 
 
-        {/* ─── QUICK REPLY ─── */}
-        {nt === "quick_reply" && (() => {
-          const buttons = (data.config?.buttons || []) as any[];
-          const canAdd = buttons.length < 3;
-          return (
-            <div className="space-y-4">
-              <div className="space-y-1.5">
-                <Label className="text-xs font-medium text-muted-foreground">Mensagem</Label>
-                <Textarea className="text-sm min-h-[70px]" placeholder="Texto da pergunta..." value={data.config?.message || ""} onChange={(e) => updateConfig({ message: e.target.value })} />
-              </div>
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <Label className="text-xs font-medium text-muted-foreground">Botões de resposta</Label>
-                  <span className="text-[10px] text-muted-foreground">{buttons.length}/3</span>
-                </div>
-                {buttons.map((btn: any, idx: number) => {
-                  const text = typeof btn === "object" ? btn.text : btn;
-                  const allButtons = [...buttons];
-                  return (
-                    <div key={idx} className="flex items-center gap-2">
-                      <span className="text-xs text-muted-foreground w-4 text-right">{idx + 1}.</span>
-                      <Input className="h-9 text-sm flex-1" placeholder={`Opção ${idx + 1}`} value={text} onChange={(e) => { allButtons[idx] = { text: e.target.value, type: "REPLY" }; updateConfig({ buttons: allButtons }); }} />
-                      <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" onClick={() => { allButtons.splice(idx, 1); updateConfig({ buttons: allButtons }); }}><X className="h-3.5 w-3.5" /></Button>
-                    </div>
-                  );
-                })}
-                <Button variant="outline" size="sm" className="w-full h-9 text-xs" disabled={!canAdd} onClick={() => updateConfig({ buttons: [...buttons, { text: `Opção ${buttons.length + 1}`, type: "REPLY" }] })}><Plus className="h-3.5 w-3.5 mr-1" /> Adicionar Opção</Button>
-              </div>
-            </div>
-          );
-        })()}
 
         {/* ─── MENU BOTÕES ─── */}
         {nt === "menu_buttons" && (() => {

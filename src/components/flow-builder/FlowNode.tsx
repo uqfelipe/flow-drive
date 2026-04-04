@@ -33,7 +33,7 @@ function FlowNode({ data, selected, id }: NodeProps) {
   }, [id, deleteElements]);
 
   const isMenu = nodeData.nodeType === "menu_text" || nodeData.nodeType === "menu_buttons";
-  const isQuickReply = nodeData.nodeType === "quick_reply";
+  
   const isMenuList = nodeData.nodeType === "menu_list";
   const options = nodeData.nodeType === "menu_text" ? menuOptions : menuButtons;
 
@@ -209,27 +209,6 @@ function FlowNode({ data, selected, id }: NodeProps) {
           </div>
         )}
 
-        {/* Quick Reply buttons side by side */}
-        {isQuickReply && menuButtons && menuButtons.length > 0 && (
-          <div className="border-t border-border mt-1 flex divide-x divide-border overflow-hidden rounded-b-xl -mx-2.5 -mb-2.5">
-            {menuButtons.map((btn, idx) => (
-              <div
-                key={idx}
-                className="flex-1 flex items-center justify-center gap-1.5 py-2 text-[11px] font-semibold relative"
-                style={{ color }}
-              >
-                <span className="truncate">{typeof btn === "object" ? btn.text : btn}</span>
-                <Handle
-                  type="source"
-                  position={Position.Right}
-                  id={`option-${idx}`}
-                  className="!w-3 !h-3 !border-2 !border-white dark:!border-card !rounded-full !-right-1.5 !top-auto !relative"
-                  style={{ backgroundColor: color }}
-                />
-              </div>
-            ))}
-          </div>
-        )}
 
         {/* Menu List items with section headers */}
         {isMenuList && menuListItems.length > 0 && (
@@ -288,7 +267,7 @@ function FlowNode({ data, selected, id }: NodeProps) {
         )}
 
         {/* Default source handle (non-menu, non-condition, non-menu_list) */}
-        {!isMenu && !isMenuList && !isQuickReply && nodeData.nodeType !== "condition" && (
+        {!isMenu && !isMenuList && nodeData.nodeType !== "condition" && (
           <div className="flex justify-end pr-0">
             <Handle
               type="source"
