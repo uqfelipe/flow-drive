@@ -48,7 +48,7 @@ export function CustomerFormDialog({ open, onOpenChange, customer }: Props) {
     if (open && customer) {
       setName(customer.name);
       setPhone(customer.phone);
-      setCpf(customer.cpf);
+      
       setStatus(customer.status);
       setNotes(customer.notes || "");
       setPhoto(customer.photo || null);
