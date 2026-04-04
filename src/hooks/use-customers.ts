@@ -31,7 +31,7 @@ export function useCustomers() {
 export function useCreateCustomer() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (customer: { name: string; phone: string; cpf: string; status?: string; photo?: string | null }) => {
+    mutationFn: async (customer: { name: string; phone: string; cpf: string; status?: string; photo?: string | null; custom_fields?: Record<string, string> }) => {
       const { data, error } = await supabase.from("customers").insert(customer).select().single();
       if (error) throw error;
       return data;
