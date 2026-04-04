@@ -1094,7 +1094,7 @@ export default function Conversations() {
                 <p className="text-xs font-medium">Nenhuma conversa encontrada</p>
               </div>
             ) : (
-              <div className="p-1.5 space-y-0.5">
+              <div className="p-2 space-y-1">
                 {filtered.map((chat) => {
                   const isActive = selectedChat?.wa_chatid === chat.wa_chatid;
                   const hasUnread = (chat.wa_unreadCount ?? 0) > 0;
