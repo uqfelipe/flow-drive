@@ -920,30 +920,7 @@ async function processIncomingMessage(phone: string, text: string) {
         return;
       }
       
-      // ── Awaiting name capture ──
-      if (variables["__awaiting_name"] === "true") {
-        if (isValidName(text)) {
-          const nome = text.trim();
-          variables["nome"] = nome;
-          variables["name"] = nome;
-          delete variables["__awaiting_name"];
-          await adminClient.from("customers").update({ name: nome, updated_at: new Date().toISOString() }).eq("id", customerId);
-          // Now start the actual flow (the welcome node will greet by name)
-          const targetIds2 = new Set(flowEdges.map(e => e.target));
-          const startNode2 = flowNodes.find(n => !targetIds2.has(n.id));
-          if (startNode2) {
-            await adminClient.from("chat_sessions").update({ variables, current_node_id: startNode2.id, updated_at: new Date().toISOString() }).eq("id", session.id);
-            await new Promise(r => setTimeout(r, 500));
-            await processFlow(inst, phone, "", session.id, flowNodes, flowEdges, startNode2.id, variables);
-          } else {
-            await adminClient.from("chat_sessions").update({ variables, status: "completed", updated_at: new Date().toISOString() }).eq("id", session.id);
-          }
-          return;
-        } else {
-          try { await sendWhatsAppText(inst, phone, "Desculpe, não entendi o nome — como você prefere ser chamado(a)?"); } catch (_) {}
-          return;
-        }
-      }
+      // (name capture removed — flow controls everything)
       
       if (currentNodeId) {
         const currentNode = flowNodes.find(n => n.id === currentNodeId);
