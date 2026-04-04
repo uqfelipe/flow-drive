@@ -1691,6 +1691,45 @@ export default function Conversations() {
         </DialogFooter>
       </DialogContent>
     </Dialog>
+
+    {/* Delete chat confirmation dialog */}
+    <Dialog open={!!deleteChatTarget} onOpenChange={(open) => !open && setDeleteChatTarget(null)}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Remover conversa</DialogTitle>
+          <DialogDescription>
+            Tem certeza que deseja remover a conversa com{" "}
+            <span className="font-semibold text-foreground">
+              {deleteChatTarget ? chatName(deleteChatTarget, customerMap) : ""}
+            </span>
+            ? A sessão do chatbot será encerrada e a próxima mensagem será tratada como uma nova conversa.
+          </DialogDescription>
+        </DialogHeader>
+        <DialogFooter className="gap-2 sm:gap-0">
+          <Button variant="outline" onClick={() => setDeleteChatTarget(null)}>
+            Cancelar
+          </Button>
+          <Button
+            variant="destructive"
+            disabled={deleteChatMutation.isPending}
+            onClick={() => {
+              if (!deleteChatTarget) return;
+              const phone = phoneFromChatId(deleteChatTarget.wa_chatid);
+              deleteChatMutation.mutate(phone, {
+                onSuccess: () => {
+                  if (selectedChat?.wa_chatid === deleteChatTarget.wa_chatid) {
+                    setSelectedChat(null);
+                  }
+                  setDeleteChatTarget(null);
+                },
+              });
+            }}
+          >
+            {deleteChatMutation.isPending ? "Removendo..." : "Remover"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
     </>
   );
 }
