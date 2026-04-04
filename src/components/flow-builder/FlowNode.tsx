@@ -2,7 +2,7 @@ import { memo, useCallback } from "react";
 import { Handle, Position, type NodeProps, useReactFlow } from "@xyflow/react";
 import { getNodeTypeConfig } from "./nodeTypes";
 import type { FlowNodeData } from "@/types";
-import { X, GripHorizontal, Pencil } from "lucide-react";
+import { X, GripHorizontal, Pencil, Mic } from "lucide-react";
 
 function FlowNode({ data, selected, id }: NodeProps) {
   const nodeData = data as unknown as FlowNodeData;
@@ -12,6 +12,9 @@ function FlowNode({ data, selected, id }: NodeProps) {
   const menuOptions = nodeData.config?.options as string[] | undefined;
   const menuButtons = nodeData.config?.buttons as Array<string | { text: string; type: string }> | undefined;
   const messageText = nodeData.config?.message as string | undefined;
+  const audioFile = nodeData.config?.file as string | undefined;
+  const isAudioNode = nodeData.nodeType === "send_audio";
+  const hasAudio = isAudioNode && !!audioFile;
   const { deleteElements } = useReactFlow();
 
   const handleDelete = useCallback((e: React.MouseEvent) => {
@@ -83,8 +86,46 @@ function FlowNode({ data, selected, id }: NodeProps) {
         )}
 
         {/* Description */}
-        {nodeData.description && !messageText && (
+        {nodeData.description && !messageText && !isAudioNode && (
           <p className="text-[10px] text-muted-foreground px-1 truncate">{nodeData.description}</p>
+        )}
+
+        {/* Audio voice message indicator */}
+        {isAudioNode && (
+          <div
+            className={`flex items-center gap-2 px-2.5 py-2 rounded-lg ${
+              hasAudio
+                ? "bg-emerald-50 dark:bg-emerald-950/30"
+                : "bg-amber-50 dark:bg-amber-950/30"
+            }`}
+          >
+            <Mic
+              className="h-3.5 w-3.5 flex-shrink-0"
+              style={{ color: hasAudio ? "#10B981" : "#F59E0B" }}
+            />
+            {/* Waveform bars */}
+            <div className="flex items-center gap-[2px]">
+              {[3, 5, 8, 5, 7, 4, 6, 8, 5, 3].map((h, i) => (
+                <span
+                  key={i}
+                  className="rounded-full"
+                  style={{
+                    width: 2,
+                    height: h,
+                    backgroundColor: hasAudio ? "#10B981" : "#F59E0B",
+                    opacity: hasAudio ? 0.7 : 0.4,
+                    animation: hasAudio ? `pulse 1.5s ease-in-out ${i * 0.1}s infinite` : "none",
+                  }}
+                />
+              ))}
+            </div>
+            <span
+              className="text-[10px] font-medium flex-1"
+              style={{ color: hasAudio ? "#10B981" : "#F59E0B" }}
+            >
+              {hasAudio ? "Mensagem de voz" : "Sem áudio"}
+            </span>
+          </div>
         )}
 
         {/* Menu options with individual handles */}
