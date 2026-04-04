@@ -1,25 +1,48 @@
 
 
-## Indicadores visuais de mídia nos nós de Imagem, Vídeo e Arquivo
+## Corrigir envio de Menu Lista no webhook
 
-### O que muda
+### Problema
+A API do WhatsApp (uazapi) espera o campo `choices` como um array plano de strings no formato:
+```json
+{
+  "type": "list",
+  "text": "Escolha:",
+  "choices": ["[Seção 1]", "Item A|id_a|descrição", "[Seção 2]", "Item B|id_b|descrição"],
+  "listButton": "Ver opções"
+}
+```
 
-**`src/components/flow-builder/FlowNode.tsx`**
+Mas o webhook está enviando `sections` como objetos estruturados (`{ sections: [{title, rows: [...]}] }`), que é um campo que a API não reconhece. Por isso só aparece o menu sem os itens.
 
-Adicionar indicadores visuais para `send_image`, `send_video`, `send_file` e `send_sticker`, seguindo o mesmo padrão do indicador de áudio existente. Cada tipo terá seu ícone e cor correspondente (do `nodeTypes.ts`):
+### Alteração
 
-| Tipo | Ícone | Cor | Configurado | Não configurado |
-|------|-------|-----|-------------|-----------------|
-| `send_image` | Image | #10B981 | "Imagem anexada" | "Sem imagem" |
-| `send_video` | Video | #EF4444 | "Vídeo anexado" | "Sem vídeo" |
-| `send_file` | File | #6366F1 | "Arquivo anexado" | "Sem arquivo" |
-| `send_sticker` | Sticker | #A855F7 | "Figurinha anexada" | "Sem figurinha" |
+**`supabase/functions/whatsapp-webhook/index.ts`** — bloco `menu_list` (~linhas 564-577):
 
-Alterações:
-1. Importar ícones `Image`, `Video`, `File`, `Sticker` do lucide-react
-2. Detectar se o nó é de mídia (`isMediaNode`) e se tem arquivo configurado (`hasFile`) via `config.file`
-3. Renderizar um indicador compacto com ícone + texto de status, usando as cores do nó — verde/emerald quando configurado, cor do nó apagada quando vazio
-4. Excluir da descrição genérica os nós de mídia (assim como já é feito para áudio)
+Converter as `sections` para o formato `choices` da API antes de enviar:
 
-O indicador será visualmente consistente com o de áudio mas sem as barras de waveform — usa apenas ícone + texto + borda colorida.
+```typescript
+// Converter sections → choices flat array
+const choices: string[] = [];
+for (const s of sections) {
+  choices.push(`[${s.title}]`);
+  for (const it of (s.items || s.rows || [])) {
+    const parts = [it.title];
+    if (it.id || it.rowId) parts.push(it.id || it.rowId);
+    if (it.description) parts.push(it.description);
+    choices.push(parts.join("|"));
+  }
+}
+
+const menuText = replaceVariables(cfg.message || "Escolha:", vars);
+const listButton = cfg.listButton || "Ver opções";
+await sendWhatsAppMenu(inst, phone, "list", menuText, { choices, listButton });
+```
+
+Em vez do formato atual que envia `{ sections: apiSections, listButton }`.
+
+Também atualizar o `sendWhatsAppMenu` para passar `choices` diretamente (já funciona via spread, mas garantir clareza).
+
+### Resultado
+O menu lista enviará `choices` no formato correto da API e os itens aparecerão corretamente no WhatsApp.
 
