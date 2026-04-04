@@ -926,6 +926,12 @@ async function processIncomingMessage(phone: string, text: string) {
           
           // Handle menu/list/carousel/request_location selection
           if (nt === "menu_text" || nt === "menu_buttons" || nt === "menu_list" || nt === "menu_carousel" || nt === "request_location") {
+            // For dynamic menu_list, inject cached sections from session variables
+            if (nt === "menu_list" && currentNode.data.config?.dynamic === "vehicles" && variables["__dynamic_sections"]) {
+              try {
+                currentNode.data.config.sections = JSON.parse(variables["__dynamic_sections"]);
+              } catch (_) {}
+            }
             const { nextNodeId, selectedOption } = handleMenuSelection(currentNode, text, flowEdges);
             if (nextNodeId) {
               variables["menu_selection"] = selectedOption || text;
