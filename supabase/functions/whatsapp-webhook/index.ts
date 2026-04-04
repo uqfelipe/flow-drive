@@ -80,9 +80,6 @@ async function sendWhatsAppMenu(inst: Inst, phone: string, type: string, text: s
   });
 }
 
-async function sendWhatsAppCarousel(inst: Inst, phone: string, text: string, cards: any[]) {
-  await waFetch(inst, "/send/carousel", { number: phone, text, cards });
-}
 
 async function sendWhatsAppPayment(inst: Inst, phone: string, amount: number, opts: Record<string, any>) {
   await waFetch(inst, "/send/request-payment", { number: phone, amount, ...opts });

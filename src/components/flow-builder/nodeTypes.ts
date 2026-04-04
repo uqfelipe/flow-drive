@@ -1,6 +1,6 @@
 import type { LucideIcon } from "lucide-react";
 import {
-  MessageSquare, Link, Copy, ListOrdered, SquareMousePointer, GalleryHorizontalEnd, BarChart3,
+  MessageSquare, Link, Copy, ListOrdered, SquareMousePointer, BarChart3,
   Image, Mic, Video, File, Sticker, MapPin, Contact,
   Type, Hash, Mail, Calendar, Phone, User, CreditCard,
   GitBranch, Clock, Timer, Variable,
