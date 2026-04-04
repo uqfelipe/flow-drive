@@ -245,16 +245,20 @@ async function uploadBase64ToImgbb(dataUri: string): Promise<string> {
   return json.data.url;
 }
 
+function isWhatsAppCdnUrl(u: string) {
+  return u.includes(".enc") || u.includes("mmg.whatsapp.net") || u.includes("media.whatsapp.net");
+}
+
 function MediaImage({ url, caption, fromMe, onClickImage, thumbnail, messageId }: { url: string; caption?: string; fromMe: boolean; onClickImage: (url: string) => void; thumbnail?: string; messageId?: string }) {
   const [displayUrl, setDisplayUrl] = useState(() => {
     if (messageId && mediaUrlCache.has(messageId)) return mediaUrlCache.get(messageId)!;
-    // If URL is encrypted (.enc), use thumbnail; otherwise use URL directly
-    if (url && url.includes(".enc")) return thumbnail || "";
+    // If URL is from WhatsApp CDN (not directly accessible), use thumbnail
+    if (url && isWhatsAppCdnUrl(url)) return thumbnail || "";
     return url || thumbnail || "";
   });
   const [isDownloading, setIsDownloading] = useState(false);
 
-  const isEncrypted = url && url.includes(".enc") && !mediaUrlCache.has(messageId || "");
+  const isEncrypted = url && isWhatsAppCdnUrl(url) && !mediaUrlCache.has(messageId || "");
   const isBase64 = displayUrl?.startsWith("data:");
 
   // Auto-upload base64 to imgbb
