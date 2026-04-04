@@ -1,43 +1,34 @@
 
 
-## Melhorar estilo do chat — refinamento visual
+## Adicionar opções de áudio no nó "Enviar Áudio" do Flow Builder
 
-### Mudanças planejadas
+### Situação atual
+O nó `send_audio` só aceita uma URL de arquivo (campo "URL do arquivo"). O usuário quer poder:
+1. Colar um link de áudio
+2. Fazer upload de um arquivo de áudio
+3. Gravar áudio diretamente no painel de configuração
 
-O chat já tem uma base boa. As melhorias focam em refinamento, espaçamento e polish visual para dar um aspecto mais premium e organizado.
+### Alterações
 
-**`src/pages/Conversations.tsx`** — ajustes de estilo:
+**1. `src/components/flow-builder/NodeConfigPanel.tsx`**
+- Separar o `send_audio` do bloco genérico de mídia (linhas 235-248)
+- Criar seção dedicada com 3 abas/modos:
+  - **Link** — input de URL (como já existe)
+  - **Upload** — input file que aceita `audio/*`, faz upload para Supabase Storage e salva a URL pública
+  - **Gravar** — botão de gravação usando `MediaRecorder` API do navegador, com visualização de tempo, botão parar, e preview do áudio gravado. Ao finalizar, faz upload para Supabase Storage
+- O config salva sempre `{ file: "url_final", audioSource: "link"|"upload"|"recording" }` — o webhook usa apenas `file`
 
-1. **Lista de conversas (painel esquerdo)**:
-   - Aumentar espaçamento entre itens para respirar melhor
-   - Avatar com borda sutil ao invés de indicador de status sobreposto
-   - Preview de mensagem com max 1 linha e estilo mais clean
-   - Hover mais suave com transição
+**2. Supabase Storage** — criar bucket `audio-files` (público) via migration SQL para armazenar uploads e gravações
 
-2. **Header do chat (painel direito)**:
-   - Barra mais limpa com separação visual mais elegante
-   - Status online/offline mais discreto com texto "online" / "offline"
-   - Remover botão de vídeo (não funcional)
+**3. `src/components/flow-builder/AudioRecorder.tsx`** (novo componente)
+- Usa `navigator.mediaDevices.getUserMedia({ audio: true })` + `MediaRecorder`
+- Estados: idle → recording → recorded
+- Mostra timer durante gravação
+- Preview com `<audio>` tag após gravar
+- Botão "Usar este áudio" faz upload ao storage e chama callback com URL
 
-3. **Bolhas de mensagem**:
-   - Mensagens enviadas: gradiente mais suave, sombra reduzida, border-radius maior e mais consistente
-   - Mensagens recebidas: fundo mais claro e neutro, sem bordas desnecessárias
-   - Espaçamento entre mensagens do mesmo remetente reduzido (agrupamento visual)
-   - Horário e status mais elegantes com tipografia menor e mais espaço
+**4. `nodeTypes.ts`** — atualizar `defaultConfig` do `send_audio` para `{ file: "", audioSource: "link" }`
 
-4. **Separadores de data**:
-   - Estilo mais discreto, com linha horizontal + texto centralizado (estilo WhatsApp Web)
-
-5. **Input area**:
-   - Input com height maior e cantos mais arredondados
-   - Botões de emoji/clip mais integrados visualmente
-   - Botão de envio com animação mais sutil
-
-6. **Background do chat**:
-   - Pattern mais sutil ou gradiente suave ao invés do SVG pattern atual
-
-**`src/index.css`** — possível ajuste fino de variáveis de cor se necessário.
-
-### Resultado esperado
-Chat com visual limpo, espaçado e profissional — similar ao Telegram Desktop ou WhatsApp Web modernizado, com hierarquia visual clara e interações suaves.
+### Resultado
+No painel de configuração do nó "Enviar Áudio", o usuário verá 3 tabs (Link / Upload / Gravar) para escolher como fornecer o áudio. Todas as opções resultam em uma URL pública salva no campo `file` do config.
 
