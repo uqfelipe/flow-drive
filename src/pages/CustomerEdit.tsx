@@ -44,6 +44,20 @@ export default function CustomerEdit() {
   const customer = customers?.find((c) => c.id === id) ?? null;
   const customerRentals = (rentals ?? []).filter((r) => r.customer_id === id);
 
+  const { data: customerFiles } = useQuery({
+    queryKey: ["customer_files", id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("customer_files")
+        .select("*")
+        .eq("customer_id", id!)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!id,
+  });
+
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [status, setStatus] = useState("active");
