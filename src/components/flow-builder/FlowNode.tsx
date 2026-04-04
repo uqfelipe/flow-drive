@@ -96,7 +96,7 @@ function FlowNode({ data, selected, id }: NodeProps) {
         )}
 
         {/* Description */}
-        {nodeData.description && !messageText && !isAudioNode && (
+        {nodeData.description && !messageText && !isAudioNode && !isMediaNode && (
           <p className="text-[10px] text-muted-foreground px-1 truncate">{nodeData.description}</p>
         )}
 
