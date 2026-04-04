@@ -9,7 +9,7 @@ const adminClient = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
 const SUPPORTED_NODE_TYPES = new Set([
   "message", "send_link", "pix", "copy_paste",
   "delay", "set_variable", "condition",
-  "menu_text", "menu_buttons", "menu_list", "menu_carousel", "poll",
+  "menu_text", "menu_buttons", "menu_list", "poll",
   "capture_text", "capture_name", "capture_email", "capture_phone", "capture_cpf", "capture_number", "capture_date",
   "capture_image", "capture_audio", "capture_file",
   "wait",
@@ -80,9 +80,6 @@ async function sendWhatsAppMenu(inst: Inst, phone: string, type: string, text: s
   });
 }
 
-async function sendWhatsAppCarousel(inst: Inst, phone: string, text: string, cards: any[]) {
-  await waFetch(inst, "/send/carousel", { number: phone, text, cards });
-}
 
 async function sendWhatsAppPayment(inst: Inst, phone: string, amount: number, opts: Record<string, any>) {
   await waFetch(inst, "/send/request-payment", { number: phone, amount, ...opts });
@@ -594,21 +591,6 @@ async function processFlow(
       return { nextNodeId: nodeId, variables: vars, status: "waiting" };
     }
 
-    // ─── Menu carousel ───
-    if (nt === "menu_carousel") {
-      const cards = (cfg.cards || []) as any[];
-      if (cards.length > 0) {
-        try {
-          await sendWhatsAppCarousel(inst, phone, replaceVariables(cfg.message || "", vars), cards);
-        } catch (_) {
-          // Fallback to text with numbered cards
-          const fallback = cards.map((c: any, i: number) => `${i + 1}. ${c.text}`).join("\n");
-          try { await sendWhatsAppText(inst, phone, replaceVariables(`${cfg.message || ""}\n\n${fallback}`, vars)); } catch (_) {}
-        }
-      }
-      await adminClient.from("chat_sessions").update({ current_node_id: nodeId, variables: vars, status: "waiting", updated_at: new Date().toISOString() }).eq("id", sessionId);
-      return { nextNodeId: nodeId, variables: vars, status: "waiting" };
-    }
 
     // ─── Poll ───
     if (nt === "poll") {
@@ -775,17 +757,6 @@ function handleMenuSelection(
     return { nextNodeId: null, selectedOption: null };
   }
 
-  // Menu carousel — match by card index
-  if (nt === "menu_carousel") {
-    const cards = (node.data.config?.cards || []) as any[];
-    const num = parseInt(userInput.trim());
-    if (!isNaN(num) && num >= 1 && num <= cards.length) {
-      const idx = num - 1;
-      const nextId = findNextNodeId(edges, node.id, `option-${idx}`) || findNextNodeId(edges, node.id);
-      return { nextNodeId: nextId, selectedOption: cards[idx].text };
-    }
-    return { nextNodeId: null, selectedOption: null };
-  }
 
   // Request location — any response continues
   if (nt === "request_location") {
@@ -1266,7 +1237,7 @@ async function processIncomingMessage(phone: string, text: string, mediaUrl?: st
           const nt = currentNode.data.nodeType;
           
           // Handle menu/list/carousel/request_location selection
-          if (nt === "menu_text" || nt === "menu_buttons" || nt === "menu_list" || nt === "menu_carousel" || nt === "request_location" || nt === "poll") {
+          if (nt === "menu_text" || nt === "menu_buttons" || nt === "menu_list" || nt === "request_location" || nt === "poll") {
             // For dynamic menu_list, inject cached sections from session variables
             if (nt === "menu_list" && currentNode.data.config?.dynamic === "vehicles" && variables["__dynamic_sections"]) {
               try {

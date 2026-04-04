@@ -1,6 +1,6 @@
 import type { LucideIcon } from "lucide-react";
 import {
-  MessageSquare, Link, Copy, ListOrdered, SquareMousePointer, GalleryHorizontalEnd, BarChart3,
+  MessageSquare, Link, Copy, ListOrdered, SquareMousePointer, BarChart3,
   Image, Mic, Video, File, Sticker, MapPin, Contact,
   Type, Hash, Mail, Calendar, Phone, User, CreditCard,
   GitBranch, Clock, Timer, Variable,
@@ -45,7 +45,7 @@ export const nodeTypes: NodeTypeConfig[] = [
 
   { type: "menu_buttons", label: "Menu Botões", category: "menu", icon: SquareMousePointer, description: "Menu com botões interativos", color: "#3B82F6", defaultConfig: { buttons: [{ text: "Botão 1", type: "REPLY" }, { text: "Botão 2", type: "REPLY" }], imageButton: "" } },
   { type: "menu_list", label: "Menu Lista", category: "menu", icon: List, description: "Menu lista com seções", color: "#8B5CF6", defaultConfig: { listButton: "Ver opções", sections: [{ title: "Seção 1", items: [{ title: "Item 1", id: "1", description: "" }] }] } },
-  { type: "menu_carousel", label: "Menu Carrossel", category: "menu", icon: GalleryHorizontalEnd, description: "Carrossel de cards", color: "#EC4899", defaultConfig: { cards: [{ text: "Card 1", image: "", buttons: [{ text: "Botão 1", type: "REPLY" }] }] } },
+  
   { type: "poll", label: "Enquete", category: "menu", icon: BarChart3, description: "Criar enquete", color: "#14B8A6", defaultConfig: { question: "", options: ["Opção 1", "Opção 2"], selectableCount: 1 } },
   { type: "request_location", label: "Solicitar Localização", category: "menu", icon: MapPinned, description: "Botão para pedir localização", color: "#22C55E", defaultConfig: { message: "Compartilhe sua localização" } },
 
