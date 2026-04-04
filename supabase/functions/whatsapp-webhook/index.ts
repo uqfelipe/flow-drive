@@ -865,9 +865,35 @@ async function processIncomingMessage(phone: string, text: string) {
         }
       } else {
         customerId = newCustomer!.id;
+        customerWelcomed = false;
       }
     }
-    
+
+    // --- Welcome message (first contact only) ---
+    if (!customerWelcomed) {
+      console.log(`[WELCOME] Sending welcome message to ${phone}`);
+      try {
+        const { data: welcomeSettings } = await adminClient.from("settings").select("key, value").in("key", ["welcome_enabled", "welcome_type", "welcome_text", "welcome_audio_url"]);
+        const ws: Record<string, string> = {};
+        for (const r of welcomeSettings ?? []) ws[r.key] = r.value;
+
+        if (ws.welcome_enabled === "true") {
+          if (ws.welcome_type === "audio" && ws.welcome_audio_url) {
+            await sendWhatsAppMedia(inst, phone, "audio", ws.welcome_audio_url);
+          } else if (ws.welcome_text) {
+            await sendWhatsAppText(inst, phone, ws.welcome_text);
+          }
+          await new Promise(r => setTimeout(r, 1000));
+        }
+        // Mark as welcomed regardless of enabled state
+        await adminClient.from("customers").update({ welcomed: true }).eq("id", customerId);
+      } catch (wErr) {
+        console.error("[WELCOME] Error sending welcome:", wErr);
+        // Mark welcomed anyway to avoid retrying
+        await adminClient.from("customers").update({ welcomed: true }).eq("id", customerId);
+      }
+    }
+
     const { data: existingSessions } = await adminClient
       .from("chat_sessions")
       .select("*")
