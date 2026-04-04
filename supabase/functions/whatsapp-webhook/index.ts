@@ -1244,7 +1244,7 @@ async function processIncomingMessage(phone: string, text: string, mediaUrl?: st
           const nt = currentNode.data.nodeType;
           
           // Handle menu/list/carousel/request_location selection
-          if (nt === "menu_text" || nt === "menu_buttons" || nt === "menu_list" || nt === "menu_carousel" || nt === "request_location") {
+          if (nt === "menu_text" || nt === "menu_buttons" || nt === "quick_reply" || nt === "menu_list" || nt === "menu_carousel" || nt === "request_location") {
             // For dynamic menu_list, inject cached sections from session variables
             if (nt === "menu_list" && currentNode.data.config?.dynamic === "vehicles" && variables["__dynamic_sections"]) {
               try {
