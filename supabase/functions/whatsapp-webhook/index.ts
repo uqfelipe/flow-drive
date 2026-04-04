@@ -518,7 +518,13 @@ async function processFlow(
         try {
           const menuText = replaceVariables(cfg.message || "Escolha uma opção:", vars);
           const imgUrl = cfg.imageButton ? replaceVariables(cfg.imageButton, vars) : "";
-          await sendWhatsAppMenu(inst, phone, "button", menuText, { choices: btnChoices }, imgUrl ? { image: imgUrl } : {});
+          if (imgUrl) {
+            // Send image first with menu text as caption, then buttons separately
+            await sendWhatsAppMedia(inst, phone, "image", imgUrl, menuText);
+            await sendWhatsAppMenu(inst, phone, "button", "Escolha uma opção:", { choices: btnChoices });
+          } else {
+            await sendWhatsAppMenu(inst, phone, "button", menuText, { choices: btnChoices });
+          }
         } catch (_) {
           // Fallback to text
           const fallback = buttons.map((b: any, i: number) => `${i + 1}. ${typeof b === "object" ? b.text : b}`).join("\n");
