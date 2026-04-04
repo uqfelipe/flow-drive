@@ -47,6 +47,7 @@ function FlowBuilderContent() {
   const [dbLoaded, setDbLoaded] = useState(false);
   const [clipboard, setClipboard] = useState<Node[]>([]);
   const [pasteCount, setPasteCount] = useState(0);
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
 
   const { data: flows, isLoading } = useFlows();
   const { data: flowDetail } = useFlow(currentFlowId);
