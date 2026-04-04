@@ -146,6 +146,7 @@ async function processFlow(
   phone: string,
   incomingText: string,
   sessionId: string,
+  customerId: string,
   flowNodes: FlowNode[],
   flowEdges: FlowEdge[],
   currentNodeId: string | null,
@@ -156,6 +157,9 @@ async function processFlow(
   let nodeId = currentNodeId;
   let vars = { ...variables };
   
+  // Variable names that should persist as customer name
+  const NAME_VARS = ["nome_contato", "nome_usuario", "nome", "name"];
+  
   // If we have a current node that's waiting for input, process the input first
   if (nodeId) {
     const currentNode = nodesMap.get(nodeId);
@@ -165,6 +169,17 @@ async function processFlow(
         const varName = currentNode.data.config?.variable || nt.replace("capture_", "");
         vars[varName] = incomingText;
         console.log(`[FLOW] Captured ${varName} = "${incomingText}"`);
+        
+        // If this is a name variable, save to customers table
+        if (NAME_VARS.includes(varName) && isValidName(incomingText)) {
+          console.log(`[FLOW] Saving customer name: "${incomingText}"`);
+          await adminClient.from("customers").update({ name: incomingText.trim() }).eq("id", customerId);
+          vars.nome = incomingText.trim();
+          vars.name = incomingText.trim();
+          vars.nome_contato = incomingText.trim();
+          vars.nome_usuario = incomingText.trim();
+        }
+        
         nodeId = findNextNodeId(flowEdges, nodeId);
       }
     }
@@ -939,18 +954,18 @@ async function processIncomingMessage(phone: string, text: string) {
             const { nextNodeId, selectedOption } = handleMenuSelection(currentNode, text, flowEdges);
             if (nextNodeId) {
               variables["menu_selection"] = selectedOption || text;
-              await processFlow(inst, phone, text, session.id, flowNodes, flowEdges, nextNodeId, variables);
+              await processFlow(inst, phone, text, session.id, customerId, flowNodes, flowEdges, nextNodeId, variables);
             } else {
               try { await sendWhatsAppText(inst, phone, "❌ Opção inválida. Por favor, escolha uma opção válida."); } catch (_) {}
               await new Promise(r => setTimeout(r, 500));
-              await processFlow(inst, phone, "", session.id, flowNodes, flowEdges, currentNodeId, variables);
+              await processFlow(inst, phone, "", session.id, customerId, flowNodes, flowEdges, currentNodeId, variables);
             }
             return;
           }
           
           // Handle capture nodes
           if (nt.startsWith("capture_") || nt === "wait") {
-            await processFlow(inst, phone, text, session.id, flowNodes, flowEdges, currentNodeId, variables);
+            await processFlow(inst, phone, text, session.id, customerId, flowNodes, flowEdges, currentNodeId, variables);
             return;
           }
         }
@@ -988,7 +1003,7 @@ async function processIncomingMessage(phone: string, text: string) {
       .insert({ customer_id: customerId, flow_id: flow.id, current_node_id: startNode.id, variables: vars, status: "active" })
       .select().single();
     if (sessError || !newSession) { console.error("[AUTO-REPLY] Failed to create session:", sessError); return; }
-    await processFlow(inst, phone, text, newSession.id, flowNodes, flowEdges, startNode.id, vars);
+    await processFlow(inst, phone, text, newSession.id, customerId, flowNodes, flowEdges, startNode.id, vars);
     
   } catch (err) {
     console.error("[AUTO-REPLY] Error:", err);
