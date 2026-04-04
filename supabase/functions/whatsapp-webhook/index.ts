@@ -953,9 +953,9 @@ Deno.serve(async (req) => {
       }
 
       const backgroundTask = (async () => {
-        for (const { phone, text, mediaUrl, mediaType, mediaFileName } of toProcess) {
+        for (const { id: msgId, phone, text, mediaUrl, mediaType, mediaFileName } of toProcess) {
           try {
-            await processIncomingMessage(phone, text, mediaUrl, mediaType, mediaFileName);
+            await processIncomingMessage(phone, text, mediaUrl, mediaType, mediaFileName, msgId);
           } catch (err) {
             console.error(`[AUTO-REPLY] Error for ${phone}:`, err);
           }
