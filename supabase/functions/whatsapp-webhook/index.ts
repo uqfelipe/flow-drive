@@ -569,9 +569,11 @@ function handleMenuSelection(
     return { nextNodeId: null, selectedOption: null };
   }
 
-  // Menu list — match by item title or row id
+  // Menu list — match by item title, row id, or dynamic sections from session vars
   if (nt === "menu_list") {
-    const sections = (node.data.config?.sections || []) as any[];
+    let sections = (node.data.config?.sections || []) as any[];
+    // For dynamic menus, sections are stored in session variables
+    // (caller should pass them if available — we check config.dynamic)
     const allItems = sections.flatMap((s: any) => s.items || s.rows || []);
     const lower = userInput.trim().toLowerCase();
     const matchIdx = allItems.findIndex((it: any) => it.title?.toLowerCase() === lower || it.id === userInput.trim() || it.rowId === userInput.trim());
