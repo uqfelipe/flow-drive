@@ -13,10 +13,10 @@ import { useUpdateCustomer, useCustomers } from "@/hooks/use-customers";
 import { useCustomerFieldDefinitions } from "@/hooks/use-customer-fields";
 import { useRentals } from "@/hooks/use-rentals";
 import { useToast } from "@/hooks/use-toast";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, Upload, X, ImageIcon, Save, Calendar, DollarSign, Clock, FileText, User, Car, Paperclip, Image, Mic, File } from "lucide-react";
-import { useQuery } from "@tanstack/react-query";
+import { ArrowLeft, Upload, X, ImageIcon, Save, Calendar, DollarSign, Clock, FileText, User, Car, Paperclip, Image, Mic, File, Download, Loader2, Eye } from "lucide-react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 
