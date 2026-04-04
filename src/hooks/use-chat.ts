@@ -357,3 +357,29 @@ export function useDeleteMessage() {
     },
   });
 }
+
+export function useDeleteChat() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (phone: string) => {
+      return chatAction("delete-chat", { phone });
+    },
+    onMutate: async (phone) => {
+      await qc.cancelQueries({ queryKey: ["whatsapp-chats"] });
+      const previous = qc.getQueryData<WhatsAppChat[]>(["whatsapp-chats"]);
+      qc.setQueryData<WhatsAppChat[]>(["whatsapp-chats"], (old) =>
+        (old || []).filter((c) => {
+          const chatPhone = c.wa_chatid?.replace(/@.*$/, "");
+          return chatPhone !== phone;
+        })
+      );
+      return { previous };
+    },
+    onError: (_, __, context) => {
+      if (context?.previous) {
+        qc.setQueryData(["whatsapp-chats"], context.previous);
+      }
+    },
+    onSettled: () => qc.invalidateQueries({ queryKey: ["whatsapp-chats"] }),
+  });
+}
