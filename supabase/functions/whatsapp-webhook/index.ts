@@ -451,7 +451,7 @@ async function processFlow(
     if (nt === "send_image" || nt === "send_video" || nt === "send_audio" || nt === "send_file" || nt === "send_sticker") {
       const file = cfg.file || "";
       if (file) {
-        const mediaType = nt === "send_image" ? "image" : nt === "send_video" ? "video" : nt === "send_audio" ? "audio" : nt === "send_file" ? "document" : "sticker";
+        const mediaType = nt === "send_image" ? "image" : nt === "send_video" ? "video" : nt === "send_audio" ? "ptt" : nt === "send_file" ? "document" : "sticker";
         try { await sendWhatsAppMedia(inst, phone, mediaType, replaceVariables(file, vars), cfg.caption ? replaceVariables(cfg.caption, vars) : undefined); } catch (e) { console.error(`[FLOW]`, e.message); }
         await new Promise(r => setTimeout(r, 500));
       }
