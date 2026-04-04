@@ -6,6 +6,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import Dashboard from "./pages/Dashboard";
 import Vehicles from "./pages/Vehicles";
 import Customers from "./pages/Customers";
+import CustomerEdit from "./pages/CustomerEdit";
 import Rentals from "./pages/Rentals";
 import Financial from "./pages/Financial";
 import Conversations from "./pages/Conversations";
