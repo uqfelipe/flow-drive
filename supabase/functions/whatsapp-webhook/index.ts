@@ -918,6 +918,46 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ ok: true }), { headers: { "Content-Type": "application/json" } });
     }
 
+    // Handle FileDownloaded events from messages_update
+    if (eventType === "messages_update") {
+      const evt = body.event || {};
+      const evtType = (evt.Type || evt.type || body.state || "").toString();
+      if (evtType === "FileDownloaded") {
+        const fileUrl = evt.FileURL || evt.fileURL || evt.fileUrl || "";
+        const mimeType = (evt.MimeType || evt.mimetype || "").toString();
+        const chatId = (evt.Chat || evt.chatid || "").toString();
+        const phone = chatId.replace(/@.*$/, "");
+        const msgIds = evt.MessageIDs || [];
+        const msgId = msgIds[0] || "";
+        const fromMe = Boolean(evt.IsFromMe ?? false);
+        
+        if (fileUrl && phone && !fromMe && mimeType.startsWith("image")) {
+          console.log(`[WEBHOOK] FileDownloaded image for ${phone}: ${fileUrl}`);
+          
+          // Signal for UI refresh
+          if (chatId) {
+            await adminClient.from("message_signals").upsert(
+              { chat_id: chatId, updated_at: new Date().toISOString() },
+              { onConflict: "chat_id" }
+            );
+          }
+          
+          // Process as media message in background
+          const bgTask = (async () => {
+            try {
+              await processIncomingMessage(phone, "", fileUrl, "image", "", msgId);
+            } catch (err) {
+              console.error(`[AUTO-REPLY] FileDownloaded error:`, err);
+            }
+          })();
+          // @ts-ignore: waitUntil available in Deno deploy
+          if (typeof globalThis.EdgeRuntime !== "undefined") { /* noop */ }
+          try { (globalThis as any).ctx?.waitUntil?.(bgTask); } catch (_) { await bgTask; }
+        }
+        return new Response(JSON.stringify({ ok: true }), { headers: { "Content-Type": "application/json" } });
+      }
+    }
+
     // Handle message events (single or batched)
     const hasMessage = body.message || body.messages || body.data?.message || body.data?.messages;
     const isMessageEvent = eventType === "message" || eventType === "messages" || (!!hasMessage && eventType === "");
