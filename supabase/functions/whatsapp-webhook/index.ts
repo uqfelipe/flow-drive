@@ -794,6 +794,8 @@ type IncomingWebhookMessage = {
   mediaUrl?: string;
   mediaType?: string;
   mediaFileName?: string;
+  latitude?: number;
+  longitude?: number;
 };
 
 function extractIncomingMessages(body: any): IncomingWebhookMessage[] {
@@ -869,6 +871,17 @@ function extractIncomingMessages(body: any): IncomingWebhookMessage[] {
       mediaFileName = msg.fileName || "video.mp4";
     }
 
+    // Extract location data from content object
+    let latitude: number | undefined;
+    let longitude: number | undefined;
+    if (contentObj && contentObj.degreesLatitude != null && contentObj.degreesLongitude != null) {
+      latitude = Number(contentObj.degreesLatitude);
+      longitude = Number(contentObj.degreesLongitude);
+    } else if (msgContent.locationMessage) {
+      latitude = Number(msgContent.locationMessage.degreesLatitude);
+      longitude = Number(msgContent.locationMessage.degreesLongitude);
+    }
+
     if (!chatId) continue;
 
     uniqueMessages.set(id, {
@@ -880,6 +893,7 @@ function extractIncomingMessages(body: any): IncomingWebhookMessage[] {
       ...(mediaUrl ? { mediaUrl } : {}),
       ...(mediaType ? { mediaType } : {}),
       ...(mediaFileName ? { mediaFileName } : {}),
+      ...(latitude != null ? { latitude, longitude } : {}),
     });
   }
 
@@ -1021,13 +1035,13 @@ Deno.serve(async (req) => {
       const incomingMessages = extractIncomingMessages(body);
       
       // Filter out groups, noise, fromMe, empty text
-      const validMessages = incomingMessages.filter(({ chatId, phone, text, fromMe, mediaUrl, mediaType }) => {
+      const validMessages = incomingMessages.filter(({ chatId, phone, text, fromMe, mediaUrl, mediaType, latitude }) => {
         if (isGroupOrNoise(chatId)) {
           console.log(`[WEBHOOK] SKIP group/noise: ${chatId}`);
           return false;
         }
         if (fromMe) return false;
-        if (!text && !mediaUrl && !mediaType) return false;
+        if (!text && !mediaUrl && !mediaType && latitude == null) return false;
         if (!phone) return false;
         return true;
       });
@@ -1056,9 +1070,9 @@ Deno.serve(async (req) => {
       }
 
       const backgroundTask = (async () => {
-        for (const { id: msgId, phone, text, mediaUrl, mediaType, mediaFileName } of toProcess) {
+        for (const { id: msgId, phone, text, mediaUrl, mediaType, mediaFileName, latitude, longitude } of toProcess) {
           try {
-            await processIncomingMessage(phone, text, mediaUrl, mediaType, mediaFileName, msgId);
+            await processIncomingMessage(phone, text, mediaUrl, mediaType, mediaFileName, msgId, latitude, longitude);
           } catch (err) {
             console.error(`[AUTO-REPLY] Error for ${phone}:`, err);
           }
@@ -1094,9 +1108,9 @@ Deno.serve(async (req) => {
 });
 
 // ── Process incoming message through active flow ─────────────────────
-async function processIncomingMessage(phone: string, text: string, mediaUrl?: string, mediaType?: string, mediaFileName?: string, messageId?: string) {
+async function processIncomingMessage(phone: string, text: string, mediaUrl?: string, mediaType?: string, mediaFileName?: string, messageId?: string, latitude?: number, longitude?: number) {
   try {
-    console.log(`[AUTO-REPLY] Processing message from ${phone}: "${text}"${mediaUrl ? ` media=${mediaType}` : ""}`);
+    console.log(`[AUTO-REPLY] Processing message from ${phone}: "${text}"${mediaUrl ? ` media=${mediaType}` : ""}${latitude != null ? ` location=${latitude},${longitude}` : ""}`);
 
     // 1. Get WhatsApp instance FIRST (needed for welcome + flow)
     const inst = await getWhatsAppInstance();
@@ -1236,8 +1250,8 @@ async function processIncomingMessage(phone: string, text: string, mediaUrl?: st
         if (currentNode) {
           const nt = currentNode.data.nodeType;
           
-          // Handle menu/list/carousel/request_location selection
-          if (nt === "menu_text" || nt === "menu_buttons" || nt === "menu_list" || nt === "request_location" || nt === "poll") {
+          // Handle menu/list/request_location selection
+          if (nt === "menu_text" || nt === "menu_buttons" || nt === "menu_list" || nt === "poll") {
             // For dynamic menu_list, inject cached sections from session variables
             if (nt === "menu_list" && currentNode.data.config?.dynamic === "vehicles" && variables["__dynamic_sections"]) {
               try {
@@ -1252,6 +1266,31 @@ async function processIncomingMessage(phone: string, text: string, mediaUrl?: st
               try { await sendWhatsAppText(inst, phone, "❌ Opção inválida. Por favor, escolha uma opção válida."); } catch (_) {}
               await new Promise(r => setTimeout(r, 500));
               await processFlow(inst, phone, "", session.id, customerId, flowNodes, flowEdges, currentNodeId, variables);
+            }
+            return;
+          }
+
+          // Handle request_location — save coordinates to {{localizacao}}
+          if (nt === "request_location") {
+            if (latitude != null && longitude != null) {
+              const locationStr = `${latitude},${longitude}`;
+              variables["localizacao"] = locationStr;
+              console.log(`[FLOW] Saved location: ${locationStr}`);
+              
+              // Also save to customer custom_fields if field exists
+              try {
+                const { data: cust } = await adminClient.from("customers").select("custom_fields").eq("id", customerId).single();
+                const cf = (cust?.custom_fields as Record<string, string>) || {};
+                cf["localizacao"] = locationStr;
+                await adminClient.from("customers").update({ custom_fields: cf }).eq("id", customerId);
+                console.log(`[FLOW] Saved location to customer custom_fields`);
+              } catch (e) { console.error("[FLOW] Error saving location to customer:", e.message); }
+            } else {
+              variables["localizacao"] = text || "Localização não detectada";
+            }
+            const { nextNodeId } = handleMenuSelection(currentNode, text || "location", flowEdges);
+            if (nextNodeId) {
+              await processFlow(inst, phone, text, session.id, customerId, flowNodes, flowEdges, nextNodeId, variables);
             }
             return;
           }
