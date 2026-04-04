@@ -299,6 +299,14 @@ async function processFlow(
           try { await sendWhatsAppText(inst, phone, "❌ " + replaceVariables(promptMsg, vars)); } catch (_) {}
           await adminClient.from("chat_sessions").update({ current_node_id: nodeId, variables: vars, status: "waiting", updated_at: new Date().toISOString() }).eq("id", sessionId);
           return { nextNodeId: nodeId, variables: vars, status: "waiting" };
+        } else if (nt === "capture_location") {
+          // If location was already saved in variables (from request_location handler), keep it
+          if (vars[varName] && vars[varName].match(/^-?\d+\.?\d*,-?\d+\.?\d*$/)) {
+            console.log(`[FLOW] capture_location: keeping existing ${varName} = "${vars[varName]}"`);
+          } else {
+            vars[varName] = incomingText || vars[varName] || "";
+            console.log(`[FLOW] Captured ${varName} = "${vars[varName]}"`);
+          }
         } else {
           vars[varName] = incomingText;
           console.log(`[FLOW] Captured ${varName} = "${incomingText}"`);
