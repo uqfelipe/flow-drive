@@ -301,8 +301,7 @@ export default function CustomerEdit() {
                             const v = customFields[fd.field_key] || "";
                             return v && (fd.field_type === "image" || isImageUrl(v));
                           }).length;
-                          const total = (customerFiles?.length || 0) + cfImgCount;
-                          return total > 0 ? <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-[10px]">{total}</Badge> : null;
+                          return cfImgCount > 0 ? <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-[10px]">{cfImgCount}</Badge> : null;
                         })()}
                       </TabsTrigger>
                     </TabsList>
