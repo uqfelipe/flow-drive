@@ -43,7 +43,7 @@ export function useCreateCustomer() {
 export function useUpdateCustomer() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ id, ...updates }: { id: string; name?: string; phone?: string; cpf?: string; status?: string; notes?: string | null; photo?: string | null }) => {
+    mutationFn: async ({ id, ...updates }: { id: string; name?: string; phone?: string; cpf?: string; status?: string; notes?: string | null; photo?: string | null; custom_fields?: Record<string, string> }) => {
       const { data, error } = await supabase.from("customers").update(updates).eq("id", id).select().single();
       if (error) throw error;
       return data;

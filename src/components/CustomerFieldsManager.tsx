@@ -59,7 +59,7 @@ export function CustomerFieldsManager({ open, onOpenChange }: Props) {
 
         <p className="text-xs text-muted-foreground">
           Crie campos que serão preenchidos automaticamente pelo chatbot via <code className="bg-muted px-1 rounded">capture_text</code>.
-          Use a mesma variável no fluxo (ex: <code className="bg-muted px-1 rounded">{{email}}</code>).
+          Use a mesma variável no fluxo (ex: <code className="bg-muted px-1 rounded">{`{{email}}`}</code>).
         </p>
 
         <div className="grid grid-cols-[1fr_1fr_auto_auto] gap-2 items-end">
