@@ -1,35 +1,33 @@
 
 
-## Copiar e Colar componentes no Flow Builder
+## Simplificar configuração do Menu Botões
 
-### O que será adicionado
+### Problema atual
+O painel de configuração do `menu_buttons` está poluído: cada botão tem um seletor de tipo (Resposta/URL/Copiar/Ligar) que raramente é usado, os inputs estão apertados, e o campo de imagem fica misturado com o resto.
 
-Funcionalidade de copiar e colar nós no canvas do Flow Builder via:
-- **Atalhos de teclado**: Ctrl+C (copiar), Ctrl+V (colar)
-- **Menu de contexto** (clique direito no nó): opções "Copiar" e "Colar"
-- **Duplicar**: Ctrl+D como atalho rápido para duplicar o nó selecionado
+### Alterações
 
-### Alteração
+**`src/components/flow-builder/NodeConfigPanel.tsx`** — bloco `menu_buttons` (linhas 109-140):
 
-**`src/pages/FlowBuilder.tsx`**
+1. **Separar em seções visuais claras**: Mensagem, Botões, e Imagem (colapsada/opcional)
+2. **Simplificar botões**: mostrar apenas o campo de texto do botão + botão de remover. O tipo fica fixo como `REPLY` (o mais comum). Se precisar de URL/CALL, o usuário pode usar os nós específicos (send_link, etc.)
+3. **Remover o seletor de tipo** dos botões — simplifica drasticamente a interface
+4. **Mover campo de imagem** para baixo com label "Imagem (opcional)" mais claro
+5. **Melhorar layout dos botões**: inputs maiores, espaçamento melhor, numeração visual (1, 2, 3...)
+6. **Limite visual**: mostrar indicador "máx. 3 botões" (limite da API do WhatsApp) e desabilitar o botão de adicionar quando atingir 3
 
-1. Adicionar estado `clipboard` para armazenar nó(s) copiado(s)
-2. Adicionar `onSelectionChange` no ReactFlow para rastrear nós selecionados
-3. Implementar `handleCopy` — salva os nós selecionados no clipboard (dados completos)
-4. Implementar `handlePaste` — cria novos nós a partir do clipboard com IDs novos e posição offset (+50px x/y)
-5. Adicionar `useEffect` com listener de `keydown` para Ctrl+C, Ctrl+V, Ctrl+D
-6. Ao colar múltiplos nós, preservar as edges entre eles (reconectar com novos IDs)
-7. Mostrar toast de feedback: "Componente copiado", "Componente colado"
+### Visual esperado
+```
+Mensagem
+[__________________________]
+[__________________________]
 
-**`src/components/flow-builder/FlowNode.tsx`**
+Botões (máx. 3)
+ 1. [Botão 1____________] [x]
+ 2. [Botão 2____________] [x]
+ [+ Adicionar Botão]
 
-8. Adicionar botão "Copiar" (ícone Copy) na barra de ações do nó, ao lado do lápis e do X
-9. O botão dispara evento customizado `flow-copy-node` com o ID do nó
-
-### Comportamento
-- Copiar um nó copia todos os seus dados (label, config, category, etc.)
-- Colar posiciona o novo nó 50px abaixo e à direita do original
-- Cada nó colado recebe ID único (nodeIdCounter++)
-- Múltiplos pastes criam novos nós em posições incrementais
-- Funciona com seleção múltipla (arrastar para selecionar vários nós)
+Imagem (opcional)
+[https://...____________]
+```
 
