@@ -37,7 +37,7 @@ export function CustomerFormDialog({ open, onOpenChange, customer }: Props) {
 
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
-  const [cpf, setCpf] = useState("");
+  
   const [status, setStatus] = useState("active");
   const [notes, setNotes] = useState("");
   const [photo, setPhoto] = useState<string | null>(null);
