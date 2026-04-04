@@ -4,12 +4,13 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Plus, Search, Phone, FileText, Pencil, Trash2, Users } from "lucide-react";
+import { Plus, Search, Phone, FileText, Pencil, Trash2, Users, Settings2 } from "lucide-react";
 import { useState } from "react";
 import { useCustomers, type CustomerRow } from "@/hooks/use-customers";
 import { useRentals } from "@/hooks/use-rentals";
 import { CustomerFormDialog } from "@/components/CustomerFormDialog";
 import { CustomerDeleteDialog } from "@/components/CustomerDeleteDialog";
+import { CustomerFieldsManager } from "@/components/CustomerFieldsManager";
 
 export default function Customers() {
   const [search, setSearch] = useState("");
