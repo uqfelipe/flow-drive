@@ -1313,6 +1313,20 @@ async function processIncomingMessage(phone: string, text: string, mediaUrl?: st
           
           // Handle capture nodes
           if (nt.startsWith("capture_") || nt === "wait") {
+            // For capture_location, pre-set the variable with coordinates before processFlow
+            if (nt === "capture_location" && latitude != null && longitude != null) {
+              const varName = (currentNode.data.config?.variable || "localizacao").replace(/^\{\{/, "").replace(/\}\}$/, "").trim();
+              const locationStr = `${latitude},${longitude}`;
+              variables[varName] = locationStr;
+              // Also save to customer custom_fields
+              try {
+                const { data: cust } = await adminClient.from("customers").select("custom_fields").eq("id", customerId).single();
+                const cf = (cust?.custom_fields as Record<string, string>) || {};
+                cf[varName] = locationStr;
+                await adminClient.from("customers").update({ custom_fields: cf }).eq("id", customerId);
+                console.log(`[FLOW] capture_location: saved ${varName} = "${locationStr}" to customer`);
+              } catch (e) { console.error("[FLOW] Error saving location to customer:", e); }
+            }
             await processFlow(inst, phone, text, session.id, customerId, flowNodes, flowEdges, currentNodeId, variables, mediaUrl, mediaType, mediaFileName, messageId);
             return;
           }
