@@ -1,21 +1,31 @@
 
 
-## Adicionar tipo "Localização" aos campos personalizados
+## Corrigir imagem no Menu Botões — enviar imagem separada antes dos botões
 
-### Alterações
+### Diagnóstico
 
-**1. `src/pages/CustomerFields.tsx`**
-- Adicionar `location: "Localização"` no `typeLabels`
-- Adicionar cor no `typeBadgeColors`: `location: "bg-rose-500/10 text-rose-400 border-rose-500/20"`
-- Adicionar `<SelectItem value="location">Localização</SelectItem>` no dropdown de tipo
-- Adicionar `capture_location` na seção "Como usar"
+Os logs mostram `[SEND] OK /send/menu` — a API aceitou o payload, mas o WhatsApp não exibiu a imagem junto com os botões. Isso indica que o endpoint `/send/menu` da uazapi para `type: "button"` **não suporta o campo `image`** no payload (ele é simplesmente ignorado).
 
-**2. `src/components/CustomerFieldsManager.tsx`**
-- Adicionar `<SelectItem value="location">Localização</SelectItem>` no dropdown de tipo
+### Solução
 
-**3. `src/pages/CustomerEdit.tsx`**
-- Adicionar tratamento para `field_type === "location"`: renderizar o valor como link clicável para Google Maps (se contiver coordenadas ou endereço)
+Enviar a imagem **antes** dos botões como uma mensagem de mídia separada (`/send/media`), e logo em seguida enviar o menu de botões. O cliente receberá a imagem seguida dos botões — visualmente fica como uma sequência natural.
 
-### Resultado
-O usuário poderá criar campos do tipo "Localização" que armazenam coordenadas/endereço enviados pelo cliente via WhatsApp.
+### Alteração
+
+**`supabase/functions/whatsapp-webhook/index.ts`** — no bloco `menu_buttons` (linhas ~510-530):
+
+1. Se `cfg.imageButton` tiver valor, enviar primeiro via `sendWhatsAppMedia(inst, phone, "image", imgUrl, menuText)` com o texto do menu como legenda
+2. Em seguida, enviar `sendWhatsAppMenu` **sem** a imagem e **sem** o texto (já foi na legenda da imagem), ou com texto reduzido tipo "Escolha uma opção:"
+3. Se não houver imagem, manter o comportamento atual (enviar menu com texto normalmente)
+
+```text
+Fluxo com imagem:
+  1. /send/media  → imagem + legenda (texto do menu)
+  2. /send/menu   → botões sem texto longo
+
+Fluxo sem imagem:
+  1. /send/menu   → botões com texto (como hoje)
+```
+
+Redeploy da edge function após a alteração.
 
