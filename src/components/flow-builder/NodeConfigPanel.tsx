@@ -136,7 +136,7 @@ export function NodeConfigPanel({ node, onClose, onUpdate, onDelete }: NodeConfi
                     </div>
                   );
                 })}
-                <Button variant="outline" size="sm" className="w-full h-9 text-xs" disabled={!canAdd} onClick={() => updateConfig({ buttons: [...buttons, { text: `Botão ${buttons.length + 1}`, type: "REPLY" }] })}><Plus className="h-3.5 w-3.5 mr-1" /> Adicionar Botão</Button>
+                <Button variant="outline" size="sm" className="w-full h-9 text-xs" onClick={() => updateConfig({ buttons: [...buttons, { text: `Botão ${buttons.length + 1}`, type: "REPLY" }] })}><Plus className="h-3.5 w-3.5 mr-1" /> Adicionar Botão</Button>
               </div>
 
               {/* Seção: Imagem */}
