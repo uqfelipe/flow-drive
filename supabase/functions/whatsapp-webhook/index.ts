@@ -240,15 +240,28 @@ async function processFlow(
         const isMediaCapture = nt === "capture_image" || nt === "capture_audio" || nt === "capture_file";
         if (isMediaCapture && incomingMediaUrl) {
           const fileType = nt === "capture_image" ? "image" : nt === "capture_audio" ? "audio" : "file";
-          vars[varName] = incomingMediaUrl;
-          console.log(`[FLOW] Captured media ${varName} = "${incomingMediaUrl}" (${fileType})`);
+          
+          // Download and re-host to imgbb for permanent URL
+          let permanentUrl = incomingMediaUrl;
+          if (nt === "capture_image") {
+            const rehosted = await downloadAndRehost(inst, incomingId);
+            if (rehosted) {
+              permanentUrl = rehosted;
+              console.log(`[FLOW] Re-hosted image to imgbb: ${permanentUrl}`);
+            } else {
+              console.log(`[FLOW] Re-host failed, using original URL`);
+            }
+          }
+          
+          vars[varName] = permanentUrl;
+          console.log(`[FLOW] Captured media ${varName} = "${permanentUrl}" (${fileType})`);
           
           // Save to customer_files table
           try {
             await adminClient.from("customer_files").insert({
               customer_id: customerId,
               file_type: fileType,
-              file_url: incomingMediaUrl,
+              file_url: permanentUrl,
               file_name: incomingMediaFileName || "",
               variable_name: varName,
             });
