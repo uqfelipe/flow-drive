@@ -22,7 +22,6 @@ export default function Customers() {
   const [editCustomer, setEditCustomer] = useState<CustomerRow | null>(null);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<CustomerRow | null>(null);
-  const [fieldsOpen, setFieldsOpen] = useState(false);
 
   const rentalCounts = (rentals ?? []).reduce<Record<string, number>>((acc, r) => {
     acc[r.customer_id] = (acc[r.customer_id] || 0) + 1;
