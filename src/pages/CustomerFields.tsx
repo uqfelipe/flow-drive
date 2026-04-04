@@ -19,6 +19,7 @@ const typeLabels: Record<string, string> = {
   image: "Imagem",
   audio: "Áudio",
   file: "Arquivo",
+  location: "Localização",
 };
 
 const typeBadgeColors: Record<string, string> = {
@@ -29,6 +30,7 @@ const typeBadgeColors: Record<string, string> = {
   image: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
   audio: "bg-orange-500/10 text-orange-400 border-orange-500/20",
   file: "bg-indigo-500/10 text-indigo-400 border-indigo-500/20",
+  location: "bg-rose-500/10 text-rose-400 border-rose-500/20",
 };
 
 export default function CustomerFields() {
