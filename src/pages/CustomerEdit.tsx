@@ -344,6 +344,7 @@ export default function CustomerEdit() {
                               const isImageField = fd.field_type === "image";
                               const isAudioField = fd.field_type === "audio";
                               const isFileField = fd.field_type === "file";
+                              const isLocationField = fd.field_type === "location";
 
                               return (
                                 <div key={fd.id} className="space-y-1.5">
