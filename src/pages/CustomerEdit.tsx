@@ -15,7 +15,9 @@ import { useRentals } from "@/hooks/use-rentals";
 import { useToast } from "@/hooks/use-toast";
 import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, Upload, X, ImageIcon, Save, Calendar, DollarSign, Clock, FileText, User, Car } from "lucide-react";
+import { ArrowLeft, Upload, X, ImageIcon, Save, Calendar, DollarSign, Clock, FileText, User, Car, Paperclip, Image, Mic, File } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 
 const IMGBB_API_KEY = "218e4f96aa83bbfd4e78abb8d60bad52";
@@ -41,6 +43,20 @@ export default function CustomerEdit() {
 
   const customer = customers?.find((c) => c.id === id) ?? null;
   const customerRentals = (rentals ?? []).filter((r) => r.customer_id === id);
+
+  const { data: customerFiles } = useQuery({
+    queryKey: ["customer_files", id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("customer_files")
+        .select("*")
+        .eq("customer_id", id!)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!id,
+  });
 
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
@@ -229,6 +245,12 @@ export default function CustomerEdit() {
                           <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-[10px]">{customerRentals.length}</Badge>
                         )}
                       </TabsTrigger>
+                      <TabsTrigger value="arquivos" className="gap-1.5">
+                        <Paperclip className="h-3.5 w-3.5" /> Arquivos
+                        {customerFiles && customerFiles.length > 0 && (
+                          <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-[10px]">{customerFiles.length}</Badge>
+                        )}
+                      </TabsTrigger>
                     </TabsList>
 
                     {/* Tab: Dados */}
@@ -316,6 +338,61 @@ export default function CustomerEdit() {
                               </div>
                             </div>
                           ))}
+                        </div>
+                      )}
+                    </TabsContent>
+
+                    {/* Tab: Arquivos */}
+                    <TabsContent value="arquivos">
+                      {!customerFiles || customerFiles.length === 0 ? (
+                        <div className="text-center py-10 text-muted-foreground">
+                          <Paperclip className="h-8 w-8 mx-auto mb-2 opacity-40" />
+                          <p className="text-sm">Nenhum arquivo recebido</p>
+                        </div>
+                      ) : (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                          {customerFiles.map((f) => {
+                            const isImage = f.file_type === "image";
+                            const isAudio = f.file_type === "audio";
+                            const TypeIcon = isImage ? Image : isAudio ? Mic : File;
+                            const typeLabel = isImage ? "Imagem" : isAudio ? "Áudio" : "Arquivo";
+                            const typeBg = isImage ? "bg-emerald-500/10 text-emerald-500" : isAudio ? "bg-amber-500/10 text-amber-500" : "bg-indigo-500/10 text-indigo-500";
+
+                            return (
+                              <div key={f.id} className="rounded-lg border border-border bg-muted/30 overflow-hidden">
+                                {isImage ? (
+                                  <a href={f.file_url} target="_blank" rel="noopener noreferrer" className="block">
+                                    <img src={f.file_url} alt={f.file_name || "Imagem"} className="w-full h-32 object-cover hover:opacity-80 transition-opacity" />
+                                  </a>
+                                ) : isAudio ? (
+                                  <div className="p-3">
+                                    <audio controls src={f.file_url} className="w-full h-8" />
+                                  </div>
+                                ) : (
+                                  <div className="h-32 flex items-center justify-center">
+                                    <a href={f.file_url} target="_blank" rel="noopener noreferrer" className="flex flex-col items-center gap-2 text-muted-foreground hover:text-foreground transition-colors">
+                                      <File className="h-10 w-10" />
+                                      <span className="text-xs">Abrir arquivo</span>
+                                    </a>
+                                  </div>
+                                )}
+                                <div className="p-2 border-t border-border flex items-center justify-between">
+                                  <div className="flex items-center gap-1.5 min-w-0">
+                                    <Badge variant="outline" className={`text-[10px] shrink-0 ${typeBg}`}>
+                                      <TypeIcon className="h-2.5 w-2.5 mr-0.5" />
+                                      {typeLabel}
+                                    </Badge>
+                                    {f.variable_name && (
+                                      <span className="text-[10px] font-mono text-muted-foreground truncate">{f.variable_name}</span>
+                                    )}
+                                  </div>
+                                  <span className="text-[10px] text-muted-foreground shrink-0">
+                                    {format(new Date(f.created_at), "dd/MM/yy")}
+                                  </span>
+                                </div>
+                              </div>
+                            );
+                          })}
                         </div>
                       )}
                     </TabsContent>
