@@ -1,25 +1,46 @@
 
 
-## Limpar conversas antigas
+## Mensagem de boas-vindas para primeiro contato
 
-### Situação
-As conversas exibidas na página vêm diretamente da **API WhatsApp** (endpoint `list-chats`), não do banco local. As tabelas `chat_sessions` e `chat_messages` já estão vazias. Porém existem dados de cache acumulados:
-- `chat_read_status`: 67 registros
-- `message_signals`: 248 registros
+### Objetivo
+Criar um sistema de mensagem de boas-vindas (texto ou áudio) que é enviada **apenas na primeira vez** que o usuário entra em contato. Após isso, nunca mais aparece.
 
-### O que será feito
+### Como funciona
 
-**1. Limpar tabelas de cache no banco** (via insert tool)
-- `DELETE FROM chat_read_status` — remove status de leitura antigos
-- `DELETE FROM message_signals` — remove sinais de mensagem acumulados
+1. **Banco de dados** — Adicionar coluna `welcomed` (boolean, default false) na tabela `customers` para rastrear quem já recebeu a mensagem de boas-vindas.
 
-**2. Adicionar filtro no frontend** (`src/hooks/use-chat.ts`)
-- Filtrar chats que não têm mensagens recentes (ex: `wa_lastMsgTimestamp` = 0 ou muito antigo)
-- Isso evita mostrar conversas "fantasma" que a API retorna mas que não são relevantes
+2. **Configuração** — Adicionar registros na tabela `settings` para o admin configurar:
+   - `welcome_type`: `"text"` ou `"audio"`
+   - `welcome_text`: conteúdo da mensagem de texto
+   - `welcome_audio_url`: URL do áudio de boas-vindas
+   - `welcome_enabled`: ativar/desativar
 
-**3. Opcionalmente: adicionar botão "Limpar conversas"** na página de Conversas para o usuário poder limpar o cache manualmente no futuro
+3. **Página de Configurações** (`src/pages/SettingsPage.tsx`) — Adicionar seção "Mensagem de Boas-Vindas" com:
+   - Toggle ativar/desativar
+   - Seletor tipo: Texto ou Áudio
+   - Campo de texto para mensagem
+   - Campo de URL para áudio
+   - Botão salvar
+
+4. **Webhook** (`supabase/functions/whatsapp-webhook/index.ts`) — Na função `processIncomingMessage`, ao criar um novo customer ou detectar `welcomed = false`:
+   - Buscar configurações de welcome da tabela `settings`
+   - Se habilitado e `welcomed === false`: enviar texto ou áudio conforme configurado
+   - Marcar `welcomed = true` no customer
+   - Continuar o fluxo normal (perguntar nome, etc.)
+
+### Fluxo do usuário
+```text
+Usuário manda "oi" (primeiro contato)
+  → Bot envia mensagem/áudio de boas-vindas
+  → Bot pergunta o nome
+  → Fluxo normal continua
+
+Usuário manda "oi" (segundo contato em diante)
+  → Pula direto para o fluxo (sem boas-vindas)
+```
 
 ### Arquivos alterados
-- `src/hooks/use-chat.ts` — filtro de conversas sem atividade recente
-- Banco de dados — DELETE nas tabelas de cache
+- **Migração SQL** — `ALTER TABLE customers ADD COLUMN welcomed boolean DEFAULT false`
+- **`src/pages/SettingsPage.tsx`** — Seção de configuração da mensagem de boas-vindas
+- **`supabase/functions/whatsapp-webhook/index.ts`** — Lógica de envio condicional antes do fluxo
 
