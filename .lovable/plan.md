@@ -1,44 +1,25 @@
 
 
-## Redesign da página de Editar Cliente
+## Página dedicada para Campos Personalizados
 
-### Problemas atuais
-- Layout esticado e desalinhado, formulário ocupa muito espaço vertical
-- Foto, campos e sidebar sem hierarquia visual clara
-- Status isolado numa row de grid com metade vazia
-- Seção de observações ocupa muito espaço
-- Campos personalizados sem refinamento visual
+### O que será feito
+Criar uma página completa `/customers/fields` para gerenciar campos personalizados, substituindo o dialog atual. Layout refinado seguindo o padrão visual das páginas de edição de cliente.
 
-### Redesign proposto
+### Estrutura da página
 
-**1. Header compacto com foto e info principal inline**
-- Substituir o card de formulário por um header compacto no topo com foto (menor, 14x14), nome do cliente em destaque, telefone, badge de status e botões de ação (salvar/cancelar) — tudo numa linha
-- Botão de upload da foto aparece ao hover sobre a foto
+**Header**: Título "Campos Personalizados" com subtítulo explicativo sobre `capture_text` e variáveis `{{}}`.
 
-**2. Layout em abas (Tabs) dentro de um único card**
-- **Aba "Dados"**: Nome, Telefone, Status e Observações em grid compacto (3 colunas: nome, telefone, status na mesma row; observações abaixo com rows=2)
-- **Aba "Campos Personalizados"**: Grid 2 colunas dos campos customizados, sem o texto `{{key}}` visível (mover para tooltip)
-- **Aba "Locações"**: Histórico de locações (movido da sidebar)
-
-**3. Sidebar simplificada — apenas metadados**
-- Card pequeno com criado em, atualizado em, total de locações
-- Ocupa menos espaço (col-span 1 de 4 em vez de 1 de 3)
-
-**4. Grid 4 colunas no desktop**
-- Formulário principal: `lg:col-span-3`
-- Sidebar de metadados: `lg:col-span-1`
+**Layout 2 colunas (lg:grid-cols-3)**:
+- **Coluna principal (col-span-2)**: Card com a lista de campos existentes em formato de tabela/cards refinados, mostrando rótulo, variável (`{{key}}`), tipo e botão de excluir. Estado vazio com ícone e texto centralizado.
+- **Sidebar (col-span-1)**: Card "Novo Campo" com formulário compacto vertical (Variável, Rótulo, Tipo select, botão Adicionar). Abaixo, um card de "Dica" explicando como usar as variáveis no fluxo.
 
 ### Alterações
 
-**`src/pages/CustomerEdit.tsx`** — reescrever o JSX de retorno:
-- Importar `Tabs, TabsContent, TabsList, TabsTrigger`
-- Header compacto com foto + info + ações
-- Conteúdo em abas (Dados, Campos Personalizados, Locações)
-- Sidebar reduzida com apenas metadados
-- Inputs mais compactos, menos padding, melhor alinhamento
+1. **`src/pages/CustomerFields.tsx`** — Nova página com AdminLayout, usando os hooks existentes (`useCustomerFieldDefinitions`, `useCreateFieldDefinition`, `useDeleteFieldDefinition`). Cards refinados com badges de tipo, código da variável em mono, e confirmação visual ao excluir.
 
-**`src/pages/CustomerNew.tsx`** — aplicar o mesmo estilo refinado:
-- Header compacto com foto + ações
-- Mesma estrutura de abas (sem aba de Locações)
-- Formulário compacto e alinhado
+2. **`src/App.tsx`** — Adicionar rota `/customers/fields`.
+
+3. **`src/components/AppSidebar.tsx`** — Adicionar item "Campos" no grupo Principal, abaixo de "Clientes", com ícone `Variable`.
+
+4. **`src/pages/Customers.tsx`** — Remover botão de "Gerenciar Campos" e o dialog `CustomerFieldsManager`, já que agora é uma página separada.
 
