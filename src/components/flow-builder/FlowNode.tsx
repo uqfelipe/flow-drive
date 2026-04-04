@@ -33,7 +33,20 @@ function FlowNode({ data, selected, id }: NodeProps) {
   }, [id, deleteElements]);
 
   const isMenu = nodeData.nodeType === "menu_text" || nodeData.nodeType === "menu_buttons";
+  const isMenuList = nodeData.nodeType === "menu_list";
   const options = nodeData.nodeType === "menu_text" ? menuOptions : menuButtons;
+
+  // Flatten menu_list sections into items with section headers
+  const menuListSections = (nodeData.config?.sections || []) as Array<{ title: string; items?: Array<{ title: string; id?: string; description?: string }> }>;
+  const menuListItems: Array<{ type: "section"; title: string } | { type: "item"; title: string; globalIdx: number }> = [];
+  let globalIdx = 0;
+  for (const s of menuListSections) {
+    menuListItems.push({ type: "section", title: s.title });
+    for (const it of (s.items || [])) {
+      menuListItems.push({ type: "item", title: it.title, globalIdx });
+      globalIdx++;
+    }
+  }
 
   return (
     <div
