@@ -138,7 +138,32 @@ function FlowNode({ data, selected, id }: NodeProps) {
           </div>
         )}
 
-        {/* Menu options with individual handles */}
+        {/* Media file indicator (image, video, file, sticker) */}
+        {isMediaNode && (() => {
+          const MediaIcon = mediaConfig.icon;
+          const activeColor = hasFile ? "#10B981" : mediaConfig.color;
+          return (
+            <div
+              className={`flex items-center gap-2 px-2.5 py-2 rounded-lg ${
+                hasFile
+                  ? "bg-emerald-50 dark:bg-emerald-950/30"
+                  : "bg-muted/50"
+              }`}
+            >
+              <MediaIcon
+                className="h-3.5 w-3.5 flex-shrink-0"
+                style={{ color: activeColor }}
+              />
+              <span
+                className="text-[10px] font-medium flex-1"
+                style={{ color: activeColor, opacity: hasFile ? 1 : 0.7 }}
+              >
+                {hasFile ? mediaConfig.configured : mediaConfig.empty}
+              </span>
+            </div>
+          );
+        })()}
+
         {isMenu && options && options.length > 0 && (
           <div className="space-y-1 mt-1">
             {options.map((opt, idx) => (
