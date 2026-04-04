@@ -426,92 +426,140 @@ export default function CustomerEdit() {
 
                     {/* Tab: Arquivos */}
                     <TabsContent value="arquivos">
-                      {!customerFiles || customerFiles.length === 0 ? (
-                        <div className="text-center py-10 text-muted-foreground">
-                          <Paperclip className="h-8 w-8 mx-auto mb-2 opacity-40" />
-                          <p className="text-sm">Nenhum arquivo recebido</p>
-                        </div>
-                      ) : (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                          {customerFiles.map((f) => {
-                            const isImage = f.file_type === "image";
-                            const isAudio = f.file_type === "audio";
-                            const isPdf = f.file_name?.toLowerCase().endsWith(".pdf") || f.file_url?.toLowerCase().includes(".pdf");
-                            const TypeIcon = isImage ? Image : isAudio ? Mic : isPdf ? FileText : File;
-                            const typeLabel = isImage ? "Imagem" : isAudio ? "Áudio" : isPdf ? "PDF" : "Arquivo";
-                            const typeBg = isImage ? "bg-emerald-500/10 text-emerald-500" : isAudio ? "bg-amber-500/10 text-amber-500" : isPdf ? "bg-red-500/10 text-red-500" : "bg-indigo-500/10 text-indigo-500";
-                            const imageUrl = rehostedUrls[f.id] || f.file_url;
-                            const isRehosting = rehostingIds.has(f.id);
+                      {(() => {
+                        const customFieldImages = (fieldDefs || [])
+                          .filter(fd => {
+                            const val = customFields[fd.field_key] || "";
+                            return val && (fd.field_type === "image" || isImageUrl(val));
+                          })
+                          .map(fd => ({ label: fd.field_label, url: customFields[fd.field_key], key: fd.field_key }));
 
-                            return (
-                              <div key={f.id} className="rounded-lg border border-border bg-muted/30 overflow-hidden">
-                                {isImage ? (
-                                  <div className="relative">
-                                    {isRehosting && (
-                                      <div className="absolute inset-0 bg-background/70 flex items-center justify-center z-10">
-                                        <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                        const hasFiles = (customerFiles && customerFiles.length > 0) || customFieldImages.length > 0;
+
+                        if (!hasFiles) {
+                          return (
+                            <div className="text-center py-10 text-muted-foreground">
+                              <Paperclip className="h-8 w-8 mx-auto mb-2 opacity-40" />
+                              <p className="text-sm">Nenhum arquivo recebido</p>
+                            </div>
+                          );
+                        }
+
+                        return (
+                          <div className="space-y-4">
+                            {/* Images from custom fields */}
+                            {customFieldImages.length > 0 && (
+                              <div>
+                                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Imagens dos Campos</p>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                                  {customFieldImages.map((cf) => (
+                                    <div key={cf.key} className="rounded-lg border border-border bg-muted/30 overflow-hidden">
+                                      <a href={cf.url} target="_blank" rel="noopener noreferrer" className="block">
+                                        <img src={cf.url} alt={cf.label} className="w-full h-40 object-cover hover:opacity-80 transition-opacity" loading="lazy" />
+                                      </a>
+                                      <div className="p-2 border-t border-border flex items-center gap-1.5">
+                                        <Badge variant="outline" className="text-[10px] shrink-0 bg-emerald-500/10 text-emerald-500">
+                                          <Image className="h-2.5 w-2.5 mr-0.5" />
+                                          Imagem
+                                        </Badge>
+                                        <span className="text-[10px] font-mono text-muted-foreground truncate">{cf.label}</span>
                                       </div>
-                                    )}
-                                    <a href={imageUrl} target="_blank" rel="noopener noreferrer" className="block">
-                                      <img src={imageUrl} alt={f.file_name || "Imagem"} className="w-full h-40 object-cover hover:opacity-80 transition-opacity" loading="lazy" />
-                                    </a>
-                                  </div>
-                                ) : isAudio ? (
-                                  <div className="p-3">
-                                    <audio controls src={f.file_url} className="w-full h-8" />
-                                  </div>
-                                ) : isPdf ? (
-                                  <div className="relative">
-                                    <iframe
-                                      src={`https://docs.google.com/gview?url=${encodeURIComponent(f.file_url)}&embedded=true`}
-                                      className="w-full h-48 border-0"
-                                      title={f.file_name || "PDF"}
-                                    />
-                                    <div className="absolute top-1 right-1 flex gap-1">
-                                      <a href={f.file_url} target="_blank" rel="noopener noreferrer">
-                                        <Button type="button" variant="secondary" size="icon" className="h-6 w-6">
-                                          <Eye className="h-3 w-3" />
-                                        </Button>
-                                      </a>
-                                      <a href={f.file_url} download>
-                                        <Button type="button" variant="secondary" size="icon" className="h-6 w-6">
-                                          <Download className="h-3 w-3" />
-                                        </Button>
-                                      </a>
                                     </div>
-                                  </div>
-                                ) : (
-                                  <div className="h-32 flex items-center justify-center">
-                                    <div className="flex flex-col items-center gap-2">
-                                      <File className="h-10 w-10 text-muted-foreground" />
-                                      <span className="text-xs text-muted-foreground truncate max-w-[120px]">{f.file_name || "Arquivo"}</span>
-                                      <a href={f.file_url} download>
-                                        <Button type="button" variant="outline" size="sm" className="h-7 text-xs gap-1">
-                                          <Download className="h-3 w-3" /> Baixar
-                                        </Button>
-                                      </a>
-                                    </div>
-                                  </div>
-                                )}
-                                <div className="p-2 border-t border-border flex items-center justify-between">
-                                  <div className="flex items-center gap-1.5 min-w-0">
-                                    <Badge variant="outline" className={`text-[10px] shrink-0 ${typeBg}`}>
-                                      <TypeIcon className="h-2.5 w-2.5 mr-0.5" />
-                                      {typeLabel}
-                                    </Badge>
-                                    {f.variable_name && (
-                                      <span className="text-[10px] font-mono text-muted-foreground truncate">{f.variable_name}</span>
-                                    )}
-                                  </div>
-                                  <span className="text-[10px] text-muted-foreground shrink-0">
-                                    {format(new Date(f.created_at), "dd/MM/yy")}
-                                  </span>
+                                  ))}
                                 </div>
                               </div>
-                            );
-                          })}
-                        </div>
-                      )}
+                            )}
+
+                            {/* Files from customer_files table */}
+                            {customerFiles && customerFiles.length > 0 && (
+                              <div>
+                                {customFieldImages.length > 0 && (
+                                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Arquivos Recebidos</p>
+                                )}
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                                  {customerFiles.map((f) => {
+                                    const isImage = f.file_type === "image";
+                                    const isAudio = f.file_type === "audio";
+                                    const isPdf = f.file_name?.toLowerCase().endsWith(".pdf") || f.file_url?.toLowerCase().includes(".pdf");
+                                    const TypeIcon = isImage ? Image : isAudio ? Mic : isPdf ? FileText : File;
+                                    const typeLabel = isImage ? "Imagem" : isAudio ? "Áudio" : isPdf ? "PDF" : "Arquivo";
+                                    const typeBg = isImage ? "bg-emerald-500/10 text-emerald-500" : isAudio ? "bg-amber-500/10 text-amber-500" : isPdf ? "bg-red-500/10 text-red-500" : "bg-indigo-500/10 text-indigo-500";
+                                    const imageUrl = rehostedUrls[f.id] || f.file_url;
+                                    const isRehosting = rehostingIds.has(f.id);
+
+                                    return (
+                                      <div key={f.id} className="rounded-lg border border-border bg-muted/30 overflow-hidden">
+                                        {isImage ? (
+                                          <div className="relative">
+                                            {isRehosting && (
+                                              <div className="absolute inset-0 bg-background/70 flex items-center justify-center z-10">
+                                                <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                                              </div>
+                                            )}
+                                            <a href={imageUrl} target="_blank" rel="noopener noreferrer" className="block">
+                                              <img src={imageUrl} alt={f.file_name || "Imagem"} className="w-full h-40 object-cover hover:opacity-80 transition-opacity" loading="lazy" />
+                                            </a>
+                                          </div>
+                                        ) : isAudio ? (
+                                          <div className="p-3">
+                                            <audio controls src={f.file_url} className="w-full h-8" />
+                                          </div>
+                                        ) : isPdf ? (
+                                          <div className="relative">
+                                            <iframe
+                                              src={`https://docs.google.com/gview?url=${encodeURIComponent(f.file_url)}&embedded=true`}
+                                              className="w-full h-48 border-0"
+                                              title={f.file_name || "PDF"}
+                                            />
+                                            <div className="absolute top-1 right-1 flex gap-1">
+                                              <a href={f.file_url} target="_blank" rel="noopener noreferrer">
+                                                <Button type="button" variant="secondary" size="icon" className="h-6 w-6">
+                                                  <Eye className="h-3 w-3" />
+                                                </Button>
+                                              </a>
+                                              <a href={f.file_url} download>
+                                                <Button type="button" variant="secondary" size="icon" className="h-6 w-6">
+                                                  <Download className="h-3 w-3" />
+                                                </Button>
+                                              </a>
+                                            </div>
+                                          </div>
+                                        ) : (
+                                          <div className="h-32 flex items-center justify-center">
+                                            <div className="flex flex-col items-center gap-2">
+                                              <File className="h-10 w-10 text-muted-foreground" />
+                                              <span className="text-xs text-muted-foreground truncate max-w-[120px]">{f.file_name || "Arquivo"}</span>
+                                              <a href={f.file_url} download>
+                                                <Button type="button" variant="outline" size="sm" className="h-7 text-xs gap-1">
+                                                  <Download className="h-3 w-3" /> Baixar
+                                                </Button>
+                                              </a>
+                                            </div>
+                                          </div>
+                                        )}
+                                        <div className="p-2 border-t border-border flex items-center justify-between">
+                                          <div className="flex items-center gap-1.5 min-w-0">
+                                            <Badge variant="outline" className={`text-[10px] shrink-0 ${typeBg}`}>
+                                              <TypeIcon className="h-2.5 w-2.5 mr-0.5" />
+                                              {typeLabel}
+                                            </Badge>
+                                            {f.variable_name && (
+                                              <span className="text-[10px] font-mono text-muted-foreground truncate">{f.variable_name}</span>
+                                            )}
+                                          </div>
+                                          <span className="text-[10px] text-muted-foreground shrink-0">
+                                            {format(new Date(f.created_at), "dd/MM/yy")}
+                                          </span>
+                                        </div>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })()}
                     </TabsContent>
                   </Tabs>
                 </CardContent>
