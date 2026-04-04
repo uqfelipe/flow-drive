@@ -153,15 +153,9 @@ export function CustomerFormDialog({ open, onOpenChange, customer }: Props) {
             <Label>Nome *</Label>
             <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Nome completo" />
           </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-2">
-              <Label>Telefone *</Label>
-              <Input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+55 11 99999-9999" />
-            </div>
-            <div className="space-y-2">
-              <Label>CPF *</Label>
-              <Input value={cpf} onChange={(e) => setCpf(e.target.value)} placeholder="000.000.000-00" />
-            </div>
+          <div className="space-y-2">
+            <Label>Telefone *</Label>
+            <Input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+55 11 99999-9999" />
           </div>
           <div className="space-y-2">
             <Label>Status</Label>
