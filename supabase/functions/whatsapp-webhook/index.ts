@@ -298,7 +298,8 @@ async function processFlow(
               .eq("field_key", varName)
               .maybeSingle();
             if (fieldDef) {
-              console.log(`[FLOW] Syncing custom field ${varName} = "${incomingText}"`);
+              const syncValue = vars[varName] || incomingText.trim();
+              console.log(`[FLOW] Syncing custom field ${varName} = "${syncValue}"`);
               // Merge into custom_fields JSONB
               const { data: cust } = await adminClient
                 .from("customers")
@@ -306,7 +307,7 @@ async function processFlow(
                 .eq("id", customerId)
                 .single();
               const existing = (cust?.custom_fields as Record<string, string>) || {};
-              existing[varName] = incomingText.trim();
+              existing[varName] = syncValue;
               await adminClient.from("customers")
                 .update({ custom_fields: existing })
                 .eq("id", customerId);
