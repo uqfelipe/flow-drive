@@ -1,34 +1,25 @@
 
 
-## Exibir imagens base64 nas conversas e nos campos personalizados do cliente
+## Exibir imagens nos Campos Personalizados e Arquivos
 
-### Problema identificado
-1. **Conversas**: Imagens recebidas via WhatsApp têm URLs encriptadas (`.enc`) e a `fileUrl` chega vazia ou inacessível. O `MediaImage` mostra ícone quebrado porque não consegue acessar a URL diretamente. O thumbnail (JPEGThumbnail base64) existe mas às vezes não é suficiente.
-2. **Campos Personalizados (CustomerEdit)**: Campos do tipo `image` mostram o valor como texto puro num `<Input>`, sem renderizar a imagem.
+### Problema
+1. **Campos Personalizados**: O campo "fotos" está com `field_type` provavelmente definido como "text", então renderiza como `<Input>` em vez de mostrar a imagem. O código já tem lógica para `field_type === "image"`, mas não detecta URLs de imagem quando o tipo é "text".
+2. **Arquivos**: A aba mostra "Nenhum arquivo recebido" porque não há registros na tabela `customer_files` para este cliente. Imagens salvas em campos personalizados não aparecem lá.
 
 ### Alterações
 
-**`src/pages/Conversations.tsx`** — MediaImage + extractContent:
+**`src/pages/CustomerEdit.tsx`** — Campos Personalizados:
 
-1. **Detectar base64 na `fileUrl` e `content`**: No `extractContent`, quando o tipo é image, verificar se `content` contém dados base64 (ex: `c?.data` que começa com `data:image/` ou `c?.base64`). Se sim, usar como `fileUrl` diretamente — igual ao tratamento já feito para vídeos base64.
+1. **Detecção inteligente de imagem**: Além de checar `fd.field_type === "image"`, verificar se o valor do campo é uma URL de imagem (contém `.jpg`, `.png`, `.webp`, `imgbb`, `ibb.co`, ou começa com `data:image/`). Se for, renderizar como `<img>` mesmo que o `field_type` seja "text".
 
-2. **MediaImage — upload automático para imgbb**: Quando `displayUrl` é um data URI base64, converter para blob e fazer upload automático ao imgbb. Cachear o resultado no `mediaUrlCache` para não re-uploadar. Atualizar `displayUrl` com a URL do imgbb.
+2. **Auto re-host para imgbb**: Se o valor do campo personalizado for base64 ou URL de WhatsApp CDN, fazer upload automático para imgbb e atualizar o valor no `customFields` state (e salvar ao submeter).
 
-3. **Fallback thumbnail**: Se `fileUrl` estiver vazia e houver thumbnail base64, usar o thumbnail como imagem clicável (já funciona parcialmente, mas precisa garantir).
+**`src/pages/CustomerEdit.tsx`** — Aba Arquivos:
 
-**`src/pages/CustomerEdit.tsx`** — Tab Campos Personalizados:
-
-4. **Renderizar imagens nos campos tipo `image`**: Na iteração dos `fieldDefs`, quando `fd.field_type === "image"`, em vez de um `<Input>`, renderizar:
-   - Se o valor (`customFields[fd.field_key]`) existir: mostrar `<img>` com a URL/base64, com botão de abrir em nova aba e botão de remover.
-   - Se o valor estiver vazio: mostrar placeholder com ícone.
-   - Manter a label e tooltip existentes.
-
-5. **Campos tipo `audio`**: Renderizar `<audio controls>` com o valor como src.
-
-6. **Campos tipo `file`**: Renderizar link de download com ícone.
+3. **Incluir imagens dos campos personalizados**: Na aba Arquivos, além dos registros de `customer_files`, listar também os valores de campos personalizados que são imagens (detectados pela URL ou `field_type`). Renderizar como cards de imagem iguais aos de `customer_files`, com label do campo como nome.
 
 ### Detalhes técnicos
-- Upload imgbb no `MediaImage`: usar `fetch(base64url)` → blob → FormData → POST imgbb API. A key já existe como constante.
-- No `extractContent`, adicionar checagem antes do bloco de Image: `if (c?.data?.startsWith?.("data:image/")) return { ..., fileUrl: c.data }` e `if (c?.base64?.startsWith?.("data:image/")) return { ..., fileUrl: c.base64 }`.
-- Para o CustomerEdit, a lógica de renderização condicional substitui o `<Input>` por componentes visuais baseados no `field_type`.
+- Função helper `isImageUrl(val)`: checa se string é URL de imagem por extensão ou domínio imgbb/ibb.co, ou se começa com `data:image/`.
+- Na aba Campos Personalizados, a condição muda de `isImageField && val` para `(isImageField || isImageUrl(val)) && val`.
+- Na aba Arquivos, após mapear `customerFiles`, adicionar seção "Imagens dos campos" iterando `fieldDefs` filtrando por valores que são URLs de imagem.
 
