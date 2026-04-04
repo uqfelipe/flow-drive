@@ -945,39 +945,58 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ ok: true }), { headers: { "Content-Type": "application/json" } });
     }
 
-    // Handle FileDownloaded events from messages_update
+    // Handle FileDownloaded events — can come as messages_update or as a root-level EventType
+    const fileDownloadedEvt = (() => {
+      if (eventType === "messages_update") {
+        const evt = body.event || {};
+        const evtType = (evt.Type || evt.type || body.state || body.type || "").toString().toLowerCase();
+        if (evtType === "filedownloaded") return evt;
+      }
+      // Also check root-level EventType (case-insensitive)
+      if (eventType.toLowerCase() === "filedownloaded") return body.event || body;
+      return null;
+    })();
+
+    if (fileDownloadedEvt) {
+      const evt = fileDownloadedEvt;
+      const fileUrl = evt.FileURL || evt.fileURL || evt.fileUrl || body.FileURL || body.fileURL || body.fileUrl || "";
+      const mimeType = (evt.MimeType || evt.mimetype || body.MimeType || body.mimetype || "").toString();
+      const chatId = (evt.Chat || evt.chatid || body.Chat || body.chatid || "").toString();
+      const phone = chatId.replace(/@.*$/, "");
+      const msgIds = evt.MessageIDs || body.MessageIDs || [];
+      const msgId = msgIds[0] || "";
+      const fromMe = Boolean(evt.IsFromMe ?? body.IsFromMe ?? false);
+
+      console.log(`[WEBHOOK] FileDownloaded detected: phone=${phone} fileUrl=${fileUrl ? fileUrl.substring(0, 80) : "(empty)"} mime=${mimeType} fromMe=${fromMe}`);
+
+      if (fileUrl && phone && !fromMe && (mimeType.startsWith("image") || mimeType.startsWith("video") || mimeType.startsWith("application") || !mimeType)) {
+        // Signal for UI refresh
+        if (chatId) {
+          await adminClient.from("message_signals").upsert(
+            { chat_id: chatId, updated_at: new Date().toISOString() },
+            { onConflict: "chat_id" }
+          );
+        }
+
+        const detectedMediaType = mimeType.startsWith("image") ? "image" : "file";
+        
+        // Process as media message synchronously (must complete before response)
+        try {
+          await processIncomingMessage(phone, "", fileUrl, detectedMediaType, "", msgId);
+          console.log(`[WEBHOOK] FileDownloaded processed successfully for ${phone}`);
+        } catch (err) {
+          console.error(`[AUTO-REPLY] FileDownloaded error:`, err);
+        }
+      }
+      return new Response(JSON.stringify({ ok: true }), { headers: { "Content-Type": "application/json" } });
+    }
+
+    // Log any messages_update with FileURL that we didn't catch above (debug)
     if (eventType === "messages_update") {
       const evt = body.event || {};
-      const evtType = (evt.Type || evt.type || body.state || "").toString();
-      if (evtType === "FileDownloaded") {
-        const fileUrl = evt.FileURL || evt.fileURL || evt.fileUrl || "";
-        const mimeType = (evt.MimeType || evt.mimetype || "").toString();
-        const chatId = (evt.Chat || evt.chatid || "").toString();
-        const phone = chatId.replace(/@.*$/, "");
-        const msgIds = evt.MessageIDs || [];
-        const msgId = msgIds[0] || "";
-        const fromMe = Boolean(evt.IsFromMe ?? false);
-        
-        if (fileUrl && phone && !fromMe && mimeType.startsWith("image")) {
-          console.log(`[WEBHOOK] FileDownloaded image for ${phone}: ${fileUrl}`);
-          
-          // Signal for UI refresh
-          if (chatId) {
-            await adminClient.from("message_signals").upsert(
-              { chat_id: chatId, updated_at: new Date().toISOString() },
-              { onConflict: "chat_id" }
-            );
-          }
-          
-          // Process as media message synchronously (must complete before response)
-          try {
-            await processIncomingMessage(phone, "", fileUrl, "image", "", msgId);
-            console.log(`[WEBHOOK] FileDownloaded processed successfully for ${phone}`);
-          } catch (err) {
-            console.error(`[AUTO-REPLY] FileDownloaded error:`, err);
-          }
-        }
-        return new Response(JSON.stringify({ ok: true }), { headers: { "Content-Type": "application/json" } });
+      const anyFileUrl = evt.FileURL || evt.fileURL || evt.fileUrl || body.FileURL || body.fileURL || body.fileUrl;
+      if (anyFileUrl) {
+        console.log(`[WEBHOOK] Uncaught FileURL in messages_update: type=${evt.Type || evt.type} url=${anyFileUrl.substring(0, 80)}`);
       }
     }
 
