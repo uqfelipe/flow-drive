@@ -196,8 +196,9 @@ export default function CustomerFields() {
                      <p className="text-[11px] text-muted-foreground leading-relaxed">
                        Use os nós <code className="bg-muted px-1 rounded text-[10px]">capture_text</code>,{" "}
                        <code className="bg-muted px-1 rounded text-[10px]">capture_image</code>,{" "}
-                       <code className="bg-muted px-1 rounded text-[10px]">capture_audio</code> ou{" "}
-                       <code className="bg-muted px-1 rounded text-[10px]">capture_file</code> no
+                       <code className="bg-muted px-1 rounded text-[10px]">capture_audio</code>,{" "}
+                       <code className="bg-muted px-1 rounded text-[10px]">capture_file</code> ou{" "}
+                       <code className="bg-muted px-1 rounded text-[10px]">capture_location</code> no
                        Construtor de Fluxos para capturar dados do cliente automaticamente.
                      </p>
                   </div>

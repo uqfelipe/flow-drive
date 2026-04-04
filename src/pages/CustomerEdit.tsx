@@ -380,6 +380,16 @@ export default function CustomerEdit() {
                                       <Download className="h-4 w-4" />
                                       <span className="truncate">{fd.field_label}</span>
                                     </a>
+                                  ) : isLocationField && val ? (
+                                    <a
+                                      href={`https://www.google.com/maps?q=${encodeURIComponent(val)}`}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="flex items-center gap-2 p-2 rounded-lg border border-border bg-muted/30 hover:bg-muted/50 transition-colors text-xs text-primary"
+                                    >
+                                      <MapPin className="h-4 w-4" />
+                                      <span className="truncate">{val}</span>
+                                    </a>
                                   ) : (
                                     <Input
                                       type={fd.field_type === "email" ? "email" : fd.field_type === "phone" ? "tel" : "text"}
