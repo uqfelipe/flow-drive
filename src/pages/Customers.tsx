@@ -17,6 +17,7 @@ export default function Customers() {
   const [search, setSearch] = useState("");
   const { data: customers, isLoading } = useCustomers();
   const { data: rentals } = useRentals();
+  const navigate = useNavigate();
 
   const [formOpen, setFormOpen] = useState(false);
   const [editCustomer, setEditCustomer] = useState<CustomerRow | null>(null);
