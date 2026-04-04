@@ -107,37 +107,46 @@ export function NodeConfigPanel({ node, onClose, onUpdate, onDelete }: NodeConfi
 
 
         {/* ─── MENU BOTÕES ─── */}
-        {nt === "menu_buttons" && (
-          <div className="space-y-1.5">
-            <Label className="text-xs font-medium text-muted-foreground">Mensagem</Label>
-            <Textarea className="text-sm min-h-[60px]" placeholder="Texto antes dos botões..." value={data.config?.message || ""} onChange={(e) => updateConfig({ message: e.target.value })} />
-            <Label className="text-xs font-medium text-muted-foreground">URL da Imagem (opcional)</Label>
-            <Input className="h-9 text-sm" placeholder="https://..." value={data.config?.imageButton || ""} onChange={(e) => updateConfig({ imageButton: e.target.value })} />
-            <Label className="text-xs font-medium text-muted-foreground mt-2">Botões</Label>
-            {((data.config?.buttons || []) as any[]).map((btn: any, idx: number) => {
-              const isObj = typeof btn === "object";
-              const text = isObj ? btn.text : btn;
-              const type = isObj ? btn.type : "REPLY";
-              const buttons = [...(data.config?.buttons || [])];
-              return (
-                <div key={idx} className="flex items-center gap-1 mb-1">
-                  <Input className="h-8 text-xs flex-1" value={text} onChange={(e) => { buttons[idx] = { text: e.target.value, type }; updateConfig({ buttons }); }} />
-                  <Select value={type} onValueChange={(v) => { buttons[idx] = { text, type: v }; updateConfig({ buttons }); }}>
-                    <SelectTrigger className="h-8 text-xs w-24"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="REPLY">Resposta</SelectItem>
-                      <SelectItem value="URL">URL</SelectItem>
-                      <SelectItem value="COPY">Copiar</SelectItem>
-                      <SelectItem value="CALL">Ligar</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => { buttons.splice(idx, 1); updateConfig({ buttons }); }}><X className="h-3 w-3" /></Button>
+        {nt === "menu_buttons" && (() => {
+          const buttons = (data.config?.buttons || []) as any[];
+          const canAdd = buttons.length < 3;
+          return (
+            <div className="space-y-4">
+              {/* Seção: Mensagem */}
+              <div className="space-y-1.5">
+                <Label className="text-xs font-medium text-muted-foreground">Mensagem</Label>
+                <Textarea className="text-sm min-h-[70px]" placeholder="Texto antes dos botões..." value={data.config?.message || ""} onChange={(e) => updateConfig({ message: e.target.value })} />
+              </div>
+
+              {/* Seção: Botões */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label className="text-xs font-medium text-muted-foreground">Botões</Label>
+                  <span className="text-[10px] text-muted-foreground">{buttons.length}/3</span>
                 </div>
-              );
-            })}
-            <Button variant="outline" size="sm" className="w-full h-8 text-xs" onClick={() => updateConfig({ buttons: [...(data.config?.buttons || []), { text: `Botão ${(data.config?.buttons?.length || 0) + 1}`, type: "REPLY" }] })}><Plus className="h-3 w-3 mr-1" /> Adicionar Botão</Button>
-          </div>
-        )}
+                {buttons.map((btn: any, idx: number) => {
+                  const isObj = typeof btn === "object";
+                  const text = isObj ? btn.text : btn;
+                  const allButtons = [...buttons];
+                  return (
+                    <div key={idx} className="flex items-center gap-2">
+                      <span className="text-xs text-muted-foreground w-4 text-right">{idx + 1}.</span>
+                      <Input className="h-9 text-sm flex-1" placeholder={`Botão ${idx + 1}`} value={text} onChange={(e) => { allButtons[idx] = { text: e.target.value, type: "REPLY" }; updateConfig({ buttons: allButtons }); }} />
+                      <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" onClick={() => { allButtons.splice(idx, 1); updateConfig({ buttons: allButtons }); }}><X className="h-3.5 w-3.5" /></Button>
+                    </div>
+                  );
+                })}
+                <Button variant="outline" size="sm" className="w-full h-9 text-xs" disabled={!canAdd} onClick={() => updateConfig({ buttons: [...buttons, { text: `Botão ${buttons.length + 1}`, type: "REPLY" }] })}><Plus className="h-3.5 w-3.5 mr-1" /> Adicionar Botão</Button>
+              </div>
+
+              {/* Seção: Imagem */}
+              <div className="space-y-1.5">
+                <Label className="text-xs font-medium text-muted-foreground">Imagem (opcional)</Label>
+                <Input className="h-9 text-sm" placeholder="https://..." value={data.config?.imageButton || ""} onChange={(e) => updateConfig({ imageButton: e.target.value })} />
+              </div>
+            </div>
+          );
+        })()}
 
         {/* ─── MENU LISTA ─── */}
         {nt === "menu_list" && (
