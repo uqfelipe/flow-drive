@@ -920,30 +920,7 @@ async function processIncomingMessage(phone: string, text: string) {
         return;
       }
       
-      // ── Awaiting name capture ──
-      if (variables["__awaiting_name"] === "true") {
-        if (isValidName(text)) {
-          const nome = text.trim();
-          variables["nome"] = nome;
-          variables["name"] = nome;
-          delete variables["__awaiting_name"];
-          await adminClient.from("customers").update({ name: nome, updated_at: new Date().toISOString() }).eq("id", customerId);
-          // Now start the actual flow (the welcome node will greet by name)
-          const targetIds2 = new Set(flowEdges.map(e => e.target));
-          const startNode2 = flowNodes.find(n => !targetIds2.has(n.id));
-          if (startNode2) {
-            await adminClient.from("chat_sessions").update({ variables, current_node_id: startNode2.id, updated_at: new Date().toISOString() }).eq("id", session.id);
-            await new Promise(r => setTimeout(r, 500));
-            await processFlow(inst, phone, "", session.id, flowNodes, flowEdges, startNode2.id, variables);
-          } else {
-            await adminClient.from("chat_sessions").update({ variables, status: "completed", updated_at: new Date().toISOString() }).eq("id", session.id);
-          }
-          return;
-        } else {
-          try { await sendWhatsAppText(inst, phone, "Desculpe, não entendi o nome — como você prefere ser chamado(a)?"); } catch (_) {}
-          return;
-        }
-      }
+      // (name capture removed — flow controls everything)
       
       if (currentNodeId) {
         const currentNode = flowNodes.find(n => n.id === currentNodeId);
@@ -982,7 +959,7 @@ async function processIncomingMessage(phone: string, text: string) {
       console.log("[AUTO-REPLY] Session has no actionable node, restarting flow");
     }
     
-    // Start new session
+    // Start new session — always start from the first node, let the flow control everything
     const targetIds = new Set(flowEdges.map(e => e.target));
     const startNode = flowNodes.find(n => !targetIds.has(n.id));
     
@@ -993,27 +970,25 @@ async function processIncomingMessage(phone: string, text: string) {
     
     console.log(`[AUTO-REPLY] Starting new session from node: ${startNode.id} (${startNode.data.nodeType})`);
     
-    // Check if customer already has a real name
+    // Pre-populate name variable if customer already has a real name
     const { data: customerData } = await adminClient.from("customers").select("name").eq("id", customerId).single();
-    const hasRealName = customerData?.name && customerData.name !== phone && !/^\d+$/.test(customerData.name);
-    
-    if (hasRealName) {
-      const vars: Record<string, string> = { nome: customerData.name, name: customerData.name };
-      const { data: newSession, error: sessError } = await adminClient
-        .from("chat_sessions")
-        .insert({ customer_id: customerId, flow_id: flow.id, current_node_id: startNode.id, variables: vars, status: "active" })
-        .select().single();
-      if (sessError || !newSession) { console.error("[AUTO-REPLY] Failed to create session:", sessError); return; }
-      // Let processFlow handle the greeting via the welcome node — no hardcoded message
-      await processFlow(inst, phone, text, newSession.id, flowNodes, flowEdges, startNode.id, vars);
-    } else {
-      const { data: newSession, error: sessError } = await adminClient
-        .from("chat_sessions")
-        .insert({ customer_id: customerId, flow_id: flow.id, current_node_id: null, variables: { __awaiting_name: "true" }, status: "active" })
-        .select().single();
-      if (sessError || !newSession) { console.error("[AUTO-REPLY] Failed to create session:", sessError); return; }
-      try { await sendWhatsAppText(inst, phone, "Olá! Como você gostaria de ser chamado(a)?"); } catch (_) {}
+    const vars: Record<string, string> = {};
+    if (customerData?.name && customerData.name !== phone && !/^\d+$/.test(customerData.name)) {
+      vars.nome = customerData.name;
+      vars.name = customerData.name;
     }
+    
+    // Complete any stale active/waiting sessions for this customer
+    if (session) {
+      await adminClient.from("chat_sessions").update({ status: "completed", updated_at: new Date().toISOString() }).eq("id", session.id);
+    }
+    
+    const { data: newSession, error: sessError } = await adminClient
+      .from("chat_sessions")
+      .insert({ customer_id: customerId, flow_id: flow.id, current_node_id: startNode.id, variables: vars, status: "active" })
+      .select().single();
+    if (sessError || !newSession) { console.error("[AUTO-REPLY] Failed to create session:", sessError); return; }
+    await processFlow(inst, phone, text, newSession.id, flowNodes, flowEdges, startNode.id, vars);
     
   } catch (err) {
     console.error("[AUTO-REPLY] Error:", err);
