@@ -9,6 +9,7 @@ export interface CustomerRow {
   notes: string | null;
   photo: string | null;
   status: string;
+  custom_fields: Record<string, string> | null;
   created_at: string;
   updated_at: string;
 }
