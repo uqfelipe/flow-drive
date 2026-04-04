@@ -622,8 +622,8 @@ async function processFlow(
           try { await sendWhatsAppText(inst, phone, replaceVariables(`${question}\n\n${fallback}`, vars)); } catch (_) {}
         }
       }
-      nodeId = findNextNodeId(flowEdges, nodeId);
-      continue;
+      await adminClient.from("chat_sessions").update({ current_node_id: nodeId, variables: vars, status: "waiting", updated_at: new Date().toISOString() }).eq("id", sessionId);
+      return { nextNodeId: nodeId, variables: vars, status: "waiting" };
     }
 
     // ─── Request payment ───
