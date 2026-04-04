@@ -1,28 +1,44 @@
 
 
-## Corrigir auto-preenchimento de campos personalizados
+## Redesign da página de Editar Cliente
 
-### Problema
-O log mostra que a variável é capturada como `{{comida}}` (com chaves), mas a tabela `customer_field_definitions` armazena apenas `comida`. A comparação `eq("field_key", varName)` falha porque `{{comida}} != comida`.
+### Problemas atuais
+- Layout esticado e desalinhado, formulário ocupa muito espaço vertical
+- Foto, campos e sidebar sem hierarquia visual clara
+- Status isolado numa row de grid com metade vazia
+- Seção de observações ocupa muito espaço
+- Campos personalizados sem refinamento visual
 
-O mesmo problema afeta as NAME_VARS — funciona para `nome` só por sorte de como foi salvo no config do nó, mas pode falhar se o usuário salvar como `{{nome}}`.
+### Redesign proposto
 
-### Solução
+**1. Header compacto com foto e info principal inline**
+- Substituir o card de formulário por um header compacto no topo com foto (menor, 14x14), nome do cliente em destaque, telefone, badge de status e botões de ação (salvar/cancelar) — tudo numa linha
+- Botão de upload da foto aparece ao hover sobre a foto
 
-**Arquivo: `supabase/functions/whatsapp-webhook/index.ts`**
+**2. Layout em abas (Tabs) dentro de um único card**
+- **Aba "Dados"**: Nome, Telefone, Status e Observações em grid compacto (3 colunas: nome, telefone, status na mesma row; observações abaixo com rows=2)
+- **Aba "Campos Personalizados"**: Grid 2 colunas dos campos customizados, sem o texto `{{key}}` visível (mover para tooltip)
+- **Aba "Locações"**: Histórico de locações (movido da sidebar)
 
-Após extrair o `varName` na linha 169, normalizar removendo `{{` e `}}`:
+**3. Sidebar simplificada — apenas metadados**
+- Card pequeno com criado em, atualizado em, total de locações
+- Ocupa menos espaço (col-span 1 de 4 em vez de 1 de 3)
 
-```typescript
-let varName = currentNode.data.config?.variable || nt.replace("capture_", "");
-varName = varName.replace(/^\{\{/, "").replace(/\}\}$/, "").trim();
-```
+**4. Grid 4 colunas no desktop**
+- Formulário principal: `lg:col-span-3`
+- Sidebar de metadados: `lg:col-span-1`
 
-Isso garante que:
-- `{{comida}}` → `comida` → encontra match em `customer_field_definitions`
-- `{{nome}}` → `nome` → encontra match em `NAME_VARS`
-- `nome` (sem chaves) → continua funcionando normalmente
+### Alterações
 
-### Resultado
-Quando o chatbot captura `{{comida}} = "macarrão"`, o valor será salvo em `customers.custom_fields.comida` automaticamente.
+**`src/pages/CustomerEdit.tsx`** — reescrever o JSX de retorno:
+- Importar `Tabs, TabsContent, TabsList, TabsTrigger`
+- Header compacto com foto + info + ações
+- Conteúdo em abas (Dados, Campos Personalizados, Locações)
+- Sidebar reduzida com apenas metadados
+- Inputs mais compactos, menos padding, melhor alinhamento
+
+**`src/pages/CustomerNew.tsx`** — aplicar o mesmo estilo refinado:
+- Header compacto com foto + ações
+- Mesma estrutura de abas (sem aba de Locações)
+- Formulário compacto e alinhado
 
