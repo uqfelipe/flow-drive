@@ -805,6 +805,72 @@ async function processIncomingMessage(phone: string, text: string) {
   try {
     console.log(`[AUTO-REPLY] Processing message from ${phone}: "${text}"`);
 
+    // 1. Get WhatsApp instance FIRST (needed for welcome + flow)
+    const inst = await getWhatsAppInstance();
+    if (!inst) {
+      console.log("[AUTO-REPLY] No WhatsApp instance found");
+      return;
+    }
+
+    // 2. Get or create customer
+    let customerId: string;
+    let customerWelcomed = true;
+    const { data: existingCustomer } = await adminClient
+      .from("customers")
+      .select("id, welcomed")
+      .eq("phone", phone)
+      .limit(1)
+      .maybeSingle();
+    
+    if (existingCustomer) {
+      customerId = existingCustomer.id;
+      customerWelcomed = existingCustomer.welcomed ?? false;
+    } else {
+      const placeholderCpf = phone.replace(/\D/g, "").slice(-11).padStart(11, "0").replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4");
+      const { data: newCustomer, error: custErr } = await adminClient
+        .from("customers")
+        .insert({ name: phone, phone, cpf: placeholderCpf, status: "active" })
+        .select("id")
+        .single();
+      if (custErr) {
+        if (custErr.code === "23505") {
+          const { data: byCpf } = await adminClient.from("customers").select("id").eq("cpf", placeholderCpf).maybeSingle();
+          if (byCpf) { customerId = byCpf.id; }
+          else { console.error("[AUTO-REPLY] CPF conflict but no customer found:", custErr); return; }
+        } else {
+          console.error("[AUTO-REPLY] Failed to create customer:", custErr);
+          return;
+        }
+      } else {
+        customerId = newCustomer!.id;
+        customerWelcomed = false;
+      }
+    }
+
+    // 3. Welcome message BEFORE flow check (first contact only)
+    if (!customerWelcomed) {
+      console.log(`[WELCOME] Sending welcome message to ${phone}`);
+      try {
+        const { data: welcomeSettings } = await adminClient.from("settings").select("key, value").in("key", ["welcome_enabled", "welcome_type", "welcome_text", "welcome_audio_url"]);
+        const ws: Record<string, string> = {};
+        for (const r of welcomeSettings ?? []) ws[r.key] = r.value;
+
+        if (ws.welcome_enabled === "true") {
+          if (ws.welcome_type === "audio" && ws.welcome_audio_url) {
+            await sendWhatsAppMedia(inst, phone, "audio", ws.welcome_audio_url);
+          } else if (ws.welcome_text) {
+            await sendWhatsAppText(inst, phone, ws.welcome_text);
+          }
+          await new Promise(r => setTimeout(r, 1000));
+        }
+        await adminClient.from("customers").update({ welcomed: true }).eq("id", customerId);
+      } catch (wErr) {
+        console.error("[WELCOME] Error sending welcome:", wErr);
+        await adminClient.from("customers").update({ welcomed: true }).eq("id", customerId);
+      }
+    }
+
+    // 4. Now fetch flow
     const flow = await getActiveFlowCached();
     
     if (!flow) {
@@ -825,73 +891,6 @@ async function processIncomingMessage(phone: string, text: string) {
     if (supportedNodes.length === 0) {
       console.log(`[AUTO-REPLY] Flow "${flow.name}" has NO supported node types, skipping`);
       return;
-    }
-    
-    const inst = await getWhatsAppInstance();
-    if (!inst) {
-      console.log("[AUTO-REPLY] No WhatsApp instance found");
-      return;
-    }
-
-    let customerId: string;
-    let customerWelcomed = true; // default true so we skip welcome if unknown
-    const { data: existingCustomer } = await adminClient
-      .from("customers")
-      .select("id, welcomed")
-      .eq("phone", phone)
-      .limit(1)
-      .maybeSingle();
-    
-    if (existingCustomer) {
-      customerId = existingCustomer.id;
-      customerWelcomed = existingCustomer.welcomed ?? false;
-    } else {
-      // Use phone as unique CPF placeholder to avoid duplicate constraint
-      const placeholderCpf = phone.replace(/\D/g, "").slice(-11).padStart(11, "0").replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4");
-      const { data: newCustomer, error: custErr } = await adminClient
-        .from("customers")
-        .insert({ name: phone, phone, cpf: placeholderCpf, status: "active" })
-        .select("id")
-        .single();
-      if (custErr) {
-        // If CPF conflict, try to find existing customer by CPF
-        if (custErr.code === "23505") {
-          const { data: byCpf } = await adminClient.from("customers").select("id").eq("cpf", placeholderCpf).maybeSingle();
-          if (byCpf) { customerId = byCpf.id; }
-          else { console.error("[AUTO-REPLY] CPF conflict but no customer found:", custErr); return; }
-        } else {
-          console.error("[AUTO-REPLY] Failed to create customer:", custErr);
-          return;
-        }
-      } else {
-        customerId = newCustomer!.id;
-        customerWelcomed = false;
-      }
-    }
-
-    // --- Welcome message (first contact only) ---
-    if (!customerWelcomed) {
-      console.log(`[WELCOME] Sending welcome message to ${phone}`);
-      try {
-        const { data: welcomeSettings } = await adminClient.from("settings").select("key, value").in("key", ["welcome_enabled", "welcome_type", "welcome_text", "welcome_audio_url"]);
-        const ws: Record<string, string> = {};
-        for (const r of welcomeSettings ?? []) ws[r.key] = r.value;
-
-        if (ws.welcome_enabled === "true") {
-          if (ws.welcome_type === "audio" && ws.welcome_audio_url) {
-            await sendWhatsAppMedia(inst, phone, "audio", ws.welcome_audio_url);
-          } else if (ws.welcome_text) {
-            await sendWhatsAppText(inst, phone, ws.welcome_text);
-          }
-          await new Promise(r => setTimeout(r, 1000));
-        }
-        // Mark as welcomed regardless of enabled state
-        await adminClient.from("customers").update({ welcomed: true }).eq("id", customerId);
-      } catch (wErr) {
-        console.error("[WELCOME] Error sending welcome:", wErr);
-        // Mark welcomed anyway to avoid retrying
-        await adminClient.from("customers").update({ welcomed: true }).eq("id", customerId);
-      }
     }
 
     const { data: existingSessions } = await adminClient
