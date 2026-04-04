@@ -100,7 +100,12 @@ async function uploadToImgbbFromUrl(imageUrl: string): Promise<string | null> {
     const imgRes = await fetch(imageUrl);
     if (!imgRes.ok) { console.error(`[IMGBB] fetch failed ${imgRes.status}`); return null; }
     const buf = new Uint8Array(await imgRes.arrayBuffer());
-    const b64 = btoa(String.fromCharCode(...buf));
+    let binary = "";
+    const chunkSize = 8192;
+    for (let i = 0; i < buf.length; i += chunkSize) {
+      binary += String.fromCharCode(...buf.subarray(i, i + chunkSize));
+    }
+    const b64 = btoa(binary);
     const form = new FormData();
     form.append("image", b64);
     const res = await fetch(`https://api.imgbb.com/1/upload?key=${IMGBB_KEY}`, { method: "POST", body: form });
