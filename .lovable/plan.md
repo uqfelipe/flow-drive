@@ -1,34 +1,25 @@
 
 
-## Adicionar opções de áudio no nó "Enviar Áudio" do Flow Builder
+## Enviar áudio como mensagem de voz (PTT) no Flow Builder
 
-### Situação atual
-O nó `send_audio` só aceita uma URL de arquivo (campo "URL do arquivo"). O usuário quer poder:
-1. Colar um link de áudio
-2. Fazer upload de um arquivo de áudio
-3. Gravar áudio diretamente no painel de configuração
+### Problema
+Atualmente, o nó "Enviar Áudio" envia o áudio com `type: "audio"` na API do WhatsApp. Segundo a documentação da uazapi, para enviar como **mensagem de voz** (aquele balãozinho verde de áudio no WhatsApp), o tipo correto é `type: "ptt"` (push-to-talk).
 
-### Alterações
+### Alteração
 
-**1. `src/components/flow-builder/NodeConfigPanel.tsx`**
-- Separar o `send_audio` do bloco genérico de mídia (linhas 235-248)
-- Criar seção dedicada com 3 abas/modos:
-  - **Link** — input de URL (como já existe)
-  - **Upload** — input file que aceita `audio/*`, faz upload para Supabase Storage e salva a URL pública
-  - **Gravar** — botão de gravação usando `MediaRecorder` API do navegador, com visualização de tempo, botão parar, e preview do áudio gravado. Ao finalizar, faz upload para Supabase Storage
-- O config salva sempre `{ file: "url_final", audioSource: "link"|"upload"|"recording" }` — o webhook usa apenas `file`
+**1. `supabase/functions/whatsapp-webhook/index.ts`** — linha 454:
+- Mudar o mediaType do `send_audio` de `"audio"` para `"ptt"`
+- Isso faz com que o áudio chegue no WhatsApp do cliente como mensagem de voz (com ícone de microfone e waveform), não como arquivo de áudio genérico
 
-**2. Supabase Storage** — criar bucket `audio-files` (público) via migration SQL para armazenar uploads e gravações
-
-**3. `src/components/flow-builder/AudioRecorder.tsx`** (novo componente)
-- Usa `navigator.mediaDevices.getUserMedia({ audio: true })` + `MediaRecorder`
-- Estados: idle → recording → recorded
-- Mostra timer durante gravação
-- Preview com `<audio>` tag após gravar
-- Botão "Usar este áudio" faz upload ao storage e chama callback com URL
-
-**4. `nodeTypes.ts`** — atualizar `defaultConfig` do `send_audio` para `{ file: "", audioSource: "link" }`
+Antes:
+```
+nt === "send_audio" ? "audio"
+```
+Depois:
+```
+nt === "send_audio" ? "ptt"
+```
 
 ### Resultado
-No painel de configuração do nó "Enviar Áudio", o usuário verá 3 tabs (Link / Upload / Gravar) para escolher como fornecer o áudio. Todas as opções resultam em uma URL pública salva no campo `file` do config.
+Todos os áudios enviados pelo nó "Enviar Áudio" no flow builder chegarão como mensagem de voz no WhatsApp do destinatário.
 
