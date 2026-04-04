@@ -16,6 +16,9 @@ const typeLabels: Record<string, string> = {
   email: "E-mail",
   phone: "Telefone",
   number: "Número",
+  image: "Imagem",
+  audio: "Áudio",
+  file: "Arquivo",
 };
 
 const typeBadgeColors: Record<string, string> = {
@@ -23,6 +26,9 @@ const typeBadgeColors: Record<string, string> = {
   email: "bg-amber-500/10 text-amber-400 border-amber-500/20",
   phone: "bg-green-500/10 text-green-400 border-green-500/20",
   number: "bg-purple-500/10 text-purple-400 border-purple-500/20",
+  image: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
+  audio: "bg-orange-500/10 text-orange-400 border-orange-500/20",
+  file: "bg-indigo-500/10 text-indigo-400 border-indigo-500/20",
 };
 
 export default function CustomerFields() {
