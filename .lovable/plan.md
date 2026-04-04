@@ -1,54 +1,28 @@
 
 
-## Campos personalizados para clientes com auto-preenchimento via fluxo
+## Corrigir auto-preenchimento de campos personalizados
 
-### Objetivo
-Permitir criar campos customizados no cadastro de clientes (ex: `{{email}}`, `{{endereco}}`, `{{cnh}}`). Quando o chatbot capturar texto via `capture_text` com a mesma variável, o valor é salvo automaticamente no cliente.
+### Problema
+O log mostra que a variável é capturada como `{{comida}}` (com chaves), mas a tabela `customer_field_definitions` armazena apenas `comida`. A comparação `eq("field_key", varName)` falha porque `{{comida}} != comida`.
 
-### Arquitetura
+O mesmo problema afeta as NAME_VARS — funciona para `nome` só por sorte de como foi salvo no config do nó, mas pode falhar se o usuário salvar como `{{nome}}`.
 
-Usar uma coluna JSONB `custom_fields` na tabela `customers` para armazenar pares chave-valor dinâmicos. Uma tabela `customer_field_definitions` guarda os campos definidos pelo admin (nome, label, tipo).
+### Solução
 
-### Alterações
+**Arquivo: `supabase/functions/whatsapp-webhook/index.ts`**
 
-**1. Migração — criar tabela de definições + coluna JSONB**
-- Adicionar coluna `custom_fields jsonb DEFAULT '{}'` na tabela `customers`
-- Criar tabela `customer_field_definitions`:
-  - `id uuid PK`
-  - `field_key text UNIQUE` — nome da variável (ex: `email`, `endereco`)
-  - `field_label text` — rótulo exibido no formulário (ex: "E-mail", "Endereço")
-  - `field_type text DEFAULT 'text'` — tipo do campo (text, email, phone, etc.)
-  - `sort_order int DEFAULT 0`
-  - `created_at timestamptz`
-- RLS aberto (mesmo padrão do projeto)
+Após extrair o `varName` na linha 169, normalizar removendo `{{` e `}}`:
 
-**2. `src/hooks/use-customer-fields.ts`** — novo hook
-- `useCustomerFieldDefinitions()` — lista todas as definições de campos
-- `useCreateFieldDefinition()` — cria novo campo
-- `useDeleteFieldDefinition()` — remove campo
+```typescript
+let varName = currentNode.data.config?.variable || nt.replace("capture_", "");
+varName = varName.replace(/^\{\{/, "").replace(/\}\}$/, "").trim();
+```
 
-**3. `src/components/CustomerFormDialog.tsx`** — exibir campos customizados
-- Buscar definições com o hook
-- Renderizar inputs dinâmicos abaixo dos campos fixos
-- No edit, preencher com valores de `customer.custom_fields`
-- No submit, incluir `custom_fields` no create/update
-
-**4. `src/pages/Customers.tsx`** — botão "Gerenciar Campos"
-- Mini dialog ou seção para adicionar/remover definições de campos
-- Input para `field_key` (variável do fluxo, ex: `email`) e `field_label` (rótulo, ex: "E-mail")
-
-**5. `src/hooks/use-customers.ts`** — incluir `custom_fields` no tipo e mutations
-
-**6. `supabase/functions/whatsapp-webhook/index.ts`** — auto-sync
-- Após qualquer `capture_text`, verificar se `varName` existe em `customer_field_definitions`
-- Se sim, fazer merge no `custom_fields` JSONB do customer:
-  ```sql
-  UPDATE customers SET custom_fields = custom_fields || '{"email": "valor"}'
-  WHERE id = customerId
-  ```
+Isso garante que:
+- `{{comida}}` → `comida` → encontra match em `customer_field_definitions`
+- `{{nome}}` → `nome` → encontra match em `NAME_VARS`
+- `nome` (sem chaves) → continua funcionando normalmente
 
 ### Resultado
-- Admin cria campo "E-mail" com variável `{{email}}` na tela de Clientes
-- No fluxo, um nó `capture_text` com variável `email` captura o dado
-- O valor aparece automaticamente no formulário do cliente
+Quando o chatbot captura `{{comida}} = "macarrão"`, o valor será salvo em `customers.custom_fields.comida` automaticamente.
 
