@@ -1155,7 +1155,7 @@ async function processIncomingMessage(phone: string, text: string, mediaUrl?: st
           
           // Handle capture nodes
           if (nt.startsWith("capture_") || nt === "wait") {
-            await processFlow(inst, phone, text, session.id, customerId, flowNodes, flowEdges, currentNodeId, variables, mediaUrl, mediaType, mediaFileName);
+            await processFlow(inst, phone, text, session.id, customerId, flowNodes, flowEdges, currentNodeId, variables, mediaUrl, mediaType, mediaFileName, messageId);
             return;
           }
         }
