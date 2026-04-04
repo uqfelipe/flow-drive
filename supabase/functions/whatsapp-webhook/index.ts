@@ -822,6 +822,7 @@ function extractIncomingMessages(body: any): IncomingWebhookMessage[] {
       msg.conversation ??
       msg.message?.conversation ??
       msg.message?.extendedTextMessage?.text ??
+      (typeof msg.content === "object" && msg.content !== null ? msg.content.selectedDisplayText : undefined) ??
       ""
     ).toString().trim();
     const fromMe = Boolean(msg.fromMe ?? msg.key?.fromMe ?? false);
