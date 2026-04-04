@@ -100,7 +100,12 @@ async function uploadToImgbbFromUrl(imageUrl: string): Promise<string | null> {
     const imgRes = await fetch(imageUrl);
     if (!imgRes.ok) { console.error(`[IMGBB] fetch failed ${imgRes.status}`); return null; }
     const buf = new Uint8Array(await imgRes.arrayBuffer());
-    const b64 = btoa(String.fromCharCode(...buf));
+    let binary = "";
+    const chunkSize = 8192;
+    for (let i = 0; i < buf.length; i += chunkSize) {
+      binary += String.fromCharCode(...buf.subarray(i, i + chunkSize));
+    }
+    const b64 = btoa(binary);
     const form = new FormData();
     form.append("image", b64);
     const res = await fetch(`https://api.imgbb.com/1/upload?key=${IMGBB_KEY}`, { method: "POST", body: form });
@@ -245,13 +250,28 @@ async function processFlow(
           
           // Download and re-host to imgbb for permanent URL
           let permanentUrl = incomingMediaUrl || "";
-          if (nt === "capture_image" && incomingId) {
-            const rehosted = await downloadAndRehost(inst, incomingId);
-            if (rehosted) {
-              permanentUrl = rehosted;
-              console.log(`[FLOW] Re-hosted image to imgbb: ${permanentUrl}`);
-            } else {
-              console.log(`[FLOW] Re-host failed, using original URL`);
+          if (nt === "capture_image") {
+            // Try direct URL upload first (faster, avoids re-download)
+            if (incomingMediaUrl) {
+              const rehosted = await uploadToImgbbFromUrl(incomingMediaUrl);
+              if (rehosted) {
+                permanentUrl = rehosted;
+                console.log(`[FLOW] Re-hosted image via direct URL to imgbb: ${permanentUrl}`);
+              } else {
+                console.log(`[FLOW] Direct re-host failed, trying downloadAndRehost fallback`);
+                if (incomingId) {
+                  const fallback = await downloadAndRehost(inst, incomingId);
+                  if (fallback) permanentUrl = fallback;
+                }
+              }
+            } else if (incomingId) {
+              const rehosted = await downloadAndRehost(inst, incomingId);
+              if (rehosted) {
+                permanentUrl = rehosted;
+                console.log(`[FLOW] Re-hosted image via downloadAndRehost: ${permanentUrl}`);
+              } else {
+                console.log(`[FLOW] Re-host failed, using original URL`);
+              }
             }
           }
           
@@ -947,17 +967,13 @@ Deno.serve(async (req) => {
             );
           }
           
-          // Process as media message in background
-          const bgTask = (async () => {
-            try {
-              await processIncomingMessage(phone, "", fileUrl, "image", "", msgId);
-            } catch (err) {
-              console.error(`[AUTO-REPLY] FileDownloaded error:`, err);
-            }
-          })();
-          // @ts-ignore: waitUntil available in Deno deploy
-          if (typeof globalThis.EdgeRuntime !== "undefined") { /* noop */ }
-          try { (globalThis as any).ctx?.waitUntil?.(bgTask); } catch (_) { await bgTask; }
+          // Process as media message synchronously (must complete before response)
+          try {
+            await processIncomingMessage(phone, "", fileUrl, "image", "", msgId);
+            console.log(`[WEBHOOK] FileDownloaded processed successfully for ${phone}`);
+          } catch (err) {
+            console.error(`[AUTO-REPLY] FileDownloaded error:`, err);
+          }
         }
         return new Response(JSON.stringify({ ok: true }), { headers: { "Content-Type": "application/json" } });
       }
