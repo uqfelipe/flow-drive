@@ -1,25 +1,31 @@
 
 
-## Enviar áudio como mensagem de voz (PTT) no Flow Builder
+## Adicionar indicador visual de "Mensagem de Voz" no nó Enviar Áudio
 
-### Problema
-Atualmente, o nó "Enviar Áudio" envia o áudio com `type: "audio"` na API do WhatsApp. Segundo a documentação da uazapi, para enviar como **mensagem de voz** (aquele balãozinho verde de áudio no WhatsApp), o tipo correto é `type: "ptt"` (push-to-talk).
+### O que muda
 
-### Alteração
+**`src/components/flow-builder/FlowNode.tsx`**
+- Adicionar um bloco visual específico para nós `send_audio` no conteúdo do nó
+- Mostrar um indicador estilo WhatsApp com ícone de microfone, barras de waveform animadas e texto "Mensagem de voz"
+- Se o áudio já estiver configurado (campo `file` preenchido), mostrar "🎙 Áudio configurado" com cor verde
+- Se não estiver configurado, mostrar "🎙 Sem áudio" com cor mais apagada
+- O indicador fica na área de conteúdo do nó, abaixo do label
 
-**1. `supabase/functions/whatsapp-webhook/index.ts`** — linha 454:
-- Mudar o mediaType do `send_audio` de `"audio"` para `"ptt"`
-- Isso faz com que o áudio chegue no WhatsApp do cliente como mensagem de voz (com ícone de microfone e waveform), não como arquivo de áudio genérico
-
-Antes:
+### Visual esperado
+```text
+┌──────────────────────────┐
+│ 🎤 Enviar Áudio      ✏ ✕│
+├──────────────────────────┤
+│  Meu nó de áudio         │
+│  ┌────────────────────┐  │
+│  │ 🎙 ▎▌█▌▎ Msg de voz│  │
+│  └────────────────────┘  │
+│                       ●──│
+└──────────────────────────┘
 ```
-nt === "send_audio" ? "audio"
-```
-Depois:
-```
-nt === "send_audio" ? "ptt"
-```
 
-### Resultado
-Todos os áudios enviados pelo nó "Enviar Áudio" no flow builder chegarão como mensagem de voz no WhatsApp do destinatário.
+### Detalhes técnicos
+- Extrair `config.file` do nodeData para saber se tem áudio configurado
+- Renderizar barras de waveform com CSS (3-4 `<span>` com heights variadas e animação pulse)
+- Cor âmbar (`#F59E0B`) para combinar com o tema do nó send_audio
 
