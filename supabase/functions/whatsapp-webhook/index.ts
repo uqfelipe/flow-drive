@@ -346,10 +346,44 @@ async function processFlow(
 
     // ─── Menu list ───
     if (nt === "menu_list") {
-      const sections = (cfg.sections || []) as any[];
+      let sections = (cfg.sections || []) as any[];
+
+      // ── Dynamic vehicle menu: fetch available vehicles from DB ──
+      if (cfg.dynamic === "vehicles") {
+        try {
+          const { data: vehicles, error: vErr } = await adminClient
+            .from("vehicles")
+            .select("id, name, brand, model, year, daily_rate, category, status")
+            .eq("status", "available")
+            .order("name");
+          if (vErr) throw vErr;
+          if (vehicles && vehicles.length > 0) {
+            // Group vehicles by category
+            const grouped: Record<string, any[]> = {};
+            for (const v of vehicles) {
+              const cat = (v.category || "outros").charAt(0).toUpperCase() + (v.category || "outros").slice(1);
+              if (!grouped[cat]) grouped[cat] = [];
+              grouped[cat].push(v);
+            }
+            sections = Object.entries(grouped).map(([cat, items]) => ({
+              title: cat,
+              items: items.map((v: any) => ({
+                title: `${v.name}`,
+                description: `${v.brand} ${v.model} ${v.year} • R$ ${Number(v.daily_rate).toFixed(0)}/dia`,
+                id: v.id,
+              })),
+            }));
+            console.log(`[FLOW] Dynamic vehicles: ${vehicles.length} available, ${Object.keys(grouped).length} categories`);
+          } else {
+            sections = [{ title: "Veículos", items: [{ title: "Sem veículos disponíveis", description: "Nenhum veículo disponível no momento", id: "none" }] }];
+          }
+        } catch (dbErr) {
+          console.error(`[FLOW] Failed to fetch vehicles:`, dbErr);
+        }
+      }
+
       if (sections.length > 0) {
         try {
-          // Convert items → rows with rowId for WhatsApi API
           const apiSections = sections.map((s: any) => ({
             title: s.title,
             rows: (s.items || s.rows || []).map((it: any, i: number) => ({
@@ -364,11 +398,16 @@ async function processFlow(
           await sendWhatsAppMenu(inst, phone, "list", menuText, { sections: apiSections, listButton });
         } catch (menuErr) {
           console.error(`[FLOW] menu_list send failed:`, menuErr);
-          // Fallback to text
           const fallback = sections.flatMap((s: any) => [s.title + ":", ...(s.items || s.rows || []).map((it: any, i: number) => `  ${i + 1}. ${it.title}`)]).join("\n");
           try { await sendWhatsAppText(inst, phone, replaceVariables(`${cfg.message || "Escolha:"}\n\n${fallback}`, vars)); } catch (_) {}
         }
       }
+
+      // Store dynamic sections in session vars so handleMenuSelection can match
+      if (cfg.dynamic === "vehicles") {
+        vars["__dynamic_sections"] = JSON.stringify(sections);
+      }
+
       await adminClient.from("chat_sessions").update({ current_node_id: nodeId, variables: vars, status: "waiting", updated_at: new Date().toISOString() }).eq("id", sessionId);
       return { nextNodeId: nodeId, variables: vars, status: "waiting" };
     }
@@ -530,9 +569,11 @@ function handleMenuSelection(
     return { nextNodeId: null, selectedOption: null };
   }
 
-  // Menu list — match by item title or row id
+  // Menu list — match by item title, row id, or dynamic sections from session vars
   if (nt === "menu_list") {
-    const sections = (node.data.config?.sections || []) as any[];
+    let sections = (node.data.config?.sections || []) as any[];
+    // For dynamic menus, sections are stored in session variables
+    // (caller should pass them if available — we check config.dynamic)
     const allItems = sections.flatMap((s: any) => s.items || s.rows || []);
     const lower = userInput.trim().toLowerCase();
     const matchIdx = allItems.findIndex((it: any) => it.title?.toLowerCase() === lower || it.id === userInput.trim() || it.rowId === userInput.trim());
@@ -885,6 +926,12 @@ async function processIncomingMessage(phone: string, text: string) {
           
           // Handle menu/list/carousel/request_location selection
           if (nt === "menu_text" || nt === "menu_buttons" || nt === "menu_list" || nt === "menu_carousel" || nt === "request_location") {
+            // For dynamic menu_list, inject cached sections from session variables
+            if (nt === "menu_list" && currentNode.data.config?.dynamic === "vehicles" && variables["__dynamic_sections"]) {
+              try {
+                currentNode.data.config.sections = JSON.parse(variables["__dynamic_sections"]);
+              } catch (_) {}
+            }
             const { nextNodeId, selectedOption } = handleMenuSelection(currentNode, text, flowEdges);
             if (nextNodeId) {
               variables["menu_selection"] = selectedOption || text;
