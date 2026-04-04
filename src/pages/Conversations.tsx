@@ -1218,17 +1218,17 @@ export default function Conversations() {
           ) : (
             <>
               {/* ─── Chat header ─── */}
-              <div className="h-[68px] border-b border-border/50 flex items-center justify-between px-4 bg-card/90 backdrop-blur-sm">
+              <div className="h-[64px] border-b border-border/40 flex items-center justify-between px-4 bg-card/95 backdrop-blur-md">
                 <div className="flex items-center gap-3">
                   <button
-                    className="md:hidden p-2 hover:bg-accent rounded-xl transition-colors"
+                    className="md:hidden p-2 hover:bg-muted rounded-xl transition-colors"
                     onClick={() => setSelectedChat(null)}
                   >
                     <ArrowLeft className="h-5 w-5" />
                   </button>
                   <Avatar
                     className={cn(
-                      "h-10 w-10 ring-2 ring-primary/20 ring-offset-2 ring-offset-card",
+                      "h-10 w-10 ring-1 ring-border",
                       (selectedChat.image || selectedChat.imagePreview || selectedChat.wa_profilePicUrl) && "cursor-pointer hover:opacity-80"
                     )}
                     onClick={() => {
@@ -1237,22 +1237,22 @@ export default function Conversations() {
                     }}
                   >
                     {(selectedChat.image || selectedChat.imagePreview || selectedChat.wa_profilePicUrl) && <AvatarImage src={selectedChat.image || selectedChat.imagePreview || selectedChat.wa_profilePicUrl} />}
-                    <AvatarFallback className="bg-primary/15 text-primary text-xs font-bold">
+                    <AvatarFallback className="bg-primary/10 text-primary text-xs font-bold">
                       {getInitials(chatName(selectedChat, customerMap))}
                     </AvatarFallback>
                   </Avatar>
                   <div>
-                    <p className="text-sm font-display font-bold">{chatName(selectedChat, customerMap)}</p>
-                    <p className="text-[11px] text-muted-foreground flex items-center gap-1">
-                      <span className="h-1.5 w-1.5 rounded-full bg-success inline-block" />
-                      {formatPhone(phoneFromChatId(selectedChat.wa_chatid))}
+                    <p className="text-sm font-display font-bold leading-tight">{chatName(selectedChat, customerMap)}</p>
+                    <p className="text-[11px] text-muted-foreground/80">
+                      {presence?.isOnline ? (
+                        <span className="text-success font-medium">online</span>
+                      ) : (
+                        formatPhone(phoneFromChatId(selectedChat.wa_chatid))
+                      )}
                     </p>
                   </div>
                 </div>
-                <div className="flex items-center gap-1">
-                  <Button variant="ghost" size="icon" className="h-9 w-9 rounded-xl text-muted-foreground hover:text-foreground">
-                    <Video className="h-4 w-4" />
-                  </Button>
+                <div className="flex items-center gap-0.5">
                   <Popover open={calendarOpen} onOpenChange={setCalendarOpen}>
                     <PopoverTrigger asChild>
                       <Button variant="ghost" size="icon" className="h-9 w-9 rounded-xl text-muted-foreground hover:text-foreground">
