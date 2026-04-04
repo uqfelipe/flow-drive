@@ -109,7 +109,7 @@ export function CustomerFieldsManager({ open, onOpenChange }: Props) {
                 <div>
                   <p className="text-sm font-medium">{f.field_label}</p>
                   <p className="text-xs text-muted-foreground">
-                    <code className="bg-muted px-1 rounded">{{f.field_key}}</code>
+                    <code className="bg-muted px-1 rounded">{`{{${f.field_key}}}`}</code>
                     <span className="ml-2">{f.field_type}</span>
                   </p>
                 </div>
