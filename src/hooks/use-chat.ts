@@ -57,16 +57,19 @@ export function useWhatsAppChats() {
       const chats = chatData?.chats ?? [];
       const readStatuses = readStatusResult.data ?? [];
 
-      const oneDayAgo = Math.floor(Date.now() / 1000) - 86400 * 30; // 30 dias
+      // Marco zero: só mostrar conversas com atividade após este timestamp (04/04/2026 ~agora)
+      const resetTimestamp = Math.floor(Date.now() / 1000);
+      const CONVERSATIONS_EPOCH = 1775282400; // 2026-04-04T06:00:00Z — marco zero
 
       return chats
         .filter((c: any) => {
           const chatId = c.wa_chatid ?? "";
           if (chatId.startsWith("13135550002")) return false;
           if (ownNumber && chatId.startsWith(ownNumber)) return false;
-          // Filtrar conversas sem atividade recente (sem timestamp ou muito antigas)
+          // Só mostrar conversas com mensagens APÓS o marco zero
           const lastMsg = c.wa_lastMsgTimestamp ?? 0;
-          if (!lastMsg || lastMsg < oneDayAgo) return false;
+          const lastMsgSec = lastMsg > 9999999999 ? Math.floor(lastMsg / 1000) : lastMsg;
+          if (!lastMsgSec || lastMsgSec < CONVERSATIONS_EPOCH) return false;
           return true;
         })
         .map((c: any) => {
