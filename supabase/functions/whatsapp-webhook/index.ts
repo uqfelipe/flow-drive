@@ -709,6 +709,30 @@ function extractIncomingMessages(body: any): IncomingWebhookMessage[] {
     const phone = chatId.replace(/@.*$/, "");
     const id = (msg.id ?? msg.key?.id ?? `${chatId}:${text}:${fromMe}`).toString();
 
+    // Extract media URL from various message formats
+    let mediaUrl: string | undefined;
+    let mediaType: string | undefined;
+    let mediaFileName: string | undefined;
+
+    const msgContent = msg.message || msg;
+    if (msgContent.imageMessage || msg.type === "image" || msg.mediatype === "image") {
+      mediaUrl = msgContent.imageMessage?.url || msg.mediaUrl || msg.media || msg.file || msg.image || "";
+      mediaType = "image";
+      mediaFileName = msgContent.imageMessage?.fileName || msg.fileName || "";
+    } else if (msgContent.audioMessage || msg.type === "audio" || msg.type === "ptt" || msg.mediatype === "audio" || msg.mediatype === "ptt") {
+      mediaUrl = msgContent.audioMessage?.url || msg.mediaUrl || msg.media || msg.file || msg.audio || "";
+      mediaType = "audio";
+      mediaFileName = msg.fileName || "audio.ogg";
+    } else if (msgContent.documentMessage || msg.type === "document" || msg.mediatype === "document") {
+      mediaUrl = msgContent.documentMessage?.url || msg.mediaUrl || msg.media || msg.file || "";
+      mediaType = "file";
+      mediaFileName = msgContent.documentMessage?.fileName || msg.fileName || "document";
+    } else if (msgContent.videoMessage || msg.type === "video" || msg.mediatype === "video") {
+      mediaUrl = msgContent.videoMessage?.url || msg.mediaUrl || msg.media || msg.file || "";
+      mediaType = "file";
+      mediaFileName = msg.fileName || "video.mp4";
+    }
+
     if (!chatId) continue;
 
     uniqueMessages.set(id, {
@@ -717,6 +741,7 @@ function extractIncomingMessages(body: any): IncomingWebhookMessage[] {
       phone,
       text,
       fromMe,
+      ...(mediaUrl ? { mediaUrl, mediaType, mediaFileName } : {}),
     });
   }
 
