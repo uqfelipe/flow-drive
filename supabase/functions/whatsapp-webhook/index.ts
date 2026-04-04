@@ -11,7 +11,7 @@ const SUPPORTED_NODE_TYPES = new Set([
   "delay", "set_variable", "condition",
   "menu_text", "menu_buttons", "menu_list", "poll",
   "capture_text", "capture_name", "capture_email", "capture_phone", "capture_cpf", "capture_number", "capture_date",
-  "capture_image", "capture_audio", "capture_file",
+  "capture_image", "capture_audio", "capture_file", "capture_location",
   "wait",
   "transfer_human", "end",
   "send_image", "send_audio", "send_video", "send_file", "send_sticker",
