@@ -844,6 +844,7 @@ async function processIncomingMessage(phone: string, text: string) {
     
     if (existingCustomer) {
       customerId = existingCustomer.id;
+      customerWelcomed = existingCustomer.welcomed ?? false;
     } else {
       // Use phone as unique CPF placeholder to avoid duplicate constraint
       const placeholderCpf = phone.replace(/\D/g, "").slice(-11).padStart(11, "0").replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4");
