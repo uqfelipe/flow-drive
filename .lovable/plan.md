@@ -1,45 +1,68 @@
 
 
-## Corrigir processamento do FileDownloaded no webhook
+## Corrigir perda de imagens no webhook: dois bugs
 
-### Problemas identificados
+### Diagnóstico dos logs
 
-1. **Background task é cancelada antes de completar**: O handler `FileDownloaded` (linhas 951-960) coloca o processamento em uma `bgTask` e retorna a response imediatamente. No Supabase Edge Functions, `waitUntil` não existe — a condição `globalThis.EdgeRuntime` é `undefined`, e `ctx?.waitUntil` também não existe. O `catch` faz `await bgTask`, mas o runtime já encerrou a função (os logs mostram `shutdown` logo após o evento). O processamento nunca completa.
+1. **09:16:38** — Flow chega no nó `capture_image` (node 135), envia "qual sua foto", sessão fica "waiting"
+2. **09:16:44** — Imagem chega: `extracted=1 valid=0` — imagem foi **detectada** mas **filtrada como inválida**
+3. **09:17:24** — Próximo log é um evento "chats", sem nenhum `FileDownloaded` no meio
+4. **Nenhum log de `FileDownloaded`** — o evento nunca chegou ou chegou com formato diferente
 
-2. **Stack overflow em imagens grandes**: `btoa(String.fromCharCode(...buf))` na linha 103 estoura o stack para imagens maiores que ~100KB porque faz spread de todo o array como argumentos de função.
+### Bug 1: `mediaType` descartado quando `mediaUrl` está vazio
 
-3. **Re-download desnecessário**: O `FileDownloaded` já traz a URL do arquivo (`FileURL`), mas o código chama `downloadAndRehost` que faz outro `/message/download`. Pode usar a URL direta para upload ao imgbb.
+Na linha 866-868 do `extractIncomingMessages`:
+```typescript
+...(mediaUrl ? { mediaUrl, mediaType, mediaFileName } : {}),
+```
+Quando a imagem chega sem URL (uazapi ainda decriptando), `mediaUrl=""` é falsy, então `mediaType` NÃO é incluído no objeto. O filtro na linha 996 vê `!text && !mediaUrl && !mediaType` = true e descarta a mensagem.
 
-### Solução
-
-**`supabase/functions/whatsapp-webhook/index.ts`** — 3 alterações:
-
-1. **FileDownloaded: processar ANTES de retornar a response** — Remover o padrão `bgTask`/`waitUntil`. Fazer `await processIncomingMessage(...)` diretamente antes do `return`, garantindo que o processamento complete antes do runtime encerrar.
-
-2. **Corrigir conversão base64 para imagens grandes** — Substituir `btoa(String.fromCharCode(...buf))` por um loop chunked que não estoura o stack:
-   ```typescript
-   let binary = "";
-   const chunkSize = 8192;
-   for (let i = 0; i < buf.length; i += chunkSize) {
-     binary += String.fromCharCode(...buf.subarray(i, i + chunkSize));
-   }
-   const b64 = btoa(binary);
-   ```
-
-3. **Otimizar re-host no FileDownloaded** — Quando `processFlow` recebe a `mediaUrl` do FileDownloaded (URL direta do uazapi), fazer `uploadToImgbbFromUrl(incomingMediaUrl)` diretamente em vez de chamar `downloadAndRehost` (que faz outro request desnecessário ao `/message/download`). O `downloadAndRehost` via messageId continua como fallback quando a URL direta não está disponível.
-
-### Fluxo corrigido
-```text
-FileDownloaded chega
-  → Handler extrai FileURL diretamente
-  → await processIncomingMessage (síncrono, sem bgTask)
-  → Sessão "waiting" no capture_image é encontrada
-  → processFlow recebe mediaUrl = FileURL do uazapi
-  → uploadToImgbbFromUrl(mediaUrl) direto (sem re-download)
-  → URL permanente imgbb salva em vars, customer_files, custom_fields
-  → Fluxo avança
+**Correção**: Sempre incluir `mediaType` independente de `mediaUrl`:
+```typescript
+...(mediaUrl ? { mediaUrl } : {}),
+...(mediaType ? { mediaType } : {}),
+...(mediaFileName ? { mediaFileName } : {}),
 ```
 
-### Arquivo modificado
-- `supabase/functions/whatsapp-webhook/index.ts`
+### Bug 2: `FileDownloaded` pode não chegar ou ter formato diferente
+
+Os logs mostram que **nenhum** evento `FileDownloaded` chegou nos ~40s após a imagem. Possibilidades:
+- uazapi não envia `FileDownloaded` como `messages_update` mas sim como outro `EventType`
+- O campo `Type` pode ter case diferente (`filedownloaded` vs `FileDownloaded`)
+
+**Correção**: Adicionar case-insensitive check no handler de `messages_update` e também detectar `FileDownloaded` em qualquer `EventType` (pode vir como evento de nível root):
+```typescript
+const evtType = (evt.Type || evt.type || body.state || body.type || "").toString().toLowerCase();
+if (evtType === "filedownloaded") { ... }
+```
+
+E adicionar log extra para qualquer `messages_update` que tenha `FileURL`:
+```typescript
+if (body.FileURL || evt.FileURL) {
+  console.log("[WEBHOOK] Found FileURL in event:", body.FileURL || evt.FileURL);
+}
+```
+
+### Resumo das alterações
+
+**`supabase/functions/whatsapp-webhook/index.ts`** — 3 mudanças:
+
+1. **Linha 866-868**: Separar spread de `mediaType` do `mediaUrl` para que imagens sem URL ainda sejam reconhecidas como tipo "image"
+2. **Linha 949-950**: Case-insensitive comparison para `FileDownloaded` e buscar `FileURL` em mais campos do body
+3. **Após linha 980**: Adicionar fallback para detectar `FileDownloaded` como `EventType` de nível root (não só dentro de `messages_update`), caso uazapi envie assim
+
+### Fluxo após correção
+```text
+Imagem chega (sem URL):
+  → extractIncomingMessages: mediaType="image", mediaUrl=""
+  → Filtro válido: mediaType presente → NÃO filtra
+  → processFlow capture_image: sem URL mas mediaType="image" → aguarda silenciosamente
+  → Sessão fica "waiting"
+
+FileDownloaded chega (~25s depois):
+  → Detectado por case-insensitive check
+  → await processIncomingMessage (síncrono)
+  → Re-host imgbb → URL permanente
+  → Salva em vars, customer_files, custom_fields
+```
 
