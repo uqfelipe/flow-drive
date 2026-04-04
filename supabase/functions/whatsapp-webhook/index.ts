@@ -503,7 +503,7 @@ async function processFlow(
     }
     
     // ─── Menu buttons (interactive) ───
-    if (nt === "menu_buttons" || nt === "quick_reply") {
+    if (nt === "menu_buttons") {
       const buttons = (cfg.buttons || []) as any[];
       if (buttons.length > 0) {
         const btnChoices = buttons.map((b: any) => {
