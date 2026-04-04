@@ -198,6 +198,38 @@ function FlowNode({ data, selected, id }: NodeProps) {
           </div>
         )}
 
+        {/* Menu List items with section headers */}
+        {isMenuList && menuListItems.length > 0 && (
+          <div className="space-y-1 mt-1">
+            {menuListItems.map((entry, idx) =>
+              entry.type === "section" ? (
+                <div key={`s-${idx}`} className="flex items-center gap-1.5 px-2 py-1">
+                  <div className="flex-1 h-px bg-border" />
+                  <span className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    {entry.title}
+                  </span>
+                  <div className="flex-1 h-px bg-border" />
+                </div>
+              ) : (
+                <div
+                  key={`i-${entry.globalIdx}`}
+                  className="flex items-center gap-2 px-2 py-1.5 rounded-lg text-[11px] font-medium relative"
+                  style={{ backgroundColor: `${color}10`, color }}
+                >
+                  <span className="flex-1 truncate">{entry.title}</span>
+                  <Handle
+                    type="source"
+                    position={Position.Right}
+                    id={`option-${entry.globalIdx}`}
+                    className="!w-3 !h-3 !border-2 !border-white dark:!border-card !rounded-full !-right-4 !top-auto !relative"
+                    style={{ backgroundColor: color }}
+                  />
+                </div>
+              )
+            )}
+          </div>
+        )}
+
         {/* Condition handles */}
         {nodeData.nodeType === "condition" && (
           <div className="space-y-1 mt-1">
@@ -222,8 +254,8 @@ function FlowNode({ data, selected, id }: NodeProps) {
           </div>
         )}
 
-        {/* Default source handle (non-menu, non-condition) */}
-        {!isMenu && nodeData.nodeType !== "condition" && (
+        {/* Default source handle (non-menu, non-condition, non-menu_list) */}
+        {!isMenu && !isMenuList && nodeData.nodeType !== "condition" && (
           <div className="flex justify-end pr-0">
             <Handle
               type="source"
