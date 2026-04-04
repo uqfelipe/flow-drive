@@ -9,7 +9,7 @@ const adminClient = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
 const SUPPORTED_NODE_TYPES = new Set([
   "message", "send_link", "pix", "copy_paste",
   "delay", "set_variable", "condition",
-  "menu_text", "menu_buttons", "menu_list", "menu_carousel", "poll",
+  "menu_text", "menu_buttons", "menu_list", "poll",
   "capture_text", "capture_name", "capture_email", "capture_phone", "capture_cpf", "capture_number", "capture_date",
   "capture_image", "capture_audio", "capture_file",
   "wait",
