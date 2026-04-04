@@ -818,6 +818,8 @@ export default function Conversations() {
   const sendMediaMutation = useSendMedia();
   const markAsRead = useMarkAsRead();
   const deleteMessageMutation = useDeleteMessage();
+  const deleteChatMutation = useDeleteChat();
+  const [deleteChatTarget, setDeleteChatTarget] = useState<WhatsAppChat | null>(null);
   const lastMessageId = messages?.[messages.length - 1]?.id;
 
   useEffect(() => {
