@@ -7,6 +7,7 @@ import Dashboard from "./pages/Dashboard";
 import Vehicles from "./pages/Vehicles";
 import Customers from "./pages/Customers";
 import CustomerEdit from "./pages/CustomerEdit";
+import CustomerNew from "./pages/CustomerNew";
 import Rentals from "./pages/Rentals";
 import Financial from "./pages/Financial";
 import Conversations from "./pages/Conversations";
