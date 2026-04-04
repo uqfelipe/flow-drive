@@ -67,6 +67,45 @@ export default function CustomerEdit() {
   const [uploading, setUploading] = useState(false);
   const [customFields, setCustomFields] = useState<Record<string, string>>({});
   const [initialized, setInitialized] = useState(false);
+  const [rehostedUrls, setRehostedUrls] = useState<Record<string, string>>({});
+  const [rehostingIds, setRehostingIds] = useState<Set<string>>(new Set());
+
+  const reHostToImgbb = useCallback(async (fileId: string, originalUrl: string) => {
+    if (originalUrl.includes("i.ibb.co") || originalUrl.includes("imgbb.com")) {
+      setRehostedUrls(prev => ({ ...prev, [fileId]: originalUrl }));
+      return;
+    }
+    setRehostingIds(prev => new Set(prev).add(fileId));
+    try {
+      const response = await fetch(originalUrl);
+      const blob = await response.blob();
+      const form = new FormData();
+      form.append("image", blob);
+      const res = await fetch(`https://api.imgbb.com/1/upload?key=${IMGBB_API_KEY}`, { method: "POST", body: form });
+      const json = await res.json();
+      if (json.success) {
+        const newUrl = json.data.url;
+        setRehostedUrls(prev => ({ ...prev, [fileId]: newUrl }));
+        await supabase.from("customer_files").update({ file_url: newUrl }).eq("id", fileId);
+        queryClient.invalidateQueries({ queryKey: ["customer_files", id] });
+      }
+    } catch (err) {
+      console.error("Erro ao re-hospedar imagem:", err);
+      setRehostedUrls(prev => ({ ...prev, [fileId]: originalUrl }));
+    } finally {
+      setRehostingIds(prev => { const n = new Set(prev); n.delete(fileId); return n; });
+    }
+  }, [id, queryClient]);
+
+  useEffect(() => {
+    if (customerFiles) {
+      customerFiles.forEach(f => {
+        if (f.file_type === "image" && !rehostedUrls[f.id] && !rehostingIds.has(f.id)) {
+          reHostToImgbb(f.id, f.file_url);
+        }
+      });
+    }
+  }, [customerFiles, reHostToImgbb, rehostedUrls, rehostingIds]);
 
   useEffect(() => {
     if (customer && !initialized) {
