@@ -50,7 +50,7 @@ export const nodeTypes: NodeTypeConfig[] = [
 
   // Mídia
   { type: "send_image", label: "Enviar Imagem", category: "midia", icon: Image, description: "Enviar foto ou imagem", color: "#10B981", defaultConfig: { file: "", caption: "" } },
-  { type: "send_audio", label: "Enviar Áudio", category: "midia", icon: Mic, description: "Enviar mensagem de áudio", color: "#F59E0B", defaultConfig: { file: "" } },
+  { type: "send_audio", label: "Enviar Áudio", category: "midia", icon: Mic, description: "Enviar mensagem de áudio", color: "#F59E0B", defaultConfig: { file: "", audioSource: "link" } },
   { type: "send_video", label: "Enviar Vídeo", category: "midia", icon: Video, description: "Enviar arquivo de vídeo", color: "#EF4444", defaultConfig: { file: "", caption: "" } },
   { type: "send_file", label: "Enviar Arquivo", category: "midia", icon: File, description: "Enviar documento", color: "#6366F1", defaultConfig: { file: "", caption: "" } },
   { type: "send_sticker", label: "Enviar Figurinha", category: "midia", icon: Sticker, description: "Enviar sticker", color: "#A855F7", defaultConfig: { file: "" } },

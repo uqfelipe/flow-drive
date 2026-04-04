@@ -231,8 +231,8 @@ export function NodeConfigPanel({ node, onClose, onUpdate, onDelete }: NodeConfi
           </div>
         )}
 
-        {/* ─── MEDIA NODES ─── */}
-        {(nt === "send_image" || nt === "send_video" || nt === "send_audio" || nt === "send_file" || nt === "send_sticker") && (
+        {/* ─── MEDIA NODES (exceto áudio) ─── */}
+        {(nt === "send_image" || nt === "send_video" || nt === "send_file" || nt === "send_sticker") && (
           <>
             <div className="space-y-1.5">
               <Label className="text-xs font-medium text-muted-foreground">URL do arquivo</Label>
@@ -245,6 +245,67 @@ export function NodeConfigPanel({ node, onClose, onUpdate, onDelete }: NodeConfi
               </div>
             )}
           </>
+        )}
+
+        {/* ─── SEND AUDIO ─── */}
+        {nt === "send_audio" && (
+          <div className="space-y-3">
+            <Tabs value={data.config?.audioSource || "link"} onValueChange={(v) => updateConfig({ audioSource: v })}>
+              <TabsList className="w-full grid grid-cols-3 h-8">
+                <TabsTrigger value="link" className="text-xs gap-1"><LinkIcon className="h-3 w-3" />Link</TabsTrigger>
+                <TabsTrigger value="upload" className="text-xs gap-1"><Upload className="h-3 w-3" />Upload</TabsTrigger>
+                <TabsTrigger value="recording" className="text-xs gap-1"><MicIcon className="h-3 w-3" />Gravar</TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="link" className="mt-3">
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-medium text-muted-foreground">URL do áudio</Label>
+                  <Input className="h-9 text-sm" placeholder="https://..." value={data.config?.file || ""} onChange={(e) => updateConfig({ file: e.target.value })} />
+                </div>
+              </TabsContent>
+
+              <TabsContent value="upload" className="mt-3">
+                <div className="space-y-2">
+                  {data.config?.file && data.config?.audioSource === "upload" && (
+                    <div className="flex items-center gap-2 p-2 rounded-md bg-muted/50 border border-border">
+                      <MicIcon className="h-4 w-4 text-primary shrink-0" />
+                      <span className="text-xs text-muted-foreground truncate flex-1">{data.config.file.split("/").pop()}</span>
+                    </div>
+                  )}
+                  <label className="flex flex-col items-center gap-2 p-4 rounded-lg border-2 border-dashed border-border hover:border-primary/50 cursor-pointer transition-colors">
+                    <Upload className="h-5 w-5 text-muted-foreground" />
+                    <span className="text-xs text-muted-foreground">Clique para selecionar um arquivo de áudio</span>
+                    <input
+                      type="file"
+                      accept="audio/*"
+                      className="hidden"
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0];
+                        if (!file) return;
+                        const fileName = `upload_${Date.now()}_${file.name}`;
+                        const { error } = await supabase.storage.from("audio-files").upload(fileName, file, { contentType: file.type });
+                        if (error) { toast.error("Erro ao fazer upload"); return; }
+                        const { data: urlData } = supabase.storage.from("audio-files").getPublicUrl(fileName);
+                        updateConfig({ file: urlData.publicUrl, audioSource: "upload" });
+                        toast.success("Áudio enviado com sucesso");
+                      }}
+                    />
+                  </label>
+                </div>
+              </TabsContent>
+
+              <TabsContent value="recording" className="mt-3">
+                {data.config?.file && data.config?.audioSource === "recording" && (
+                  <div className="flex items-center gap-2 p-2 rounded-md bg-muted/50 border border-border mb-3">
+                    <MicIcon className="h-4 w-4 text-primary shrink-0" />
+                    <span className="text-xs text-muted-foreground truncate flex-1">Gravação salva</span>
+                    <audio src={data.config.file} controls className="h-8 max-w-[160px]" />
+                  </div>
+                )}
+                <AudioRecorder onAudioReady={(url) => updateConfig({ file: url, audioSource: "recording" })} />
+              </TabsContent>
+            </Tabs>
+          </div>
         )}
 
         {/* ─── SEND LOCATION ─── */}
