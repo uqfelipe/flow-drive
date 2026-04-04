@@ -1195,7 +1195,7 @@ export default function Conversations() {
         )}>
           {!selectedChat ? (
             /* Empty state */
-            <div className="flex-1 flex flex-col items-center justify-center gap-6" style={{ backgroundImage: chatBgPattern }}>
+            <div className="flex-1 flex flex-col items-center justify-center gap-6" style={chatBgStyle}>
               <motion.div
                 initial={{ scale: 0.8, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
