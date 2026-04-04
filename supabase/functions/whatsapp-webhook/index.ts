@@ -931,7 +931,7 @@ Deno.serve(async (req) => {
           return false;
         }
         if (fromMe) return false;
-        if (!text && !mediaUrl) return false;
+        if (!text && !mediaUrl && !mediaType) return false;
         if (!phone) return false;
         return true;
       });
