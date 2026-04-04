@@ -114,6 +114,7 @@ export default function Customers() {
 
       <CustomerFormDialog open={formOpen} onOpenChange={setFormOpen} customer={editCustomer} />
       <CustomerDeleteDialog open={deleteOpen} onOpenChange={setDeleteOpen} customerId={deleteTarget?.id ?? null} customerName={deleteTarget?.name ?? ""} />
+      <CustomerFieldsManager open={fieldsOpen} onOpenChange={setFieldsOpen} />
     </AdminLayout>
   );
 }
