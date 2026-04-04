@@ -352,7 +352,7 @@ export default function CustomerEdit() {
                                     </TooltipContent>
                                   </Tooltip>
 
-                                  {isImageField && val ? (
+                                  {(isImageField || isImageUrl(val)) && val ? (
                                     <div className="relative group rounded-lg overflow-hidden border border-border bg-muted/30">
                                       <img src={val} alt={fd.field_label} className="w-full h-32 object-cover" loading="lazy" />
                                       <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
