@@ -296,10 +296,14 @@ export default function CustomerEdit() {
                       </TabsTrigger>
                       <TabsTrigger value="arquivos" className="gap-1.5">
                         <Paperclip className="h-3.5 w-3.5" /> Arquivos
-                        {customerFiles && customerFiles.length > 0 && (
-                          <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-[10px]">{customerFiles.length}</Badge>
-                        )}
-                      </TabsTrigger>
+                        {(() => {
+                          const cfImgCount = (fieldDefs || []).filter(fd => {
+                            const v = customFields[fd.field_key] || "";
+                            return v && (fd.field_type === "image" || isImageUrl(v));
+                          }).length;
+                          const total = (customerFiles?.length || 0) + cfImgCount;
+                          return total > 0 ? <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-[10px]">{total}</Badge> : null;
+                        })()}
                     </TabsList>
 
                     {/* Tab: Dados */}
