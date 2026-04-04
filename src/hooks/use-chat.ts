@@ -57,11 +57,16 @@ export function useWhatsAppChats() {
       const chats = chatData?.chats ?? [];
       const readStatuses = readStatusResult.data ?? [];
 
+      const oneDayAgo = Math.floor(Date.now() / 1000) - 86400 * 30; // 30 dias
+
       return chats
         .filter((c: any) => {
           const chatId = c.wa_chatid ?? "";
           if (chatId.startsWith("13135550002")) return false;
           if (ownNumber && chatId.startsWith(ownNumber)) return false;
+          // Filtrar conversas sem atividade recente (sem timestamp ou muito antigas)
+          const lastMsg = c.wa_lastMsgTimestamp ?? 0;
+          if (!lastMsg || lastMsg < oneDayAgo) return false;
           return true;
         })
         .map((c: any) => {
