@@ -205,14 +205,74 @@ export function NodeConfigPanel({ node, onClose, onUpdate, onDelete }: NodeConfi
           </div>
         )}
 
-        {/* ─── MEDIA NODES (exceto áudio) ─── */}
-        {(nt === "send_image" || nt === "send_video" || nt === "send_file" || nt === "send_sticker") && (
+        {/* ─── SEND IMAGE ─── */}
+        {nt === "send_image" && (
+          <div className="space-y-3">
+            <Tabs value={data.config?.imageSource || "link"} onValueChange={(v) => updateConfig({ imageSource: v })}>
+              <TabsList className="w-full grid grid-cols-2 h-8">
+                <TabsTrigger value="link" className="text-xs gap-1"><LinkIcon className="h-3 w-3" />Link</TabsTrigger>
+                <TabsTrigger value="upload" className="text-xs gap-1"><Upload className="h-3 w-3" />Upload</TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="link" className="mt-3">
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-medium text-muted-foreground">URL da imagem</Label>
+                  <Input className="h-9 text-sm" placeholder="https://..." value={data.config?.file || ""} onChange={(e) => updateConfig({ file: e.target.value })} />
+                </div>
+              </TabsContent>
+
+              <TabsContent value="upload" className="mt-3">
+                <div className="space-y-2">
+                  {data.config?.file && data.config?.imageSource === "upload" && (
+                    <div className="flex items-center gap-2 p-2 rounded-md bg-muted/50 border border-border">
+                      <ImageIcon className="h-4 w-4 text-primary shrink-0" />
+                      <span className="text-xs text-muted-foreground truncate flex-1">{data.config.file.split("/").pop()}</span>
+                    </div>
+                  )}
+                  <label className="flex flex-col items-center gap-2 p-4 rounded-lg border-2 border-dashed border-border hover:border-primary/50 cursor-pointer transition-colors">
+                    <Upload className="h-5 w-5 text-muted-foreground" />
+                    <span className="text-xs text-muted-foreground">Clique para selecionar uma imagem</span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0];
+                        if (!file) return;
+                        const fileName = `img_${Date.now()}_${file.name}`;
+                        const { error } = await supabase.storage.from("audio-files").upload(fileName, file, { contentType: file.type });
+                        if (error) { toast.error("Erro ao fazer upload"); return; }
+                        const { data: urlData } = supabase.storage.from("audio-files").getPublicUrl(fileName);
+                        updateConfig({ file: urlData.publicUrl, imageSource: "upload" });
+                        toast.success("Imagem enviada com sucesso");
+                      }}
+                    />
+                  </label>
+                </div>
+              </TabsContent>
+            </Tabs>
+
+            {data.config?.file && (
+              <div className="rounded-lg overflow-hidden border border-border">
+                <img src={data.config.file} alt="Preview" className="w-full max-h-40 object-contain bg-muted/30" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+              </div>
+            )}
+
+            <div className="space-y-1.5">
+              <Label className="text-xs font-medium text-muted-foreground">Legenda</Label>
+              <Input className="h-9 text-sm" placeholder="Legenda (opcional)" value={data.config?.caption || ""} onChange={(e) => updateConfig({ caption: e.target.value })} />
+            </div>
+          </div>
+        )}
+
+        {/* ─── MEDIA NODES (exceto áudio e imagem) ─── */}
+        {(nt === "send_video" || nt === "send_file" || nt === "send_sticker") && (
           <>
             <div className="space-y-1.5">
               <Label className="text-xs font-medium text-muted-foreground">URL do arquivo</Label>
               <Input className="h-9 text-sm" placeholder="https://..." value={data.config?.file || ""} onChange={(e) => updateConfig({ file: e.target.value })} />
             </div>
-            {(nt === "send_image" || nt === "send_video" || nt === "send_file") && (
+            {(nt === "send_video" || nt === "send_file") && (
               <div className="space-y-1.5">
                 <Label className="text-xs font-medium text-muted-foreground">Legenda</Label>
                 <Input className="h-9 text-sm" placeholder="Legenda (opcional)" value={data.config?.caption || ""} onChange={(e) => updateConfig({ caption: e.target.value })} />
