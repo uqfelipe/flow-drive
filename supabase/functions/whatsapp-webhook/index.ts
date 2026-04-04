@@ -92,6 +92,50 @@ async function sendWhatsAppPresence(inst: Inst, phone: string, presence: string,
   await waFetch(inst, "/message/presence", { number: phone, presence, ...(delay ? { delay } : {}) });
 }
 
+// ── imgbb re-host helper ──────────────────────────────────────────────
+async function uploadToImgbbFromUrl(imageUrl: string): Promise<string | null> {
+  const IMGBB_KEY = Deno.env.get("IMGBB_API_KEY");
+  if (!IMGBB_KEY) { console.error("[IMGBB] No API key"); return null; }
+  try {
+    const imgRes = await fetch(imageUrl);
+    if (!imgRes.ok) { console.error(`[IMGBB] fetch failed ${imgRes.status}`); return null; }
+    const buf = new Uint8Array(await imgRes.arrayBuffer());
+    const b64 = btoa(String.fromCharCode(...buf));
+    const form = new FormData();
+    form.append("image", b64);
+    const res = await fetch(`https://api.imgbb.com/1/upload?key=${IMGBB_KEY}`, { method: "POST", body: form });
+    const json = await res.json();
+    if (json.success) {
+      console.log(`[IMGBB] Uploaded: ${json.data.url}`);
+      return json.data.url as string;
+    }
+    console.error(`[IMGBB] Upload failed:`, JSON.stringify(json));
+    return null;
+  } catch (e) {
+    console.error(`[IMGBB] Error:`, e);
+    return null;
+  }
+}
+
+async function downloadAndRehost(inst: Inst, messageId: string): Promise<string | null> {
+  try {
+    const res = await fetch(`${inst.server_url}/message/download`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", token: inst.instance_token },
+      body: JSON.stringify({ id: messageId, return_link: true }),
+    });
+    if (!res.ok) { console.error(`[DOWNLOAD] failed ${res.status}`); return null; }
+    const data = await res.json();
+    const fileUrl = data?.fileURL || data?.fileUrl || data?.url || data?.file || "";
+    if (!fileUrl) { console.error("[DOWNLOAD] No fileURL in response"); return null; }
+    console.log(`[DOWNLOAD] Got temp URL, uploading to imgbb...`);
+    return await uploadToImgbbFromUrl(fileUrl);
+  } catch (e) {
+    console.error(`[DOWNLOAD] Error:`, e);
+    return null;
+  }
+}
+
 // ── Profile picture helper ────────────────────────────────────────────
 async function fetchProfilePicUrl(inst: Inst, phone: string): Promise<string | null> {
   try {
