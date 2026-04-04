@@ -346,10 +346,44 @@ async function processFlow(
 
     // ─── Menu list ───
     if (nt === "menu_list") {
-      const sections = (cfg.sections || []) as any[];
+      let sections = (cfg.sections || []) as any[];
+
+      // ── Dynamic vehicle menu: fetch available vehicles from DB ──
+      if (cfg.dynamic === "vehicles") {
+        try {
+          const { data: vehicles, error: vErr } = await adminClient
+            .from("vehicles")
+            .select("id, name, brand, model, year, daily_rate, category, status")
+            .eq("status", "available")
+            .order("name");
+          if (vErr) throw vErr;
+          if (vehicles && vehicles.length > 0) {
+            // Group vehicles by category
+            const grouped: Record<string, any[]> = {};
+            for (const v of vehicles) {
+              const cat = (v.category || "outros").charAt(0).toUpperCase() + (v.category || "outros").slice(1);
+              if (!grouped[cat]) grouped[cat] = [];
+              grouped[cat].push(v);
+            }
+            sections = Object.entries(grouped).map(([cat, items]) => ({
+              title: cat,
+              items: items.map((v: any) => ({
+                title: `${v.name}`,
+                description: `${v.brand} ${v.model} ${v.year} • R$ ${Number(v.daily_rate).toFixed(0)}/dia`,
+                id: v.id,
+              })),
+            }));
+            console.log(`[FLOW] Dynamic vehicles: ${vehicles.length} available, ${Object.keys(grouped).length} categories`);
+          } else {
+            sections = [{ title: "Veículos", items: [{ title: "Sem veículos disponíveis", description: "Nenhum veículo disponível no momento", id: "none" }] }];
+          }
+        } catch (dbErr) {
+          console.error(`[FLOW] Failed to fetch vehicles:`, dbErr);
+        }
+      }
+
       if (sections.length > 0) {
         try {
-          // Convert items → rows with rowId for WhatsApi API
           const apiSections = sections.map((s: any) => ({
             title: s.title,
             rows: (s.items || s.rows || []).map((it: any, i: number) => ({
@@ -364,11 +398,16 @@ async function processFlow(
           await sendWhatsAppMenu(inst, phone, "list", menuText, { sections: apiSections, listButton });
         } catch (menuErr) {
           console.error(`[FLOW] menu_list send failed:`, menuErr);
-          // Fallback to text
           const fallback = sections.flatMap((s: any) => [s.title + ":", ...(s.items || s.rows || []).map((it: any, i: number) => `  ${i + 1}. ${it.title}`)]).join("\n");
           try { await sendWhatsAppText(inst, phone, replaceVariables(`${cfg.message || "Escolha:"}\n\n${fallback}`, vars)); } catch (_) {}
         }
       }
+
+      // Store dynamic sections in session vars so handleMenuSelection can match
+      if (cfg.dynamic === "vehicles") {
+        vars["__dynamic_sections"] = JSON.stringify(sections);
+      }
+
       await adminClient.from("chat_sessions").update({ current_node_id: nodeId, variables: vars, status: "waiting", updated_at: new Date().toISOString() }).eq("id", sessionId);
       return { nextNodeId: nodeId, variables: vars, status: "waiting" };
     }
