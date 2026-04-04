@@ -622,8 +622,8 @@ async function processFlow(
           try { await sendWhatsAppText(inst, phone, replaceVariables(`${question}\n\n${fallback}`, vars)); } catch (_) {}
         }
       }
-      nodeId = findNextNodeId(flowEdges, nodeId);
-      continue;
+      await adminClient.from("chat_sessions").update({ current_node_id: nodeId, variables: vars, status: "waiting", updated_at: new Date().toISOString() }).eq("id", sessionId);
+      return { nextNodeId: nodeId, variables: vars, status: "waiting" };
     }
 
     // ─── Request payment ───
@@ -790,6 +790,24 @@ function handleMenuSelection(
     return { nextNodeId: nextId, selectedOption: userInput };
   }
 
+  // Poll — match by option text or number
+  if (nt === "poll") {
+    const options = (node.data.config?.options || []) as string[];
+    const num = parseInt(userInput.trim());
+    if (!isNaN(num) && num >= 1 && num <= options.length) {
+      const idx = num - 1;
+      const nextId = findNextNodeId(edges, node.id, `option-${idx}`) || findNextNodeId(edges, node.id);
+      return { nextNodeId: nextId, selectedOption: options[idx] };
+    }
+    const lower = userInput.trim().toLowerCase();
+    const matchIdx = options.findIndex(o => o.toLowerCase() === lower);
+    if (matchIdx >= 0) {
+      const nextId = findNextNodeId(edges, node.id, `option-${matchIdx}`) || findNextNodeId(edges, node.id);
+      return { nextNodeId: nextId, selectedOption: options[matchIdx] };
+    }
+    return { nextNodeId: null, selectedOption: null };
+  }
+
   return { nextNodeId: null, selectedOption: null };
 }
 
@@ -822,6 +840,7 @@ function extractIncomingMessages(body: any): IncomingWebhookMessage[] {
       msg.conversation ??
       msg.message?.conversation ??
       msg.message?.extendedTextMessage?.text ??
+      (typeof msg.content === "object" && msg.content !== null ? msg.content.selectedDisplayText : undefined) ??
       ""
     ).toString().trim();
     const fromMe = Boolean(msg.fromMe ?? msg.key?.fromMe ?? false);
@@ -1244,7 +1263,7 @@ async function processIncomingMessage(phone: string, text: string, mediaUrl?: st
           const nt = currentNode.data.nodeType;
           
           // Handle menu/list/carousel/request_location selection
-          if (nt === "menu_text" || nt === "menu_buttons" || nt === "menu_list" || nt === "menu_carousel" || nt === "request_location") {
+          if (nt === "menu_text" || nt === "menu_buttons" || nt === "menu_list" || nt === "menu_carousel" || nt === "request_location" || nt === "poll") {
             // For dynamic menu_list, inject cached sections from session variables
             if (nt === "menu_list" && currentNode.data.config?.dynamic === "vehicles" && variables["__dynamic_sections"]) {
               try {
