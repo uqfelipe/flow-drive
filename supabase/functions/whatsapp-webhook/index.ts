@@ -166,7 +166,8 @@ async function processFlow(
     if (currentNode) {
       const nt = currentNode.data.nodeType;
       if (nt.startsWith("capture_") || nt === "wait") {
-        const varName = currentNode.data.config?.variable || nt.replace("capture_", "");
+        let varName = currentNode.data.config?.variable || nt.replace("capture_", "");
+        varName = varName.replace(/^\{\{/, "").replace(/\}\}$/, "").trim();
         vars[varName] = incomingText;
         console.log(`[FLOW] Captured ${varName} = "${incomingText}"`);
         
