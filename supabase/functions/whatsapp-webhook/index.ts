@@ -191,9 +191,37 @@ async function processFlow(
       if (nt.startsWith("capture_") || nt === "wait") {
         let varName = currentNode.data.config?.variable || nt.replace("capture_", "");
         varName = varName.replace(/^\{\{/, "").replace(/\}\}$/, "").trim();
-        vars[varName] = incomingText;
-        console.log(`[FLOW] Captured ${varName} = "${incomingText}"`);
         
+        // Media capture nodes: save file URL to customer_files and variable
+        const isMediaCapture = nt === "capture_image" || nt === "capture_audio" || nt === "capture_file";
+        if (isMediaCapture && incomingMediaUrl) {
+          const fileType = nt === "capture_image" ? "image" : nt === "capture_audio" ? "audio" : "file";
+          vars[varName] = incomingMediaUrl;
+          console.log(`[FLOW] Captured media ${varName} = "${incomingMediaUrl}" (${fileType})`);
+          
+          // Save to customer_files table
+          try {
+            await adminClient.from("customer_files").insert({
+              customer_id: customerId,
+              file_type: fileType,
+              file_url: incomingMediaUrl,
+              file_name: incomingMediaFileName || "",
+              variable_name: varName,
+            });
+            console.log(`[FLOW] Saved file to customer_files for ${customerId}`);
+          } catch (e) {
+            console.log(`[FLOW] Error saving customer_file: ${e}`);
+          }
+        } else if (isMediaCapture && !incomingMediaUrl) {
+          // User sent text instead of media — ask again
+          const promptMsg = currentNode.data.config?.message || "Por favor, envie um arquivo válido.";
+          try { await sendWhatsAppText(inst, phone, "❌ " + replaceVariables(promptMsg, vars)); } catch (_) {}
+          await adminClient.from("chat_sessions").update({ current_node_id: nodeId, variables: vars, status: "waiting", updated_at: new Date().toISOString() }).eq("id", sessionId);
+          return { nextNodeId: nodeId, variables: vars, status: "waiting" };
+        } else {
+          vars[varName] = incomingText;
+          console.log(`[FLOW] Captured ${varName} = "${incomingText}"`);
+        }
         // If this is a name variable, save to customers table
         if (NAME_VARS.includes(varName) && isValidName(incomingText)) {
           console.log(`[FLOW] Saving customer name: "${incomingText}"`);
