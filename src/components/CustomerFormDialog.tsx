@@ -106,7 +106,7 @@ export function CustomerFormDialog({ open, onOpenChange, customer }: Props) {
         await updateMutation.mutateAsync({ id: customer!.id, name, phone, cpf: "", status, notes: notes || null, photo, custom_fields: customFields });
         toast({ title: "Cliente atualizado com sucesso!" });
       } else {
-        await createMutation.mutateAsync({ name, phone, cpf, status, photo, custom_fields: customFields });
+        await createMutation.mutateAsync({ name, phone, cpf: "", status, photo, custom_fields: customFields });
         toast({ title: "Cliente criado com sucesso!" });
       }
       onOpenChange(false);
