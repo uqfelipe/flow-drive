@@ -1,5 +1,5 @@
 import { AdminLayout } from "@/components/AdminLayout";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -7,13 +7,15 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useUpdateCustomer, useCustomers, type CustomerRow } from "@/hooks/use-customers";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { useUpdateCustomer, useCustomers } from "@/hooks/use-customers";
 import { useCustomerFieldDefinitions } from "@/hooks/use-customer-fields";
 import { useRentals } from "@/hooks/use-rentals";
 import { useToast } from "@/hooks/use-toast";
 import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, Upload, X, ImageIcon, Save, Car, Calendar, DollarSign } from "lucide-react";
+import { ArrowLeft, Upload, X, ImageIcon, Save, Calendar, DollarSign, Clock, FileText, User, Car } from "lucide-react";
 import { format } from "date-fns";
 
 const IMGBB_API_KEY = "218e4f96aa83bbfd4e78abb8d60bad52";
@@ -61,7 +63,6 @@ export default function CustomerEdit() {
     }
   }, [customer, initialized]);
 
-  // Ctrl+V paste
   useEffect(() => {
     const handlePaste = async (e: ClipboardEvent) => {
       const items = e.clipboardData?.items;
@@ -151,167 +152,211 @@ export default function CustomerEdit() {
 
   return (
     <AdminLayout title="Editar Cliente" subtitle={customer.name}>
-      <div className="p-6 animate-fade-in">
-        <Button variant="ghost" size="sm" className="mb-4" onClick={() => navigate("/customers")}>
-          <ArrowLeft className="h-4 w-4 mr-1" /> Voltar para Clientes
+      <div className="p-4 md:p-6 animate-fade-in">
+        <Button variant="ghost" size="sm" className="mb-3" onClick={() => navigate("/customers")}>
+          <ArrowLeft className="h-4 w-4 mr-1" /> Voltar
         </Button>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Main form */}
-          <div className="lg:col-span-2">
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">Informações do Cliente</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <form onSubmit={handleSubmit} className="space-y-5">
-                  {/* Photo */}
-                  <div className="flex items-center gap-4">
-                    <div className="relative h-20 w-20 rounded-full bg-muted flex items-center justify-center overflow-hidden border-2 border-border shrink-0">
-                      {photo ? (
-                        <img src={photo} alt="Foto" className="h-full w-full object-cover" />
-                      ) : (
-                        <ImageIcon className="h-8 w-8 text-muted-foreground" />
-                      )}
-                    </div>
-                    <div className="flex flex-col gap-2">
-                      <div className="flex gap-2">
-                        <Button type="button" size="sm" variant="outline" disabled={uploading} onClick={() => fileRef.current?.click()}>
-                          <Upload className="h-3.5 w-3.5 mr-1" />{uploading ? "Enviando..." : "Upload"}
-                        </Button>
-                        {photo && (
-                          <Button type="button" size="sm" variant="ghost" onClick={() => setPhoto(null)}>
-                            <X className="h-3.5 w-3.5 mr-1" />Remover
-                          </Button>
-                        )}
-                      </div>
-                      <p className="text-[11px] text-muted-foreground">Ou cole com Ctrl+V</p>
-                    </div>
-                    <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
+        <form onSubmit={handleSubmit}>
+          {/* Compact Header */}
+          <Card className="mb-4">
+            <CardContent className="py-4">
+              <div className="flex items-center gap-4">
+                {/* Photo */}
+                <div className="relative group shrink-0">
+                  <div className="h-14 w-14 rounded-full bg-muted flex items-center justify-center overflow-hidden border-2 border-border">
+                    {photo ? (
+                      <img src={photo} alt="Foto" className="h-full w-full object-cover" />
+                    ) : (
+                      <ImageIcon className="h-6 w-6 text-muted-foreground" />
+                    )}
                   </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label>Nome *</Label>
-                      <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Nome completo" />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Telefone *</Label>
-                      <Input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+55 11 99999-9999" />
-                    </div>
+                  <div className="absolute inset-0 rounded-full bg-background/80 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1">
+                    <button type="button" className="p-1 hover:text-primary transition-colors" onClick={() => fileRef.current?.click()} disabled={uploading}>
+                      <Upload className="h-3.5 w-3.5" />
+                    </button>
+                    {photo && (
+                      <button type="button" className="p-1 hover:text-destructive transition-colors" onClick={() => setPhoto(null)}>
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+                    )}
                   </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label>Status</Label>
-                      <Select value={status} onValueChange={setStatus}>
-                        <SelectTrigger><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="active">Ativo</SelectItem>
-                          <SelectItem value="inactive">Inativo</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label>Observações</Label>
-                    <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Notas sobre o cliente..." rows={4} />
-                  </div>
-
-                  {/* Custom fields */}
-                  {fieldDefs && fieldDefs.length > 0 && (
-                    <div className="space-y-4 border-t border-border pt-5">
-                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Campos Personalizados</p>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        {fieldDefs.map((fd) => (
-                          <div key={fd.id} className="space-y-1.5">
-                            <Label className="text-xs">
-                              {fd.field_label}
-                              <span className="text-muted-foreground ml-1 font-normal">{`{{${fd.field_key}}}`}</span>
-                            </Label>
-                            <Input
-                              type={fd.field_type === "email" ? "email" : fd.field_type === "phone" ? "tel" : "text"}
-                              value={customFields[fd.field_key] || ""}
-                              onChange={(e) => setCustomFields(prev => ({ ...prev, [fd.field_key]: e.target.value }))}
-                              placeholder={fd.field_label}
-                            />
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  <div className="flex justify-end gap-2 pt-3 border-t border-border">
-                    <Button type="button" variant="outline" onClick={() => navigate("/customers")}>Cancelar</Button>
-                    <Button type="submit" disabled={updateMutation.isPending}>
-                      <Save className="h-4 w-4 mr-1" />
-                      {updateMutation.isPending ? "Salvando..." : "Salvar Alterações"}
-                    </Button>
-                  </div>
-                </form>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Sidebar — rental history */}
-          <div className="space-y-4">
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm flex items-center gap-2">
-                  <Car className="h-4 w-4" /> Histórico de Locações
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                {customerRentals.length === 0 ? (
-                  <p className="text-xs text-muted-foreground text-center py-6">Nenhuma locação encontrada</p>
-                ) : (
-                  <div className="space-y-3">
-                    {customerRentals.map((r) => (
-                      <div key={r.id} className="p-3 rounded-lg border border-border bg-muted/30 space-y-2">
-                        <div className="flex items-center justify-between">
-                          <Badge variant="outline" className={`text-[10px] ${statusColor(r.rental_status)}`}>
-                            {statusLabel(r.rental_status)}
-                          </Badge>
-                          <span className="text-[10px] text-muted-foreground">
-                            {format(new Date(r.created_at), "dd/MM/yyyy")}
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                          <Calendar className="h-3 w-3" />
-                          <span>{format(new Date(r.pickup_date), "dd/MM")} → {format(new Date(r.return_date), "dd/MM")}</span>
-                        </div>
-                        <div className="flex items-center gap-1 text-xs font-medium">
-                          <DollarSign className="h-3 w-3" />
-                          R$ {Number(r.total_value).toFixed(2)}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent className="pt-5">
-                <div className="space-y-2 text-xs text-muted-foreground">
-                  <div className="flex justify-between">
-                    <span>Criado em</span>
-                    <span>{format(new Date(customer.created_at), "dd/MM/yyyy HH:mm")}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Atualizado em</span>
-                    <span>{format(new Date(customer.updated_at), "dd/MM/yyyy HH:mm")}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Total de locações</span>
-                    <span className="font-medium text-foreground">{customerRentals.length}</span>
-                  </div>
+                  <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
                 </div>
-              </CardContent>
-            </Card>
+
+                {/* Info */}
+                <div className="flex-1 min-w-0">
+                  <h2 className="text-lg font-semibold text-foreground truncate">{name || customer.name}</h2>
+                  <p className="text-sm text-muted-foreground truncate">{phone || customer.phone}</p>
+                </div>
+
+                {/* Status badge */}
+                <Badge variant="outline" className={`shrink-0 ${status === "active" ? "bg-success/10 text-success border-success/20" : "bg-muted text-muted-foreground"}`}>
+                  {status === "active" ? "Ativo" : "Inativo"}
+                </Badge>
+
+                {/* Actions */}
+                <div className="flex gap-2 shrink-0">
+                  <Button type="button" variant="outline" size="sm" onClick={() => navigate("/customers")}>Cancelar</Button>
+                  <Button type="submit" size="sm" disabled={updateMutation.isPending}>
+                    <Save className="h-3.5 w-3.5 mr-1" />
+                    {updateMutation.isPending ? "Salvando..." : "Salvar"}
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Main content grid */}
+          <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
+            {/* Tabs */}
+            <div className="lg:col-span-3">
+              <Card>
+                <CardContent className="pt-5">
+                  <Tabs defaultValue="dados">
+                    <TabsList className="mb-4">
+                      <TabsTrigger value="dados" className="gap-1.5">
+                        <User className="h-3.5 w-3.5" /> Dados
+                      </TabsTrigger>
+                      {fieldDefs && fieldDefs.length > 0 && (
+                        <TabsTrigger value="campos" className="gap-1.5">
+                          <FileText className="h-3.5 w-3.5" /> Campos Personalizados
+                        </TabsTrigger>
+                      )}
+                      <TabsTrigger value="locacoes" className="gap-1.5">
+                        <Car className="h-3.5 w-3.5" /> Locações
+                        {customerRentals.length > 0 && (
+                          <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-[10px]">{customerRentals.length}</Badge>
+                        )}
+                      </TabsTrigger>
+                    </TabsList>
+
+                    {/* Tab: Dados */}
+                    <TabsContent value="dados" className="space-y-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        <div className="space-y-1.5">
+                          <Label className="text-xs">Nome *</Label>
+                          <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Nome completo" />
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label className="text-xs">Telefone *</Label>
+                          <Input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+55 11 99999-9999" />
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label className="text-xs">Status</Label>
+                          <Select value={status} onValueChange={setStatus}>
+                            <SelectTrigger><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="active">Ativo</SelectItem>
+                              <SelectItem value="inactive">Inativo</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs">Observações</Label>
+                        <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Notas sobre o cliente..." rows={2} />
+                      </div>
+                    </TabsContent>
+
+                    {/* Tab: Campos Personalizados */}
+                    {fieldDefs && fieldDefs.length > 0 && (
+                      <TabsContent value="campos">
+                        <TooltipProvider>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            {fieldDefs.map((fd) => (
+                              <div key={fd.id} className="space-y-1.5">
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Label className="text-xs cursor-help">{fd.field_label}</Label>
+                                  </TooltipTrigger>
+                                  <TooltipContent side="top">
+                                    <p className="text-xs font-mono">{`{{${fd.field_key}}}`}</p>
+                                  </TooltipContent>
+                                </Tooltip>
+                                <Input
+                                  type={fd.field_type === "email" ? "email" : fd.field_type === "phone" ? "tel" : "text"}
+                                  value={customFields[fd.field_key] || ""}
+                                  onChange={(e) => setCustomFields(prev => ({ ...prev, [fd.field_key]: e.target.value }))}
+                                  placeholder={fd.field_label}
+                                />
+                              </div>
+                            ))}
+                          </div>
+                        </TooltipProvider>
+                      </TabsContent>
+                    )}
+
+                    {/* Tab: Locações */}
+                    <TabsContent value="locacoes">
+                      {customerRentals.length === 0 ? (
+                        <div className="text-center py-10 text-muted-foreground">
+                          <Car className="h-8 w-8 mx-auto mb-2 opacity-40" />
+                          <p className="text-sm">Nenhuma locação encontrada</p>
+                        </div>
+                      ) : (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          {customerRentals.map((r) => (
+                            <div key={r.id} className="p-3 rounded-lg border border-border bg-muted/30 space-y-2">
+                              <div className="flex items-center justify-between">
+                                <Badge variant="outline" className={`text-[10px] ${statusColor(r.rental_status)}`}>
+                                  {statusLabel(r.rental_status)}
+                                </Badge>
+                                <span className="text-[10px] text-muted-foreground">
+                                  {format(new Date(r.created_at), "dd/MM/yyyy")}
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                <Calendar className="h-3 w-3" />
+                                <span>{format(new Date(r.pickup_date), "dd/MM")} → {format(new Date(r.return_date), "dd/MM")}</span>
+                              </div>
+                              <div className="flex items-center gap-1 text-xs font-medium">
+                                <DollarSign className="h-3 w-3" />
+                                R$ {Number(r.total_value).toFixed(2)}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </TabsContent>
+                  </Tabs>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Sidebar — metadata only */}
+            <div className="lg:col-span-1">
+              <Card>
+                <CardContent className="pt-5">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Informações</p>
+                  <div className="space-y-3 text-xs">
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                      <Clock className="h-3.5 w-3.5 shrink-0" />
+                      <div>
+                        <p className="text-foreground font-medium">Criado em</p>
+                        <p>{format(new Date(customer.created_at), "dd/MM/yyyy HH:mm")}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                      <Clock className="h-3.5 w-3.5 shrink-0" />
+                      <div>
+                        <p className="text-foreground font-medium">Atualizado em</p>
+                        <p>{format(new Date(customer.updated_at), "dd/MM/yyyy HH:mm")}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                      <Car className="h-3.5 w-3.5 shrink-0" />
+                      <div>
+                        <p className="text-foreground font-medium">Total de locações</p>
+                        <p className="text-foreground">{customerRentals.length}</p>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
           </div>
-        </div>
+        </form>
       </div>
     </AdminLayout>
   );
