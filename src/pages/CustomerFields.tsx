@@ -16,6 +16,9 @@ const typeLabels: Record<string, string> = {
   email: "E-mail",
   phone: "Telefone",
   number: "Número",
+  image: "Imagem",
+  audio: "Áudio",
+  file: "Arquivo",
 };
 
 const typeBadgeColors: Record<string, string> = {
@@ -23,6 +26,9 @@ const typeBadgeColors: Record<string, string> = {
   email: "bg-amber-500/10 text-amber-400 border-amber-500/20",
   phone: "bg-green-500/10 text-green-400 border-green-500/20",
   number: "bg-purple-500/10 text-purple-400 border-purple-500/20",
+  image: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
+  audio: "bg-orange-500/10 text-orange-400 border-orange-500/20",
+  file: "bg-indigo-500/10 text-indigo-400 border-indigo-500/20",
 };
 
 export default function CustomerFields() {
@@ -167,6 +173,9 @@ export default function CustomerFields() {
                       <SelectItem value="email">E-mail</SelectItem>
                       <SelectItem value="phone">Telefone</SelectItem>
                       <SelectItem value="number">Número</SelectItem>
+                      <SelectItem value="image">Imagem</SelectItem>
+                      <SelectItem value="audio">Áudio</SelectItem>
+                      <SelectItem value="file">Arquivo</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -183,10 +192,13 @@ export default function CustomerFields() {
                   <Lightbulb className="h-4 w-4 text-amber-400 mt-0.5 shrink-0" />
                   <div>
                     <p className="text-xs font-medium mb-1">Como usar</p>
-                    <p className="text-[11px] text-muted-foreground leading-relaxed">
-                      Use o nó <code className="bg-muted px-1 rounded text-[10px]">capture_text</code> no
-                      Construtor de Fluxos para capturar dados do cliente automaticamente.
-                    </p>
+                     <p className="text-[11px] text-muted-foreground leading-relaxed">
+                       Use os nós <code className="bg-muted px-1 rounded text-[10px]">capture_text</code>,{" "}
+                       <code className="bg-muted px-1 rounded text-[10px]">capture_image</code>,{" "}
+                       <code className="bg-muted px-1 rounded text-[10px]">capture_audio</code> ou{" "}
+                       <code className="bg-muted px-1 rounded text-[10px]">capture_file</code> no
+                       Construtor de Fluxos para capturar dados do cliente automaticamente.
+                     </p>
                   </div>
                 </div>
                 <div className="flex items-start gap-2">
