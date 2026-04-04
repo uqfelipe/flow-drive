@@ -1,0 +1,2 @@
+ALTER TABLE public.customers ALTER COLUMN cpf SET DEFAULT '';
+ALTER TABLE public.customers ALTER COLUMN cpf DROP NOT NULL;

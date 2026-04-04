@@ -190,7 +190,7 @@ export type Database = {
       }
       customers: {
         Row: {
-          cpf: string
+          cpf: string | null
           created_at: string
           custom_fields: Json | null
           id: string
@@ -203,7 +203,7 @@ export type Database = {
           welcomed: boolean
         }
         Insert: {
-          cpf: string
+          cpf?: string | null
           created_at?: string
           custom_fields?: Json | null
           id?: string
@@ -216,7 +216,7 @@ export type Database = {
           welcomed?: boolean
         }
         Update: {
-          cpf?: string
+          cpf?: string | null
           created_at?: string
           custom_fields?: Json | null
           id?: string
