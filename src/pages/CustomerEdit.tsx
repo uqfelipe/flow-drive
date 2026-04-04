@@ -513,8 +513,6 @@ export default function CustomerEdit() {
     </AdminLayout>
   );
 }
-
-                            return (
                               <div key={f.id} className="rounded-lg border border-border bg-muted/30 overflow-hidden">
                                 {isImage ? (
                                   <a href={f.file_url} target="_blank" rel="noopener noreferrer" className="block">
