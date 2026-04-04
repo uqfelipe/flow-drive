@@ -104,7 +104,14 @@ export default function SettingsPage() {
                 <p className="text-sm font-medium">Ativar boas-vindas</p>
                 <p className="text-[11px] text-muted-foreground">Enviar mensagem automática no primeiro contato</p>
               </div>
-              <Switch checked={welcomeForm.welcome_enabled === "true"} onCheckedChange={(v) => setWelcomeForm(f => ({ ...f, welcome_enabled: v ? "true" : "false" }))} />
+              <Switch checked={welcomeForm.welcome_enabled === "true"} onCheckedChange={async (v) => {
+                const newVal = v ? "true" : "false";
+                setWelcomeForm(f => ({ ...f, welcome_enabled: newVal }));
+                try {
+                  await updateSetting.mutateAsync({ key: "welcome_enabled", value: newVal });
+                  toast.success(v ? "Boas-vindas ativada!" : "Boas-vindas desativada!");
+                } catch { toast.error("Erro ao salvar"); }
+              }} />
             </div>
             {welcomeForm.welcome_enabled === "true" && (
               <>
@@ -135,7 +142,6 @@ export default function SettingsPage() {
                 <Button size="sm" onClick={async () => {
                   try {
                     await Promise.all([
-                      updateSetting.mutateAsync({ key: "welcome_enabled", value: welcomeForm.welcome_enabled }),
                       updateSetting.mutateAsync({ key: "welcome_type", value: welcomeForm.welcome_type }),
                       updateSetting.mutateAsync({ key: "welcome_text", value: welcomeForm.welcome_text }),
                       updateSetting.mutateAsync({ key: "welcome_audio_url", value: welcomeForm.welcome_audio_url }),
