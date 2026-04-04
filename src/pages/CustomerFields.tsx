@@ -173,6 +173,9 @@ export default function CustomerFields() {
                       <SelectItem value="email">E-mail</SelectItem>
                       <SelectItem value="phone">Telefone</SelectItem>
                       <SelectItem value="number">Número</SelectItem>
+                      <SelectItem value="image">Imagem</SelectItem>
+                      <SelectItem value="audio">Áudio</SelectItem>
+                      <SelectItem value="file">Arquivo</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
