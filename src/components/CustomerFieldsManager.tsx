@@ -90,6 +90,7 @@ export function CustomerFieldsManager({ open, onOpenChange }: Props) {
                 <SelectItem value="email">E-mail</SelectItem>
                 <SelectItem value="phone">Telefone</SelectItem>
                 <SelectItem value="number">Número</SelectItem>
+                <SelectItem value="location">Localização</SelectItem>
               </SelectContent>
             </Select>
           </div>

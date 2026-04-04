@@ -15,7 +15,7 @@ import { useRentals } from "@/hooks/use-rentals";
 import { useToast } from "@/hooks/use-toast";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, Upload, X, ImageIcon, Save, Calendar, DollarSign, Clock, FileText, User, Car, Paperclip, Image, Mic, File, Download, Loader2, Eye } from "lucide-react";
+import { ArrowLeft, Upload, X, ImageIcon, Save, Calendar, DollarSign, Clock, FileText, User, Car, Paperclip, Image, Mic, File, Download, Loader2, Eye, MapPin } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
@@ -344,6 +344,7 @@ export default function CustomerEdit() {
                               const isImageField = fd.field_type === "image";
                               const isAudioField = fd.field_type === "audio";
                               const isFileField = fd.field_type === "file";
+                              const isLocationField = fd.field_type === "location";
 
                               return (
                                 <div key={fd.id} className="space-y-1.5">
@@ -378,6 +379,16 @@ export default function CustomerEdit() {
                                     <a href={val} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 p-2 rounded-lg border border-border bg-muted/30 hover:bg-muted/50 transition-colors text-xs text-primary">
                                       <Download className="h-4 w-4" />
                                       <span className="truncate">{fd.field_label}</span>
+                                    </a>
+                                  ) : isLocationField && val ? (
+                                    <a
+                                      href={`https://www.google.com/maps?q=${encodeURIComponent(val)}`}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="flex items-center gap-2 p-2 rounded-lg border border-border bg-muted/30 hover:bg-muted/50 transition-colors text-xs text-primary"
+                                    >
+                                      <MapPin className="h-4 w-4" />
+                                      <span className="truncate">{val}</span>
                                     </a>
                                   ) : (
                                     <Input

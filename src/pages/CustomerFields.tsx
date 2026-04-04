@@ -19,6 +19,7 @@ const typeLabels: Record<string, string> = {
   image: "Imagem",
   audio: "Áudio",
   file: "Arquivo",
+  location: "Localização",
 };
 
 const typeBadgeColors: Record<string, string> = {
@@ -29,6 +30,7 @@ const typeBadgeColors: Record<string, string> = {
   image: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
   audio: "bg-orange-500/10 text-orange-400 border-orange-500/20",
   file: "bg-indigo-500/10 text-indigo-400 border-indigo-500/20",
+  location: "bg-rose-500/10 text-rose-400 border-rose-500/20",
 };
 
 export default function CustomerFields() {
@@ -176,6 +178,7 @@ export default function CustomerFields() {
                       <SelectItem value="image">Imagem</SelectItem>
                       <SelectItem value="audio">Áudio</SelectItem>
                       <SelectItem value="file">Arquivo</SelectItem>
+                      <SelectItem value="location">Localização</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -195,8 +198,9 @@ export default function CustomerFields() {
                      <p className="text-[11px] text-muted-foreground leading-relaxed">
                        Use os nós <code className="bg-muted px-1 rounded text-[10px]">capture_text</code>,{" "}
                        <code className="bg-muted px-1 rounded text-[10px]">capture_image</code>,{" "}
-                       <code className="bg-muted px-1 rounded text-[10px]">capture_audio</code> ou{" "}
-                       <code className="bg-muted px-1 rounded text-[10px]">capture_file</code> no
+                       <code className="bg-muted px-1 rounded text-[10px]">capture_audio</code>,{" "}
+                       <code className="bg-muted px-1 rounded text-[10px]">capture_file</code> ou{" "}
+                       <code className="bg-muted px-1 rounded text-[10px]">capture_location</code> no
                        Construtor de Fluxos para capturar dados do cliente automaticamente.
                      </p>
                   </div>
