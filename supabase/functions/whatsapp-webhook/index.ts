@@ -90,6 +90,24 @@ async function sendWhatsAppPresence(inst: Inst, phone: string, presence: string,
   await waFetch(inst, "/message/presence", { number: phone, presence, ...(delay ? { delay } : {}) });
 }
 
+// ── Profile picture helper ────────────────────────────────────────────
+async function fetchProfilePicUrl(inst: Inst, phone: string): Promise<string | null> {
+  try {
+    const res = await fetch(`${inst.server_url}/chat/details`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", token: inst.instance_token },
+      body: JSON.stringify({ number: phone, preview: false }),
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    const url = data?.image || data?.imagePreview || data?.wa_profilePicUrl || "";
+    return url || null;
+  } catch (e) {
+    console.log(`[PROFILE-PIC] Failed to fetch for ${phone}:`, e);
+    return null;
+  }
+}
+
 // ── Name memory helpers ──────────────────────────────────────────────
 function detectNameChange(text: string): string | null {
   const patterns = [
@@ -858,9 +876,10 @@ async function processIncomingMessage(phone: string, text: string) {
     // 2. Get or create customer
     let customerId: string;
     let customerWelcomed = true;
+    let customerHasPhoto = false;
     const { data: existingCustomer } = await adminClient
       .from("customers")
-      .select("id, welcomed")
+      .select("id, welcomed, photo")
       .eq("phone", phone)
       .limit(1)
       .maybeSingle();
@@ -868,6 +887,7 @@ async function processIncomingMessage(phone: string, text: string) {
     if (existingCustomer) {
       customerId = existingCustomer.id;
       customerWelcomed = existingCustomer.welcomed ?? false;
+      customerHasPhoto = !!existingCustomer.photo;
     } else {
       const placeholderCpf = phone.replace(/\D/g, "").slice(-11).padStart(11, "0").replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4");
       const { data: newCustomer, error: custErr } = await adminClient
@@ -887,6 +907,19 @@ async function processIncomingMessage(phone: string, text: string) {
       } else {
         customerId = newCustomer!.id;
         customerWelcomed = false;
+      }
+    }
+
+    // 2b. Auto-fill customer photo from WhatsApp profile picture
+    if (!customerHasPhoto) {
+      try {
+        const picUrl = await fetchProfilePicUrl(inst, phone);
+        if (picUrl) {
+          await adminClient.from("customers").update({ photo: picUrl }).eq("id", customerId);
+          console.log(`[PROFILE-PIC] Saved photo for customer ${customerId}`);
+        }
+      } catch (e) {
+        console.log(`[PROFILE-PIC] Error saving photo:`, e);
       }
     }
 
