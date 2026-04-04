@@ -1,0 +1,1 @@
+ALTER TABLE public.customers ADD COLUMN welcomed boolean NOT NULL DEFAULT false;

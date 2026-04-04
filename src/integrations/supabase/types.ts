@@ -172,6 +172,7 @@ export type Database = {
           photo: string | null
           status: string
           updated_at: string
+          welcomed: boolean
         }
         Insert: {
           cpf: string
@@ -183,6 +184,7 @@ export type Database = {
           photo?: string | null
           status?: string
           updated_at?: string
+          welcomed?: boolean
         }
         Update: {
           cpf?: string
@@ -194,6 +196,7 @@ export type Database = {
           photo?: string | null
           status?: string
           updated_at?: string
+          welcomed?: boolean
         }
         Relationships: []
       }
