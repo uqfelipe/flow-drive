@@ -864,7 +864,9 @@ function extractIncomingMessages(body: any): IncomingWebhookMessage[] {
       phone,
       text,
       fromMe,
-      ...(mediaUrl ? { mediaUrl, mediaType, mediaFileName } : {}),
+      ...(mediaUrl ? { mediaUrl } : {}),
+      ...(mediaType ? { mediaType } : {}),
+      ...(mediaFileName ? { mediaFileName } : {}),
     });
   }
 
