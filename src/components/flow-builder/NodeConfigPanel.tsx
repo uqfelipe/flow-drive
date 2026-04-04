@@ -179,45 +179,6 @@ export function NodeConfigPanel({ node, onClose, onUpdate, onDelete }: NodeConfi
           </div>
         )}
 
-        {/* ─── MENU CARROSSEL ─── */}
-        {nt === "menu_carousel" && (
-          <div className="space-y-1.5">
-            <Label className="text-xs font-medium text-muted-foreground">Mensagem</Label>
-            <Textarea className="text-sm min-h-[60px]" placeholder="Texto do carrossel..." value={data.config?.message || ""} onChange={(e) => updateConfig({ message: e.target.value })} />
-            <Label className="text-xs font-medium text-muted-foreground mt-2">Cards</Label>
-            {((data.config?.cards || []) as any[]).map((card: any, cIdx: number) => {
-              const cards = [...(data.config?.cards || [])];
-              return (
-                <div key={cIdx} className="border border-border rounded p-2 space-y-1.5 mb-2">
-                  <div className="flex items-center gap-1">
-                    <span className="text-[10px] text-muted-foreground font-medium">Card {cIdx + 1}</span>
-                    <div className="flex-1" />
-                    <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => { cards.splice(cIdx, 1); updateConfig({ cards }); }}><X className="h-3 w-3" /></Button>
-                  </div>
-                  <Input className="h-8 text-xs" placeholder="Texto do card" value={card.text || ""} onChange={(e) => { cards[cIdx] = { ...card, text: e.target.value }; updateConfig({ cards }); }} />
-                  <Input className="h-8 text-xs" placeholder="URL da imagem" value={card.image || ""} onChange={(e) => { cards[cIdx] = { ...card, image: e.target.value }; updateConfig({ cards }); }} />
-                  <Label className="text-[10px] text-muted-foreground">Botões do card</Label>
-                  {(card.buttons || []).map((btn: any, bIdx: number) => (
-                    <div key={bIdx} className="flex items-center gap-1">
-                      <Input className="h-7 text-[11px] flex-1" value={btn.text || ""} onChange={(e) => { const btns = [...card.buttons]; btns[bIdx] = { ...btn, text: e.target.value }; cards[cIdx] = { ...card, buttons: btns }; updateConfig({ cards }); }} />
-                      <Select value={btn.type || "REPLY"} onValueChange={(v) => { const btns = [...card.buttons]; btns[bIdx] = { ...btn, type: v }; cards[cIdx] = { ...card, buttons: btns }; updateConfig({ cards }); }}>
-                        <SelectTrigger className="h-7 text-[11px] w-20"><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="REPLY">Resposta</SelectItem>
-                          <SelectItem value="URL">URL</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => { const btns = card.buttons.filter((_: any, i: number) => i !== bIdx); cards[cIdx] = { ...card, buttons: btns }; updateConfig({ cards }); }}><X className="h-2.5 w-2.5" /></Button>
-                    </div>
-                  ))}
-                  <Button variant="ghost" size="sm" className="h-6 text-[10px]" onClick={() => { const btns = [...(card.buttons || []), { text: "Botão", type: "REPLY" }]; cards[cIdx] = { ...card, buttons: btns }; updateConfig({ cards }); }}><Plus className="h-2.5 w-2.5 mr-1" /> Botão</Button>
-                </div>
-              );
-            })}
-            <Button variant="outline" size="sm" className="w-full h-8 text-xs" onClick={() => updateConfig({ cards: [...(data.config?.cards || []), { text: `Card ${(data.config?.cards?.length || 0) + 1}`, image: "", buttons: [{ text: "Botão 1", type: "REPLY" }] }] })}><Plus className="h-3 w-3 mr-1" /> Adicionar Card</Button>
-          </div>
-        )}
-
         {/* ─── POLL ─── */}
         {nt === "poll" && (
           <div className="space-y-1.5">
