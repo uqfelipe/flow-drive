@@ -32,6 +32,7 @@ async function uploadToImgbb(file: File): Promise<string> {
 }
 
 export default function CustomerEdit() {
+  const queryClient = useQueryClient();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { toast } = useToast();
