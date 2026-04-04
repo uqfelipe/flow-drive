@@ -790,6 +790,24 @@ function handleMenuSelection(
     return { nextNodeId: nextId, selectedOption: userInput };
   }
 
+  // Poll — match by option text or number
+  if (nt === "poll") {
+    const options = (node.data.config?.options || []) as string[];
+    const num = parseInt(userInput.trim());
+    if (!isNaN(num) && num >= 1 && num <= options.length) {
+      const idx = num - 1;
+      const nextId = findNextNodeId(edges, node.id, `option-${idx}`) || findNextNodeId(edges, node.id);
+      return { nextNodeId: nextId, selectedOption: options[idx] };
+    }
+    const lower = userInput.trim().toLowerCase();
+    const matchIdx = options.findIndex(o => o.toLowerCase() === lower);
+    if (matchIdx >= 0) {
+      const nextId = findNextNodeId(edges, node.id, `option-${matchIdx}`) || findNextNodeId(edges, node.id);
+      return { nextNodeId: nextId, selectedOption: options[matchIdx] };
+    }
+    return { nextNodeId: null, selectedOption: null };
+  }
+
   return { nextNodeId: null, selectedOption: null };
 }
 
