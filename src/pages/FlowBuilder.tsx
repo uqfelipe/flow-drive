@@ -45,6 +45,8 @@ function FlowBuilderContent() {
   const [currentFlowStatus, setCurrentFlowStatus] = useState<string>("draft");
   const [isActive, setIsActive] = useState(false);
   const [dbLoaded, setDbLoaded] = useState(false);
+  const [clipboard, setClipboard] = useState<Node[]>([]);
+  const [pasteCount, setPasteCount] = useState(0);
 
   const { data: flows, isLoading } = useFlows();
   const { data: flowDetail } = useFlow(currentFlowId);
