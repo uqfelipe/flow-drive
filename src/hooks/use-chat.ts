@@ -380,6 +380,9 @@ export function useDeleteChat() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (phone: string) => {
+      // Hide chat locally so it doesn't reappear on refetch
+      const chatId = phone.includes("@") ? phone : `${phone}@s.whatsapp.net`;
+      hideChat(chatId);
       return chatAction("delete-chat", { phone });
     },
     onMutate: async (phone) => {
@@ -393,6 +396,14 @@ export function useDeleteChat() {
       );
       return { previous };
     },
+    onError: (_, __, context) => {
+      if (context?.previous) {
+        qc.setQueryData(["whatsapp-chats"], context.previous);
+      }
+    },
+    onSettled: () => qc.invalidateQueries({ queryKey: ["whatsapp-chats"] }),
+  });
+}
     onError: (_, __, context) => {
       if (context?.previous) {
         qc.setQueryData(["whatsapp-chats"], context.previous);
