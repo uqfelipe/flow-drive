@@ -2,7 +2,7 @@ import { memo, useCallback } from "react";
 import { Handle, Position, type NodeProps, useReactFlow } from "@xyflow/react";
 import { getNodeTypeConfig } from "./nodeTypes";
 import type { FlowNodeData } from "@/types";
-import { X, GripHorizontal, Pencil, Mic } from "lucide-react";
+import { X, GripHorizontal, Pencil, Mic, Image, Video, File, Sticker } from "lucide-react";
 
 function FlowNode({ data, selected, id }: NodeProps) {
   const nodeData = data as unknown as FlowNodeData;
@@ -12,9 +12,19 @@ function FlowNode({ data, selected, id }: NodeProps) {
   const menuOptions = nodeData.config?.options as string[] | undefined;
   const menuButtons = nodeData.config?.buttons as Array<string | { text: string; type: string }> | undefined;
   const messageText = nodeData.config?.message as string | undefined;
-  const audioFile = nodeData.config?.file as string | undefined;
+  const mediaFile = nodeData.config?.file as string | undefined;
   const isAudioNode = nodeData.nodeType === "send_audio";
-  const hasAudio = isAudioNode && !!audioFile;
+  const hasAudio = isAudioNode && !!mediaFile;
+
+  const mediaNodeConfig: Record<string, { icon: typeof Image; configured: string; empty: string; color: string }> = {
+    send_image: { icon: Image, configured: "Imagem anexada", empty: "Sem imagem", color: "#10B981" },
+    send_video: { icon: Video, configured: "Vídeo anexado", empty: "Sem vídeo", color: "#EF4444" },
+    send_file: { icon: File, configured: "Arquivo anexado", empty: "Sem arquivo", color: "#6366F1" },
+    send_sticker: { icon: Sticker, configured: "Figurinha anexada", empty: "Sem figurinha", color: "#A855F7" },
+  };
+  const mediaConfig = mediaNodeConfig[nodeData.nodeType];
+  const isMediaNode = !!mediaConfig;
+  const hasFile = isMediaNode && !!mediaFile;
   const { deleteElements } = useReactFlow();
 
   const handleDelete = useCallback((e: React.MouseEvent) => {
@@ -86,7 +96,7 @@ function FlowNode({ data, selected, id }: NodeProps) {
         )}
 
         {/* Description */}
-        {nodeData.description && !messageText && !isAudioNode && (
+        {nodeData.description && !messageText && !isAudioNode && !isMediaNode && (
           <p className="text-[10px] text-muted-foreground px-1 truncate">{nodeData.description}</p>
         )}
 
@@ -128,7 +138,32 @@ function FlowNode({ data, selected, id }: NodeProps) {
           </div>
         )}
 
-        {/* Menu options with individual handles */}
+        {/* Media file indicator (image, video, file, sticker) */}
+        {isMediaNode && (() => {
+          const MediaIcon = mediaConfig.icon;
+          const activeColor = hasFile ? "#10B981" : mediaConfig.color;
+          return (
+            <div
+              className={`flex items-center gap-2 px-2.5 py-2 rounded-lg ${
+                hasFile
+                  ? "bg-emerald-50 dark:bg-emerald-950/30"
+                  : "bg-muted/50"
+              }`}
+            >
+              <MediaIcon
+                className="h-3.5 w-3.5 flex-shrink-0"
+                style={{ color: activeColor }}
+              />
+              <span
+                className="text-[10px] font-medium flex-1"
+                style={{ color: activeColor, opacity: hasFile ? 1 : 0.7 }}
+              >
+                {hasFile ? mediaConfig.configured : mediaConfig.empty}
+              </span>
+            </div>
+          );
+        })()}
+
         {isMenu && options && options.length > 0 && (
           <div className="space-y-1 mt-1">
             {options.map((opt, idx) => (
