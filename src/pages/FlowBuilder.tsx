@@ -434,15 +434,17 @@ function FlowBuilderContent() {
     toast.success("Fluxo exportado!");
   };
 
-  const handleClearCanvas = () => {
-    if (!window.confirm("Tem certeza que deseja limpar todo o canvas? Esta ação não pode ser desfeita.")) return;
+  const handleFormat = () => {
+    if (!window.confirm("Tem certeza que deseja formatar? Todos os nós e conexões serão removidos.")) return;
     setNodes([]);
     setEdges([]);
     setCurrentFlowName("Novo Fluxo");
     setCurrentFlowId(null);
     setSelectedNode(null);
+    setShowNodeSearch(false);
+    setNodeSearch("");
     setTimeout(() => pushHistory(), 50);
-    toast.success("Canvas limpo");
+    toast.success("Canvas formatado");
   };
 
   const handleImport = () => {
