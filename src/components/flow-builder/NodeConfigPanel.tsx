@@ -731,10 +731,6 @@ function VehicleCarouselConfig({ data, nodeId, onUpdate, updateConfig }: Vehicle
     setLoading(true);
     try {
       let query = supabase.from("vehicles").select("id, name, brand, model, images").eq("status", "available");
-      const cat = data.config?.category;
-      if (cat && cat !== "all") {
-        query = query.eq("category", cat);
-      }
       const { data: vehicles, error } = await query.limit(50).order("created_at", { ascending: false });
       if (error) throw error;
       if (!vehicles || vehicles.length === 0) {
@@ -777,22 +773,6 @@ function VehicleCarouselConfig({ data, nodeId, onUpdate, updateConfig }: Vehicle
         <Label className="text-xs font-medium text-muted-foreground">Texto do botão</Label>
         <Input className="h-9 text-sm" placeholder="Quero este" maxLength={20} value={data.config?.buttonText || ""} onChange={(e) => updateConfig({ buttonText: e.target.value })} />
         <p className="text-[10px] text-muted-foreground">Máx. 20 caracteres</p>
-      </div>
-      <div className="space-y-1.5">
-        <Label className="text-xs font-medium text-muted-foreground">Filtrar por categoria</Label>
-        <Select value={data.config?.category || "all"} onValueChange={(v) => { updateConfig({ category: v === "all" ? "" : v }); setFetched(false); setAllVehicles([]); }}>
-          <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Todas as categorias" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todas</SelectItem>
-            <SelectItem value="sedan">Sedan</SelectItem>
-            <SelectItem value="suv">SUV</SelectItem>
-            <SelectItem value="hatch">Hatch</SelectItem>
-            <SelectItem value="pickup">Pickup</SelectItem>
-            <SelectItem value="van">Van</SelectItem>
-            <SelectItem value="luxury">Luxo</SelectItem>
-            <SelectItem value="economy">Econômico</SelectItem>
-          </SelectContent>
-        </Select>
       </div>
 
       {/* Seleção de veículos */}
