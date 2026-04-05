@@ -15,7 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ArrowLeft, Undo2, Redo2, Download, Upload, Save, Clipboard, Search, X, Trash2 } from "lucide-react";
+import { ArrowLeft, Undo2, Redo2, Download, Upload, Save, Clipboard, Search, X, RotateCcw } from "lucide-react";
 import { getNodeTypeConfig } from "@/components/flow-builder/nodeTypes";
 import type { NodeTypeConfig } from "@/components/flow-builder/nodeTypes";
 import type { FlowNodeData } from "@/types";
