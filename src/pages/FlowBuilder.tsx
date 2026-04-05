@@ -25,6 +25,7 @@ import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 
 const customNodeTypes = { flowNode: FlowNode };
+const customEdgeTypes = { smoothstep: DeletableEdge };
 
 const defaultEdgeOptions = {
   type: "smoothstep",
