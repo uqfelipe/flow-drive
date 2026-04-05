@@ -1376,7 +1376,7 @@ async function processIncomingMessage(phone: string, text: string, mediaUrl?: st
                 }
               } catch (_) {}
               console.log(`[FLOW] Vehicle selected: ${vehicleId}`);
-              const nextNodeId = findNextNodeId(flowEdges, currentNodeId);
+              const nextNodeId = findNextNodeId(flowEdges, currentNodeId, "selected");
               if (nextNodeId) {
                 await processFlow(inst, phone, text, session.id, customerId, flowNodes, flowEdges, nextNodeId, variables);
               }
