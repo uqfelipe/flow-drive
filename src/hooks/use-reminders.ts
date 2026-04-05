@@ -21,14 +21,13 @@ export function useReminders() {
     queryKey: ["reminders"],
     queryFn: async (): Promise<ReminderWithCustomer[]> => {
       const { data, error } = await supabase
-        .from("reminders" as any)
+        .from("reminders")
         .select("*")
         .order("scheduled_at", { ascending: false });
       if (error) throw error;
 
       const reminders = (data as any[]) || [];
 
-      // Fetch customer names
       const customerIds = [...new Set(reminders.map((r) => r.customer_id))];
       if (customerIds.length === 0) return [];
 
@@ -58,10 +57,13 @@ export function useCreateReminder() {
       message: string;
       scheduled_at: string;
     }) => {
-      const { error } = await supabase
-        .from("reminders" as any)
-        .insert(reminder as any);
+      const { data, error } = await supabase
+        .from("reminders")
+        .insert(reminder)
+        .select("id")
+        .single();
       if (error) throw error;
+      return data;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["reminders"] }),
   });
@@ -72,8 +74,8 @@ export function useCancelReminder() {
   return useMutation({
     mutationFn: async (id: string) => {
       const { error } = await supabase
-        .from("reminders" as any)
-        .update({ status: "cancelled" } as any)
+        .from("reminders")
+        .update({ status: "cancelled" })
         .eq("id", id);
       if (error) throw error;
     },
@@ -86,8 +88,8 @@ export function useUpdateReminder() {
   return useMutation({
     mutationFn: async ({ id, ...updates }: { id: string; customer_id?: string; message?: string; scheduled_at?: string }) => {
       const { error } = await supabase
-        .from("reminders" as any)
-        .update(updates as any)
+        .from("reminders")
+        .update(updates)
         .eq("id", id);
       if (error) throw error;
     },
@@ -100,10 +102,24 @@ export function useDeleteReminder() {
   return useMutation({
     mutationFn: async (id: string) => {
       const { error } = await supabase
-        .from("reminders" as any)
+        .from("reminders")
         .delete()
         .eq("id", id);
       if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["reminders"] }),
+  });
+}
+
+export function useProcessReminders() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (reminderId?: string) => {
+      const { data, error } = await supabase.functions.invoke("send-reminders", {
+        body: reminderId ? { reminderId } : {},
+      });
+      if (error) throw error;
+      return data as { sent: number; results: Array<{ id: string; status: string; detail: string }> };
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["reminders"] }),
   });
