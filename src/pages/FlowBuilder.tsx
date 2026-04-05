@@ -224,6 +224,20 @@ function FlowBuilderContent() {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [handleCopy, handlePaste, handleDuplicate, showNodeSearch]);
 
+  const filteredSearchNodes = nodes.filter((n) =>
+    nodeSearch.trim() && (n.data as FlowNodeData)?.label?.toLowerCase().includes(nodeSearch.toLowerCase())
+  ).slice(0, 5);
+
+  const navigateToNode = useCallback((node: Node) => {
+    if (!reactFlowInstance) return;
+    reactFlowInstance.setCenter(node.position.x + 100, node.position.y + 50, { zoom: 1.5, duration: 600 });
+    setNodes((nds) => nds.map((n) => ({ ...n, selected: n.id === node.id })));
+    const nd = nodes.find((n) => n.id === node.id);
+    if (nd) setSelectedNode(nd);
+    setShowNodeSearch(false);
+    setNodeSearch("");
+  }, [reactFlowInstance, nodes, setNodes]);
+
   const onDragOver = useCallback((event: React.DragEvent) => {
     event.preventDefault();
     event.dataTransfer.dropEffect = "move";
