@@ -15,7 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ArrowLeft, Undo2, Redo2, Download, Save, Clipboard, Search, X } from "lucide-react";
+import { ArrowLeft, Undo2, Redo2, Download, Upload, Save, Clipboard, Search, X } from "lucide-react";
 import { getNodeTypeConfig } from "@/components/flow-builder/nodeTypes";
 import type { NodeTypeConfig } from "@/components/flow-builder/nodeTypes";
 import type { FlowNodeData } from "@/types";
@@ -338,6 +338,34 @@ function FlowBuilderContent() {
     toast.success("Fluxo exportado!");
   };
 
+  const handleImport = () => {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = ".json";
+    input.onchange = (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        try {
+          const data = JSON.parse(ev.target?.result as string);
+          if (Array.isArray(data.nodes) && Array.isArray(data.edges)) {
+            setNodes(data.nodes);
+            setEdges(data.edges);
+            if (data.name) setCurrentFlowName(data.name);
+            toast.success("Fluxo importado com sucesso!");
+          } else {
+            toast.error("Arquivo inválido: estrutura de nós/edges não encontrada.");
+          }
+        } catch {
+          toast.error("Erro ao ler o arquivo JSON.");
+        }
+      };
+      reader.readAsText(file);
+    };
+    input.click();
+  };
+
   if (isLoading) {
     return (
       <AdminLayout title="Construtor de Fluxos" subtitle="Monte automações visuais para o chatbot">
@@ -384,6 +412,9 @@ function FlowBuilderContent() {
 
             <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => { setShowNodeSearch((v) => !v); setTimeout(() => nodeSearchInputRef.current?.focus(), 50); }} title="Buscar nó (Ctrl+F)">
               <Search className="h-4 w-4" />
+            </Button>
+            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleImport} title="Importar">
+              <Upload className="h-4 w-4" />
             </Button>
             <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleExport} title="Exportar">
               <Download className="h-4 w-4" />
