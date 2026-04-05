@@ -1,47 +1,25 @@
 
 
-## Autocomplete de variáveis com "/" nos Textareas do Flow Builder
+## Melhorar visual do dropdown de variáveis
 
-### Problema
-Ao editar mensagens nos nós do fluxo, o usuário precisa digitar manualmente `{{variavel}}`. Queremos que ao digitar `/`, apareça um dropdown com todas as variáveis disponíveis para seleção rápida.
+### O que muda
 
-### Variáveis disponíveis
+Redesign do dropdown do `VariableTextarea.tsx`:
 
-**Variáveis do sistema (built-in):**
-- `nome`, `telefone`, `cpf`, `email` — dados do cliente
-- `veiculo_selecionado`, `veiculo_nome` — do carrossel de veículos
-- `localizacao` — captura de localização
+1. **Header com lupa de busca**: Adicionar um campo de busca fixo no topo do dropdown com ícone `Search` do lucide-react, mostrando o filtro atual e permitindo visualizar o que está sendo buscado.
 
-**Variáveis dinâmicas:**
-- Todas as variáveis definidas nos nós `capture_*` e `set_variable` do fluxo atual (lidas dos nós no canvas)
-- Campos personalizados do banco (`customer_field_definitions`)
+2. **Ícones por grupo**: Cada grupo ganha um ícone — `Settings` para Sistema, `Target` para Captura, `User` para Campos Personalizados — exibido ao lado do nome do grupo.
 
-### Alterações
+3. **Layout dos itens melhorado**:
+   - Cada item com padding maior, bordas arredondadas no hover
+   - Variável (`{{key}}`) com badge/chip estilizado em vez de `<code>` simples
+   - Descrição à direita com cor suave
+   - Separador visual entre grupos
 
-#### 1. Novo componente: `src/components/flow-builder/VariableTextarea.tsx`
-- Wrapper do `<Textarea>` que intercepta a digitação
-- Ao detectar `/`, abre um popover/dropdown posicionado no cursor com a lista de variáveis
-- Ao selecionar uma variável, insere `{{variavel}}` no texto substituindo o `/`
-- Filtra a lista conforme o usuário continua digitando após `/` (ex: `/nom` filtra para `nome`)
-- Fecha o dropdown com Escape ou ao clicar fora
-- Usa `Popover` + lista estilizada (ou Command do cmdk para busca)
+4. **Estado vazio**: Quando o filtro não retorna resultados, mostrar mensagem "Nenhuma variável encontrada" centralizada.
 
-**Fontes de variáveis:**
-1. Lista fixa de variáveis do sistema (`nome`, `telefone`, `cpf`, `email`, `veiculo_selecionado`, `veiculo_nome`)
-2. Variáveis extraídas dos nós do fluxo atual — percorrer todos os nodes e coletar `config.variable` dos nós `capture_*` e `set_variable`
-3. Campos personalizados via `useCustomerFieldDefinitions()`
+5. **Dica no rodapé**: Texto sutil "Digite / para buscar variáveis" como hint no textarea (atualizar o placeholder).
 
-#### 2. Alterar `src/components/flow-builder/NodeConfigPanel.tsx`
-- Substituir todos os `<Textarea>` de mensagem pelo novo `<VariableTextarea>`
-- Passar os nós atuais do fluxo como prop para extrair variáveis dinâmicas
-- Adicionar prop `nodes` ao `NodeConfigPanelProps`
-
-#### 3. Alterar `src/pages/FlowBuilder.tsx`
-- Passar `nodes` como prop para o `NodeConfigPanel`
-
-### Comportamento do dropdown
-- Aparece ao digitar `/` em qualquer posição do texto
-- Mostra variáveis agrupadas: "Sistema", "Captura", "Campos Personalizados"
-- Navegação por setas ↑↓ e Enter para selecionar
-- Insere `{{variavel_selecionada}}` no lugar do `/` + texto digitado
+### Arquivo alterado
+- `src/components/flow-builder/VariableTextarea.tsx` — redesign completo do dropdown, adição de ícones e search header
 
