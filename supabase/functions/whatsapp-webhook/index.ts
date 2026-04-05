@@ -1342,7 +1342,6 @@ async function processIncomingMessage(phone: string, text: string, mediaUrl?: st
 
         // Use the restartNode already found above
         if (restartNode) {
-        if (restartNode) {
           console.log(`[AUTO-REPLY] Found restart_with_typing node ${restartNode.id}, using as entry`);
           const restartSeconds = Math.min(restartNode.data?.config?.seconds || 3, 15);
           try { await sendWhatsAppPresence(inst, phone, "composing", restartSeconds * 1000); } catch (_) {}
