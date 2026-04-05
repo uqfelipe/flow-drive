@@ -15,7 +15,7 @@ const SUPPORTED_NODE_TYPES = new Set([
   "wait",
   "transfer_human", "end",
   "send_image", "send_audio", "send_video", "send_file", "send_sticker",
-  "send_location", "contact_card", "request_location", "request_payment",
+  "send_location", "contact_card", "request_location", "request_payment", "vehicle_carousel",
   "typing_indicator",
 ]);
 
