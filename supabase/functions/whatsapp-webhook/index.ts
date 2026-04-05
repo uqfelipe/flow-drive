@@ -1338,6 +1338,28 @@ async function processIncomingMessage(phone: string, text: string, mediaUrl?: st
           .update({ status: "completed", updated_at: new Date().toISOString() })
           .eq("id", session.id);
         session = undefined;
+
+        // Check if flow has a restart_with_typing node to use as entry point
+        const restartNode = flowNodes.find((n: any) => n.data?.nodeType === "restart_with_typing");
+        if (restartNode) {
+          console.log(`[AUTO-REPLY] Found restart_with_typing node ${restartNode.id}, using as entry`);
+          const restartSeconds = Math.min(restartNode.data?.config?.seconds || 3, 15);
+          try { await sendWhatsAppPresence(inst, phone, "composing", restartSeconds * 1000); } catch (_) {}
+          await new Promise(r => setTimeout(r, restartSeconds * 1000));
+          // Find the next node connected to the restart node
+          const nextAfterRestart = findNextNodeId(flowEdges, restartNode.id);
+          if (nextAfterRestart) {
+            // Create new session starting from the node after restart
+            const { data: newSess } = await adminClient.from("chat_sessions")
+              .insert({ customer_id: customerId, flow_id: flow.id, status: "active", current_node_id: nextAfterRestart, variables: { nome: customer.name, name: customer.name, telefone: phone, phone } })
+              .select().single();
+            if (newSess) {
+              console.log(`[AUTO-REPLY] Created restart session ${newSess.id}, starting from ${nextAfterRestart}`);
+              await processFlow(inst, phone, customerId, newSess.id, nextAfterRestart, flowNodes, flowEdges, newSess.variables as Record<string, string>, text);
+              return;
+            }
+          }
+        }
       }
     }
 
