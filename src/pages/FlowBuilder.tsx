@@ -538,7 +538,7 @@ function FlowBuilderContent() {
           >
             <ReactFlow
               nodes={nodes} edges={edges}
-              onNodesChange={onNodesChange} onEdgesChange={onEdgesChange}
+              onNodesChange={handleNodesChange} onEdgesChange={handleEdgesChange}
               onConnect={onConnect} onInit={setReactFlowInstance}
               onDrop={onDrop} onDragOver={onDragOver}
               
