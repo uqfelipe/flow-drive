@@ -414,6 +414,7 @@ function FlowBuilderContent() {
       // Create new flow
       createFlow.mutate({ name: currentFlowName, nodes: nodes as any, edges: edges as any }, {
         onSuccess: (data) => {
+          skipAutoSelectRef.current = false;
           setCurrentFlowId(data.id);
           toast.success("Fluxo criado!");
         },
