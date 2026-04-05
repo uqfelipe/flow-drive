@@ -1377,7 +1377,7 @@ async function processIncomingMessage(phone: string, text: string, mediaUrl?: st
               }
             }
             
-            const nextNodeId = findNextNodeId(flowEdges, carouselNode.id, handleId);
+            const nextNodeId = findNextNodeId(flowEdges, carouselNode.id, handleId) || findNextNodeId(flowEdges, carouselNode.id);
             if (nextNodeId) {
               await processFlow(inst, phone, text, session.id, customerId, flowNodes, flowEdges, nextNodeId, variables);
             }
@@ -1456,6 +1456,61 @@ async function processIncomingMessage(phone: string, text: string, mediaUrl?: st
       }
       
       console.log("[AUTO-REPLY] Session has no actionable node, restarting flow");
+    }
+
+    const vehicleMatch = text.match(/^veiculo_(.+)$/i);
+    if (vehicleMatch) {
+      const carouselNode = flowNodes.find(n => n.data?.nodeType === "vehicle_carousel");
+      if (carouselNode) {
+        const vehicleId = vehicleMatch[1];
+        const { data: customerData } = await adminClient.from("customers").select("name").eq("id", customerId).single();
+        const vars: Record<string, string> = {};
+
+        if (customerData?.name && customerData.name !== phone && !/^\d+$/.test(customerData.name)) {
+          vars.nome = customerData.name;
+          vars.name = customerData.name;
+        }
+
+        vars["veiculo_selecionado"] = vehicleId;
+        try {
+          const { data: vData } = await adminClient.from("vehicles").select("name, brand, model").eq("id", vehicleId).single();
+          if (vData) {
+            vars["veiculo_nome"] = `${vData.name} - ${vData.brand} ${vData.model}`;
+          }
+        } catch (_) {}
+
+        let handleId = "selected";
+        const configVehicles = (carouselNode.data.config?.vehicles || []) as Array<{ id: string }>;
+        if (configVehicles.length > 0) {
+          const vIdx = configVehicles.findIndex(v => v.id === vehicleId);
+          if (vIdx >= 0) {
+            handleId = `vehicle-${vIdx}`;
+          }
+        }
+
+        const nextNodeId = findNextNodeId(flowEdges, carouselNode.id, handleId) || findNextNodeId(flowEdges, carouselNode.id);
+        if (nextNodeId) {
+          console.log(`[AUTO-REPLY] Rehydrating vehicle selection without active session: ${vehicleId} -> ${nextNodeId}`);
+
+          if (session) {
+            await adminClient.from("chat_sessions").update({ status: "completed", updated_at: new Date().toISOString() }).eq("id", session.id);
+          }
+
+          const { data: resumedSession, error: resumedSessionError } = await adminClient
+            .from("chat_sessions")
+            .insert({ customer_id: customerId, flow_id: flow.id, current_node_id: nextNodeId, variables: vars, status: "active" })
+            .select()
+            .single();
+
+          if (resumedSessionError || !resumedSession) {
+            console.error("[AUTO-REPLY] Failed to create resumed session:", resumedSessionError);
+            return;
+          }
+
+          await processFlow(inst, phone, text, resumedSession.id, customerId, flowNodes, flowEdges, nextNodeId, vars);
+          return;
+        }
+      }
     }
     
     // Start new session — always start from the first node, let the flow control everything
