@@ -474,6 +474,7 @@ function FlowBuilderContent() {
         try {
           const data = JSON.parse(ev.target?.result as string);
             if (Array.isArray(data.nodes) && Array.isArray(data.edges)) {
+              skipAutoSelectRef.current = true;
               const fixedNodes = data.nodes.map((n: any) => ({ ...n, type: "flowNode" }));
               setNodes(fixedNodes);
               setEdges(data.edges);
