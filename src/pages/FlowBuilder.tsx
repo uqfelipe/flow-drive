@@ -53,6 +53,69 @@ function FlowBuilderContent() {
   const [nodeSearch, setNodeSearch] = useState("");
   const nodeSearchInputRef = useRef<HTMLInputElement>(null);
 
+  // Undo/Redo history system
+  const historyRef = useRef<{ nodes: Node[]; edges: Edge[] }[]>([]);
+  const historyIndexRef = useRef(-1);
+  const isRestoringRef = useRef(false);
+  const MAX_HISTORY = 50;
+  const [canUndo, setCanUndo] = useState(false);
+  const [canRedo, setCanRedo] = useState(false);
+  const latestNodesRef = useRef<Node[]>([]);
+  const latestEdgesRef = useRef<Edge[]>([]);
+
+  // Keep refs in sync
+  useEffect(() => { latestNodesRef.current = nodes; }, [nodes]);
+  useEffect(() => { latestEdgesRef.current = edges; }, [edges]);
+
+  const updateUndoRedoState = useCallback(() => {
+    setCanUndo(historyIndexRef.current > 0);
+    setCanRedo(historyIndexRef.current < historyRef.current.length - 1);
+  }, []);
+
+  const pushHistory = useCallback(() => {
+    if (isRestoringRef.current) return;
+    const hist = historyRef.current;
+    const idx = historyIndexRef.current;
+    historyRef.current = hist.slice(0, idx + 1);
+    historyRef.current.push({
+      nodes: JSON.parse(JSON.stringify(latestNodesRef.current)),
+      edges: JSON.parse(JSON.stringify(latestEdgesRef.current)),
+    });
+    if (historyRef.current.length > MAX_HISTORY) historyRef.current.shift();
+    historyIndexRef.current = historyRef.current.length - 1;
+    updateUndoRedoState();
+  }, [updateUndoRedoState]);
+
+  const handleUndo = useCallback(() => {
+    if (historyIndexRef.current <= 0) return;
+    historyIndexRef.current -= 1;
+    const snapshot = historyRef.current[historyIndexRef.current];
+    isRestoringRef.current = true;
+    setNodes(JSON.parse(JSON.stringify(snapshot.nodes)));
+    setEdges(JSON.parse(JSON.stringify(snapshot.edges)));
+    setTimeout(() => { isRestoringRef.current = false; }, 50);
+    updateUndoRedoState();
+  }, [setNodes, setEdges, updateUndoRedoState]);
+
+  const handleRedo = useCallback(() => {
+    if (historyIndexRef.current >= historyRef.current.length - 1) return;
+    historyIndexRef.current += 1;
+    const snapshot = historyRef.current[historyIndexRef.current];
+    isRestoringRef.current = true;
+    setNodes(JSON.parse(JSON.stringify(snapshot.nodes)));
+    setEdges(JSON.parse(JSON.stringify(snapshot.edges)));
+    setTimeout(() => { isRestoringRef.current = false; }, 50);
+    updateUndoRedoState();
+  }, [setNodes, setEdges, updateUndoRedoState]);
+
+  // Debounced history push for drag/move changes
+  const historyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const schedulePushHistory = useCallback(() => {
+    if (isRestoringRef.current) return;
+    if (historyTimerRef.current) clearTimeout(historyTimerRef.current);
+    historyTimerRef.current = setTimeout(() => pushHistory(), 300);
+  }, [pushHistory]);
+
   const { data: flows, isLoading } = useFlows();
   const { data: flowDetail } = useFlow(currentFlowId);
   const saveFlow = useSaveFlow();
@@ -89,8 +152,17 @@ function FlowBuilderContent() {
         setEdges([]);
       }
       setDbLoaded(true);
+      // Initialize history with loaded state
+      setTimeout(() => {
+        historyRef.current = [{
+          nodes: JSON.parse(JSON.stringify(dbNodes.length > 0 ? dbNodes.map(n => ({ ...n, type: "flowNode" })) : [])),
+          edges: JSON.parse(JSON.stringify(dbEdges)),
+        }];
+        historyIndexRef.current = 0;
+        updateUndoRedoState();
+      }, 100);
     }
-  }, [flowDetail, dbLoaded, setNodes, setEdges]);
+  }, [flowDetail, dbLoaded, setNodes, setEdges, updateUndoRedoState]);
 
   // Reset dbLoaded when flowId changes
   useEffect(() => {
@@ -98,9 +170,27 @@ function FlowBuilderContent() {
   }, [currentFlowId]);
 
   const onConnect = useCallback(
-    (params: Connection) => setEdges((eds) => addEdge({ ...params, ...defaultEdgeOptions }, eds)),
-    [setEdges]
+    (params: Connection) => {
+      setEdges((eds) => addEdge({ ...params, ...defaultEdgeOptions }, eds));
+      setTimeout(() => pushHistory(), 50);
+    },
+    [setEdges, pushHistory]
   );
+
+  // Wrap onNodesChange / onEdgesChange to track history on structural changes
+  const handleNodesChange = useCallback((changes: any) => {
+    onNodesChange(changes);
+    const hasStructural = changes.some((c: any) => c.type === 'remove' || c.type === 'add');
+    const hasPosition = changes.some((c: any) => c.type === 'position' && !c.dragging);
+    if (hasStructural) setTimeout(() => pushHistory(), 50);
+    else if (hasPosition) schedulePushHistory();
+  }, [onNodesChange, pushHistory, schedulePushHistory]);
+
+  const handleEdgesChange = useCallback((changes: any) => {
+    onEdgesChange(changes);
+    const hasStructural = changes.some((c: any) => c.type === 'remove' || c.type === 'add');
+    if (hasStructural) setTimeout(() => pushHistory(), 50);
+  }, [onEdgesChange, pushHistory]);
 
   // Copy/paste/duplicate logic
   const handleCopy = useCallback((targetNodes?: Node[]) => {
@@ -139,7 +229,8 @@ function FlowBuilderContent() {
     setEdges((eds) => [...eds, ...internalEdges]);
     setPasteCount((c) => c + 1);
     toast.success(`${newNodes.length} componente(s) colado(s)`);
-  }, [clipboard, pasteCount, edges, setNodes, setEdges]);
+    setTimeout(() => pushHistory(), 50);
+  }, [clipboard, pasteCount, edges, setNodes, setEdges, pushHistory]);
 
   const handleDuplicate = useCallback(() => {
     const selected = nodes.filter((n) => n.selected);
@@ -169,7 +260,8 @@ function FlowBuilderContent() {
     setNodes((nds) => [...nds.map((n) => ({ ...n, selected: false })), ...newNodes]);
     setEdges((eds) => [...eds, ...internalEdges]);
     toast.success(`${newNodes.length} componente(s) duplicado(s)`);
-  }, [nodes, edges, setNodes, setEdges]);
+    setTimeout(() => pushHistory(), 50);
+  }, [nodes, edges, setNodes, setEdges, pushHistory]);
 
   // Only open config panel via pencil icon (custom event), not on selection
   useEffect(() => {
@@ -216,13 +308,15 @@ function FlowBuilderContent() {
         return;
       }
       if (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable) return;
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === "z") { e.preventDefault(); handleRedo(); return; }
+      if ((e.ctrlKey || e.metaKey) && e.key === "z") { e.preventDefault(); handleUndo(); return; }
       if ((e.ctrlKey || e.metaKey) && e.key === "c") { e.preventDefault(); handleCopy(); }
       if ((e.ctrlKey || e.metaKey) && e.key === "v") { e.preventDefault(); handlePaste(); }
       if ((e.ctrlKey || e.metaKey) && e.key === "d") { e.preventDefault(); handleDuplicate(); }
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [handleCopy, handlePaste, handleDuplicate, showNodeSearch]);
+  }, [handleCopy, handlePaste, handleDuplicate, handleUndo, handleRedo, showNodeSearch]);
 
   const filteredSearchNodes = nodes.filter((n) =>
     nodeSearch.trim() && (n.data as FlowNodeData)?.label?.toLowerCase().includes(nodeSearch.toLowerCase())
@@ -274,8 +368,9 @@ function FlowBuilderContent() {
         } satisfies FlowNodeData,
       };
       setNodes((nds) => nds.concat(newNode));
+      setTimeout(() => pushHistory(), 50);
     },
-    [reactFlowInstance, setNodes]
+    [reactFlowInstance, setNodes, pushHistory]
   );
 
   const onDragStart = (event: React.DragEvent, nodeType: NodeTypeConfig) => {
@@ -292,7 +387,8 @@ function FlowBuilderContent() {
     setNodes((nds) => nds.filter((n) => n.id !== id));
     setEdges((eds) => eds.filter((e) => e.source !== id && e.target !== id));
     setSelectedNode(null);
-  }, [setNodes, setEdges]);
+    setTimeout(() => pushHistory(), 50);
+  }, [setNodes, setEdges, pushHistory]);
 
   const handleSave = async () => {
     const status = isActive ? "active" : "inactive";
@@ -353,7 +449,8 @@ function FlowBuilderContent() {
             setNodes(data.nodes);
             setEdges(data.edges);
             if (data.name) setCurrentFlowName(data.name);
-            toast.success("Fluxo importado com sucesso!");
+             toast.success("Fluxo importado com sucesso!");
+            setTimeout(() => pushHistory(), 50);
           } else {
             toast.error("Arquivo inválido: estrutura de nós/edges não encontrada.");
           }
@@ -391,10 +488,10 @@ function FlowBuilderContent() {
           </div>
 
           <div className="flex items-center gap-2">
-            <Button variant="ghost" size="icon" className="h-8 w-8" title="Desfazer">
+            <Button variant="ghost" size="icon" className="h-8 w-8" title="Desfazer (Ctrl+Z)" onClick={handleUndo} disabled={!canUndo}>
               <Undo2 className="h-4 w-4" />
             </Button>
-            <Button variant="ghost" size="icon" className="h-8 w-8" title="Refazer">
+            <Button variant="ghost" size="icon" className="h-8 w-8" title="Refazer (Ctrl+Shift+Z)" onClick={handleRedo} disabled={!canRedo}>
               <Redo2 className="h-4 w-4" />
             </Button>
 
@@ -441,7 +538,7 @@ function FlowBuilderContent() {
           >
             <ReactFlow
               nodes={nodes} edges={edges}
-              onNodesChange={onNodesChange} onEdgesChange={onEdgesChange}
+              onNodesChange={handleNodesChange} onEdgesChange={handleEdgesChange}
               onConnect={onConnect} onInit={setReactFlowInstance}
               onDrop={onDrop} onDragOver={onDragOver}
               
