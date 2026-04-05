@@ -88,6 +88,13 @@ function FlowNode({ data, selected, id }: NodeProps) {
           {config?.label || nodeData.nodeType}
         </span>
         <button
+          onClick={handleDisconnect}
+          className="p-0.5 rounded hover:bg-black/10 dark:hover:bg-white/10 transition-colors"
+          title="Desconectar"
+        >
+          <Scissors className="h-3.5 w-3.5 text-muted-foreground" />
+        </button>
+        <button
           onClick={(e) => {
             e.stopPropagation();
             window.dispatchEvent(new CustomEvent("flow-copy-node", { detail: id }));
