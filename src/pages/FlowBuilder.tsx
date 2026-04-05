@@ -449,7 +449,8 @@ function FlowBuilderContent() {
             setNodes(data.nodes);
             setEdges(data.edges);
             if (data.name) setCurrentFlowName(data.name);
-            toast.success("Fluxo importado com sucesso!");
+             toast.success("Fluxo importado com sucesso!");
+            setTimeout(() => pushHistory(), 50);
           } else {
             toast.error("Arquivo inválido: estrutura de nós/edges não encontrada.");
           }
