@@ -558,7 +558,7 @@ function FlowBuilderContent() {
               <span className="text-xs text-muted-foreground">{isActive ? "Ativo" : "Inativo"}</span>
               <Switch
                 checked={isActive}
-                onCheckedChange={setIsActive}
+                onCheckedChange={handleToggleActive}
               />
             </div>
 
