@@ -368,8 +368,9 @@ function FlowBuilderContent() {
         } satisfies FlowNodeData,
       };
       setNodes((nds) => nds.concat(newNode));
+      setTimeout(() => pushHistory(), 50);
     },
-    [reactFlowInstance, setNodes]
+    [reactFlowInstance, setNodes, pushHistory]
   );
 
   const onDragStart = (event: React.DragEvent, nodeType: NodeTypeConfig) => {
