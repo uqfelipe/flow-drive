@@ -1326,7 +1326,21 @@ async function processIncomingMessage(phone: string, text: string, mediaUrl?: st
       .limit(1);
     
     let session = existingSessions?.[0];
-    
+
+    // ── Session timeout: expire after 30 min of inactivity ──
+    const SESSION_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutos
+    if (session) {
+      const lastUpdate = new Date(session.updated_at).getTime();
+      const now = Date.now();
+      if (now - lastUpdate > SESSION_TIMEOUT_MS) {
+        console.log(`[AUTO-REPLY] Session expired (inactive ${Math.round((now - lastUpdate) / 60000)}min), restarting`);
+        await adminClient.from("chat_sessions")
+          .update({ status: "completed", updated_at: new Date().toISOString() })
+          .eq("id", session.id);
+        session = undefined;
+      }
+    }
+
     if (session) {
       console.log(`[AUTO-REPLY] Existing session: ${session.id}, node=${session.current_node_id}, status=${session.status}`);
       
