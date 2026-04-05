@@ -22,7 +22,7 @@ export default function DeletableEdge({
         <div
           style={{
             position: "absolute",
-            transform: `translate(-50%, -50%) translate(${labelX}px,${labelY}px)`,
+            transform: `translate(-50%, -50%) translate(${btnX}px,${btnY}px)`,
             pointerEvents: "all",
           }}
           className="nodrag nopan"
