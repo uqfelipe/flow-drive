@@ -506,32 +506,40 @@ async function processFlow(
     if (nt === "vehicle_carousel") {
       const carouselMsg = replaceVariables(cfg.message || "Confira nossos veículos disponíveis:", vars);
       const btnText = replaceVariables(cfg.buttonText || "Quero este", vars);
-      const maxCards = Math.min(Math.max(cfg.maxCards || 10, 2), 10);
-      const filterCat = cfg.category || "";
+      const selectedVehicles: { id: string; name: string }[] = cfg.vehicles || [];
       try {
-        let query = adminClient.from("vehicles").select("*").eq("status", "available").order("name").limit(maxCards);
-        if (filterCat) query = query.eq("category", filterCat);
-        const { data: vehicles, error: vErr } = await query;
-        if (vErr) throw vErr;
-        if (!vehicles || vehicles.length < 2) {
-          await sendWhatsAppText(inst, phone, "😕 No momento não temos veículos disponíveis. Tente novamente mais tarde!");
+        if (!selectedVehicles.length) {
+          await sendWhatsAppText(inst, phone, "😕 Nenhum veículo configurado neste carrossel.");
         } else {
-          const carousel = vehicles.map((v: any) => ({
-            text: `${v.name} - ${v.brand} ${v.model}\n${v.year} • ${v.color}\nDiária: R$ ${Number(v.daily_rate).toFixed(2)}\nSemanal: R$ ${Number(v.weekly_rate).toFixed(2)}\nMensal: R$ ${Number(v.monthly_rate).toFixed(2)}`,
-            image: v.images?.[0] || "",
-            buttons: [{ id: `veiculo_${v.id}`, text: btnText.slice(0, 20), type: "REPLY" }],
-          }));
-          try {
-            await waFetch(inst, "/send/carousel", { number: phone, text: carouselMsg, carousel });
-            console.log(`[FLOW] Sent vehicle carousel with ${carousel.length} cards`);
-          } catch (carouselErr) {
-            console.error(`[FLOW] /send/carousel failed, sending text fallback`, carouselErr.message);
-            for (const v of vehicles) {
-              const img = v.images?.[0];
-              const text = `🚗 *${v.name}*\n${v.brand} ${v.model} ${v.year}\n${v.color}\n💰 Diária: R$ ${Number(v.daily_rate).toFixed(2)}`;
-              if (img) { try { await sendWhatsAppMedia(inst, phone, "image", img, text); } catch (_) {} }
-              else { try { await sendWhatsAppText(inst, phone, text); } catch (_) {} }
-              await new Promise(r => setTimeout(r, 300));
+          const vehicleIds = selectedVehicles.map((v: any) => v.id);
+          const { data: vehicles, error: vErr } = await adminClient
+            .from("vehicles")
+            .select("id, name, brand, model, year, color, daily_rate, weekly_rate, monthly_rate, images")
+            .in("id", vehicleIds);
+          if (vErr) throw vErr;
+          // Sort in the same order as config
+          const vehicleMap = new Map((vehicles || []).map((v: any) => [v.id, v]));
+          const ordered = selectedVehicles.map((sv: any) => vehicleMap.get(sv.id)).filter(Boolean);
+          if (ordered.length < 2) {
+            await sendWhatsAppText(inst, phone, "😕 No momento não temos veículos suficientes para exibir. Tente novamente mais tarde!");
+          } else {
+            const carousel = ordered.map((v: any) => ({
+              text: `${v.name} - ${v.brand} ${v.model}\n${v.year} • ${v.color}\nDiária: R$ ${Number(v.daily_rate).toFixed(2)}\nSemanal: R$ ${Number(v.weekly_rate).toFixed(2)}\nMensal: R$ ${Number(v.monthly_rate).toFixed(2)}`,
+              image: v.images?.[0] || "",
+              buttons: [{ id: `veiculo_${v.id}`, text: btnText.slice(0, 20), type: "REPLY" }],
+            }));
+            try {
+              await waFetch(inst, "/send/carousel", { number: phone, text: carouselMsg, carousel });
+              console.log(`[FLOW] Sent vehicle carousel with ${carousel.length} cards`);
+            } catch (carouselErr) {
+              console.error(`[FLOW] /send/carousel failed, sending text fallback`, carouselErr.message);
+              for (const v of ordered) {
+                const img = (v as any).images?.[0];
+                const text = `🚗 *${(v as any).name}*\n${(v as any).brand} ${(v as any).model} ${(v as any).year}\n${(v as any).color}\n💰 Diária: R$ ${Number((v as any).daily_rate).toFixed(2)}`;
+                if (img) { try { await sendWhatsAppMedia(inst, phone, "image", img, text); } catch (_) {} }
+                else { try { await sendWhatsAppText(inst, phone, text); } catch (_) {} }
+                await new Promise(r => setTimeout(r, 300));
+              }
             }
           }
         }
@@ -539,7 +547,6 @@ async function processFlow(
         console.error(`[FLOW] vehicle_carousel error:`, e.message);
         try { await sendWhatsAppText(inst, phone, "Erro ao buscar veículos. Tente novamente."); } catch (_) {}
       }
-      // Wait for user to select a vehicle button
       await adminClient.from("chat_sessions").update({ current_node_id: nodeId, variables: vars, status: "waiting", updated_at: new Date().toISOString() }).eq("id", sessionId);
       return { nextNodeId: nodeId, variables: vars, status: "waiting" };
     }
