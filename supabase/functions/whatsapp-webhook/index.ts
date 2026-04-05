@@ -62,7 +62,7 @@ async function sendWhatsAppContact(inst: Inst, phone: string, fullName: string, 
 }
 
 async function sendWhatsAppSticker(inst: Inst, phone: string, file: string) {
-  await waFetch(inst, "/send/sticker", { number: phone, file });
+  await waFetch(inst, "/send/media", { number: phone, type: "sticker", file });
 }
 
 async function sendWhatsAppLocation(inst: Inst, phone: string, lat: number, lng: number, name?: string, address?: string) {
