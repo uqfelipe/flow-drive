@@ -1349,13 +1349,17 @@ async function processIncomingMessage(phone: string, text: string, mediaUrl?: st
           // Find the next node connected to the restart node
           const nextAfterRestart = findNextNodeId(flowEdges, restartNode.id);
           if (nextAfterRestart) {
+            // Fetch customer name for variables
+            const { data: custData } = await adminClient.from("customers").select("name").eq("id", customerId).single();
+            const custName = custData?.name || phone;
+            const restartVars: Record<string, string> = { nome: custName, name: custName, telefone: phone, phone };
             // Create new session starting from the node after restart
             const { data: newSess } = await adminClient.from("chat_sessions")
-              .insert({ customer_id: customerId, flow_id: flow.id, status: "active", current_node_id: nextAfterRestart, variables: { nome: customer.name, name: customer.name, telefone: phone, phone } })
+              .insert({ customer_id: customerId, flow_id: flow.id, status: "active", current_node_id: nextAfterRestart, variables: restartVars })
               .select().single();
             if (newSess) {
               console.log(`[AUTO-REPLY] Created restart session ${newSess.id}, starting from ${nextAfterRestart}`);
-              await processFlow(inst, phone, customerId, newSess.id, nextAfterRestart, flowNodes, flowEdges, newSess.variables as Record<string, string>, text);
+              await processFlow(inst, phone, text, newSess.id, customerId, flowNodes, flowEdges, nextAfterRestart, restartVars);
               return;
             }
           }
