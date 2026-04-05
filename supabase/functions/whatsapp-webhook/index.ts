@@ -15,7 +15,7 @@ const SUPPORTED_NODE_TYPES = new Set([
   "wait",
   "transfer_human", "end",
   "send_image", "send_audio", "send_video", "send_file", "send_sticker",
-  "send_location", "contact_card", "request_location", "request_payment",
+  "send_location", "contact_card", "request_location", "request_payment", "vehicle_carousel",
   "typing_indicator",
 ]);
 
@@ -500,6 +500,48 @@ async function processFlow(
       }
       nodeId = findNextNodeId(flowEdges, nodeId);
       continue;
+    }
+
+    // ─── Vehicle carousel ───
+    if (nt === "vehicle_carousel") {
+      const carouselMsg = replaceVariables(cfg.message || "Confira nossos veículos disponíveis:", vars);
+      const btnText = replaceVariables(cfg.buttonText || "Quero este", vars);
+      const maxCards = Math.min(Math.max(cfg.maxCards || 10, 2), 10);
+      const filterCat = cfg.category || "";
+      try {
+        let query = adminClient.from("vehicles").select("*").eq("status", "available").order("name").limit(maxCards);
+        if (filterCat) query = query.eq("category", filterCat);
+        const { data: vehicles, error: vErr } = await query;
+        if (vErr) throw vErr;
+        if (!vehicles || vehicles.length < 2) {
+          await sendWhatsAppText(inst, phone, "😕 No momento não temos veículos disponíveis. Tente novamente mais tarde!");
+        } else {
+          const carousel = vehicles.map((v: any) => ({
+            text: `${v.name} - ${v.brand} ${v.model}\n${v.year} • ${v.color}\nDiária: R$ ${Number(v.daily_rate).toFixed(2)}\nSemanal: R$ ${Number(v.weekly_rate).toFixed(2)}\nMensal: R$ ${Number(v.monthly_rate).toFixed(2)}`,
+            image: v.images?.[0] || "",
+            buttons: [{ id: `veiculo_${v.id}`, text: btnText.slice(0, 20), type: "REPLY" }],
+          }));
+          try {
+            await waFetch(inst, "/send/carousel", { number: phone, text: carouselMsg, carousel });
+            console.log(`[FLOW] Sent vehicle carousel with ${carousel.length} cards`);
+          } catch (carouselErr) {
+            console.error(`[FLOW] /send/carousel failed, sending text fallback`, carouselErr.message);
+            for (const v of vehicles) {
+              const img = v.images?.[0];
+              const text = `🚗 *${v.name}*\n${v.brand} ${v.model} ${v.year}\n${v.color}\n💰 Diária: R$ ${Number(v.daily_rate).toFixed(2)}`;
+              if (img) { try { await sendWhatsAppMedia(inst, phone, "image", img, text); } catch (_) {} }
+              else { try { await sendWhatsAppText(inst, phone, text); } catch (_) {} }
+              await new Promise(r => setTimeout(r, 300));
+            }
+          }
+        }
+      } catch (e) {
+        console.error(`[FLOW] vehicle_carousel error:`, e.message);
+        try { await sendWhatsAppText(inst, phone, "Erro ao buscar veículos. Tente novamente."); } catch (_) {}
+      }
+      // Wait for user to select a vehicle button
+      await adminClient.from("chat_sessions").update({ current_node_id: nodeId, variables: vars, status: "waiting", updated_at: new Date().toISOString() }).eq("id", sessionId);
+      return { nextNodeId: nodeId, variables: vars, status: "waiting" };
     }
 
     // ─── Contact card ───
@@ -1315,6 +1357,31 @@ async function processIncomingMessage(phone: string, text: string, mediaUrl?: st
             } else {
               try { await sendWhatsAppText(inst, phone, "❌ Opção inválida. Por favor, escolha uma opção válida."); } catch (_) {}
               await new Promise(r => setTimeout(r, 500));
+              await processFlow(inst, phone, "", session.id, customerId, flowNodes, flowEdges, currentNodeId, variables);
+            }
+            return;
+          }
+
+          // Handle vehicle_carousel button response
+          if (nt === "vehicle_carousel") {
+            const match = text.match(/^veiculo_(.+)$/i);
+            if (match) {
+              const vehicleId = match[1];
+              variables["veiculo_selecionado"] = vehicleId;
+              // Fetch vehicle name for convenience
+              try {
+                const { data: vData } = await adminClient.from("vehicles").select("name, brand, model").eq("id", vehicleId).single();
+                if (vData) {
+                  variables["veiculo_nome"] = `${vData.name} - ${vData.brand} ${vData.model}`;
+                }
+              } catch (_) {}
+              console.log(`[FLOW] Vehicle selected: ${vehicleId}`);
+              const nextNodeId = findNextNodeId(flowEdges, currentNodeId);
+              if (nextNodeId) {
+                await processFlow(inst, phone, text, session.id, customerId, flowNodes, flowEdges, nextNodeId, variables);
+              }
+            } else {
+              try { await sendWhatsAppText(inst, phone, "❌ Por favor, selecione um veículo usando os botões."); } catch (_) {}
               await processFlow(inst, phone, "", session.id, customerId, flowNodes, flowEdges, currentNodeId, variables);
             }
             return;

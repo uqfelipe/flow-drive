@@ -2,7 +2,7 @@ import { memo, useCallback } from "react";
 import { Handle, Position, type NodeProps, useReactFlow } from "@xyflow/react";
 import { getNodeTypeConfig } from "./nodeTypes";
 import type { FlowNodeData } from "@/types";
-import { X, GripHorizontal, Pencil, Mic, Image, Video, File, Sticker, Copy } from "lucide-react";
+import { X, GripHorizontal, Pencil, Mic, Image, Video, File, Sticker, Copy, Car } from "lucide-react";
 
 function FlowNode({ data, selected, id }: NodeProps) {
   const nodeData = data as unknown as FlowNodeData;
@@ -159,6 +159,22 @@ function FlowNode({ data, selected, id }: NodeProps) {
             >
               {hasAudio ? "Mensagem de voz" : "Sem áudio"}
             </span>
+          </div>
+        )}
+
+        {/* Vehicle carousel indicator */}
+        {nodeData.nodeType === "vehicle_carousel" && (
+          <div className="flex items-center gap-2 px-2.5 py-2 rounded-lg bg-amber-50 dark:bg-amber-950/30">
+            <Car className="h-3.5 w-3.5 flex-shrink-0 text-amber-500" />
+            <div className="flex-1 min-w-0">
+              <span className="text-[10px] font-medium text-amber-600 dark:text-amber-400 block truncate">
+                {messageText || "Carrossel de veículos"}
+              </span>
+              <span className="text-[9px] text-muted-foreground">
+                Máx. {(nodeData.config?.maxCards as number) || 10} cards
+                {(nodeData.config?.category as string) ? ` • ${nodeData.config?.category}` : " • Todas categorias"}
+              </span>
+            </div>
           </div>
         )}
 
