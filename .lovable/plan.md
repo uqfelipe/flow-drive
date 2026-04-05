@@ -1,18 +1,16 @@
 
 
-## Adicionar upload de imagem no nó "Enviar Imagem"
+## Adicionar upload de arquivo no nó "Enviar Arquivo"
 
 ### Alteração
 
-**`src/components/flow-builder/NodeConfigPanel.tsx`** — Separar `send_image` dos outros nós de mídia e criar uma interface com abas (Link / Upload), similar ao que já existe no `send_audio`:
+**`src/components/flow-builder/NodeConfigPanel.tsx`** — Separar `send_file` do `send_sticker` e criar interface com abas (Link / Upload), igual ao que já foi feito para imagem e vídeo:
 
-1. Remover `send_image` do bloco genérico de mídia (linha 209)
-2. Criar novo bloco exclusivo para `send_image` com `Tabs`:
+1. Manter `send_sticker` no bloco genérico (só link)
+2. Criar bloco exclusivo para `send_file` com `Tabs`:
    - **Aba Link**: campo URL como hoje
-   - **Aba Upload**: área de drag/upload que faz upload para Supabase Storage (bucket `audio-files` ou criar `media-files`) e salva a URL pública no `config.file`
-3. Manter o campo de legenda (caption) abaixo das abas
-4. Preview da imagem quando já houver uma URL carregada
-
-### Bucket de storage
-Reutilizar o bucket `audio-files` existente (já tem políticas configuradas) ou, se preferível, o upload salva no mesmo bucket. A URL pública gerada funciona igual ao link manual.
+   - **Aba Upload**: input de arquivo (qualquer tipo), upload para Supabase Storage bucket `audio-files`, salva URL pública no `config.file`
+3. Validação de tamanho (máx 50MB) antes do upload
+4. Exibir nome do arquivo enviado quando houver upload
+5. Manter campo de legenda abaixo das abas
 
