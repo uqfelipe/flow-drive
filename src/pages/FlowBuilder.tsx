@@ -308,13 +308,15 @@ function FlowBuilderContent() {
         return;
       }
       if (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable) return;
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === "z") { e.preventDefault(); handleRedo(); return; }
+      if ((e.ctrlKey || e.metaKey) && e.key === "z") { e.preventDefault(); handleUndo(); return; }
       if ((e.ctrlKey || e.metaKey) && e.key === "c") { e.preventDefault(); handleCopy(); }
       if ((e.ctrlKey || e.metaKey) && e.key === "v") { e.preventDefault(); handlePaste(); }
       if ((e.ctrlKey || e.metaKey) && e.key === "d") { e.preventDefault(); handleDuplicate(); }
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [handleCopy, handlePaste, handleDuplicate, showNodeSearch]);
+  }, [handleCopy, handlePaste, handleDuplicate, handleUndo, handleRedo, showNodeSearch]);
 
   const filteredSearchNodes = nodes.filter((n) =>
     nodeSearch.trim() && (n.data as FlowNodeData)?.label?.toLowerCase().includes(nodeSearch.toLowerCase())
