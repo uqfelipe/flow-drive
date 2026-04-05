@@ -1,12 +1,14 @@
+import { useState } from "react";
 import { getNodeTypeConfig } from "./nodeTypes";
 import { AudioRecorder } from "./AudioRecorder";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { X, Trash2, Plus, Link as LinkIcon, Upload, Mic as MicIcon, ImageIcon, FileIcon } from "lucide-react";
+import { X, Trash2, Plus, Link as LinkIcon, Upload, Mic as MicIcon, ImageIcon, FileIcon, Search } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import type { Node } from "@xyflow/react";
@@ -649,111 +651,7 @@ export function NodeConfigPanel({ node, onClose, onUpdate, onDelete }: NodeConfi
         {/* ─── REQUEST PAYMENT ─── */}
         {/* ─── VEHICLE CAROUSEL ─── */}
         {nt === "vehicle_carousel" && (
-          <>
-            <div className="space-y-1.5">
-              <Label className="text-xs font-medium text-muted-foreground">Mensagem do carrossel</Label>
-              <Textarea className="text-sm min-h-[60px]" placeholder="Confira nossos veículos disponíveis:" value={data.config?.message || ""} onChange={(e) => updateConfig({ message: e.target.value })} />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs font-medium text-muted-foreground">Texto do botão</Label>
-              <Input className="h-9 text-sm" placeholder="Quero este" maxLength={20} value={data.config?.buttonText || ""} onChange={(e) => updateConfig({ buttonText: e.target.value })} />
-              <p className="text-[10px] text-muted-foreground">Máx. 20 caracteres</p>
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs font-medium text-muted-foreground">Filtrar por categoria</Label>
-              <Select value={data.config?.category || "all"} onValueChange={(v) => updateConfig({ category: v === "all" ? "" : v })}>
-                <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Todas as categorias" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todas</SelectItem>
-                  <SelectItem value="sedan">Sedan</SelectItem>
-                  <SelectItem value="suv">SUV</SelectItem>
-                  <SelectItem value="hatch">Hatch</SelectItem>
-                  <SelectItem value="pickup">Pickup</SelectItem>
-                  <SelectItem value="van">Van</SelectItem>
-                  <SelectItem value="luxury">Luxo</SelectItem>
-                  <SelectItem value="economy">Econômico</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs font-medium text-muted-foreground">Máximo de cards</Label>
-              <Input className="h-9 text-sm" type="number" min={2} max={10} value={data.config?.maxCards || 10} onChange={(e) => updateConfig({ maxCards: parseInt(e.target.value) || 10 })} />
-              <p className="text-[10px] text-muted-foreground">Mín. 2, máx. 10 (limitação do WhatsApp)</p>
-            </div>
-
-            {/* Carregar veículos */}
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <Label className="text-xs font-medium text-muted-foreground">Veículos carregados</Label>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="h-7 text-[10px]"
-                  onClick={async () => {
-                    try {
-                      let query = supabase.from("vehicles").select("id, name, brand, model, images").eq("status", "available");
-                      const cat = data.config?.category;
-                      if (cat && cat !== "all") {
-                        query = query.eq("category", cat);
-                      }
-                      const maxCards = data.config?.maxCards || 10;
-                      const { data: vehicles, error } = await query.limit(maxCards).order("created_at", { ascending: false });
-                      if (error) throw error;
-                      if (!vehicles || vehicles.length === 0) {
-                        toast.error("Nenhum veículo disponível encontrado");
-                        return;
-                      }
-                      const mapped = vehicles.map((v: any) => ({
-                        id: v.id,
-                        name: v.name,
-                        brand: v.brand,
-                        model: v.model,
-                        image: v.images?.[0] || "",
-                      }));
-                      updateConfig({ vehicles: mapped });
-                      toast.success(`${mapped.length} veículo(s) carregado(s)`);
-                    } catch (err: any) {
-                      toast.error("Erro ao carregar veículos: " + err.message);
-                    }
-                  }}
-                >
-                  <Plus className="h-3 w-3 mr-1" /> Carregar veículos
-                </Button>
-              </div>
-
-              {((data.config?.vehicles || []) as Array<{ id: string; name: string; brand: string; model: string; image: string }>).map((v, idx) => (
-                <div key={v.id} className="flex items-center gap-2 px-2 py-1.5 rounded-lg bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-300">
-                  {v.image && <img src={v.image} alt="" className="w-8 h-6 rounded object-cover flex-shrink-0" />}
-                  <div className="flex-1 min-w-0">
-                    <p className="text-[11px] font-medium truncate">{v.name}</p>
-                    <p className="text-[9px] text-muted-foreground truncate">{v.brand} {v.model}</p>
-                  </div>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-6 w-6 text-destructive hover:text-destructive"
-                    onClick={() => {
-                      const vehicles = [...(data.config?.vehicles || [])];
-                      vehicles.splice(idx, 1);
-                      updateConfig({ vehicles });
-                    }}
-                  >
-                    <X className="h-3 w-3" />
-                  </Button>
-                </div>
-              ))}
-
-              {(!data.config?.vehicles || (data.config.vehicles as any[]).length === 0) && (
-                <p className="text-[10px] text-muted-foreground italic">Nenhum veículo carregado. Clique em "Carregar veículos" acima.</p>
-              )}
-            </div>
-
-            <div className="bg-muted/50 rounded-lg p-2.5 space-y-1">
-              <p className="text-[11px] font-medium text-foreground/70">ℹ️ Como funciona</p>
-              <p className="text-[10px] text-muted-foreground">Carregue os veículos para criar saídas individuais. Cada veículo terá sua própria conexão no fluxo.</p>
-              <p className="text-[10px] text-muted-foreground">Variáveis salvas: <code className="bg-muted px-1 rounded">{'{{veiculo_selecionado}}'}</code> (ID) e <code className="bg-muted px-1 rounded">{'{{veiculo_nome}}'}</code> (nome)</p>
-            </div>
-          </>
+          <VehicleCarouselConfig data={data} nodeId={node.id} onUpdate={onUpdate} updateConfig={updateConfig} />
         )}
 
         {nt === "request_payment" && (
@@ -810,5 +708,172 @@ export function NodeConfigPanel({ node, onClose, onUpdate, onDelete }: NodeConfi
         </Button>
       </div>
     </div>
+  );
+}
+
+/* ─── Vehicle Carousel Config Sub-component ─── */
+interface VehicleCarouselConfigProps {
+  data: FlowNodeData;
+  nodeId: string;
+  onUpdate: (nodeId: string, data: Partial<FlowNodeData>) => void;
+  updateConfig: (patch: Record<string, any>) => void;
+}
+
+function VehicleCarouselConfig({ data, nodeId, onUpdate, updateConfig }: VehicleCarouselConfigProps) {
+  const [allVehicles, setAllVehicles] = useState<Array<{ id: string; name: string; brand: string; model: string; image: string }>>([]);
+  const [loading, setLoading] = useState(false);
+  const [fetched, setFetched] = useState(false);
+
+  const selectedVehicles = (data.config?.vehicles || []) as Array<{ id: string; name: string; brand: string; model: string; image: string }>;
+  const selectedIds = new Set(selectedVehicles.map((v) => v.id));
+
+  const fetchVehicles = async () => {
+    setLoading(true);
+    try {
+      let query = supabase.from("vehicles").select("id, name, brand, model, images").eq("status", "available");
+      const cat = data.config?.category;
+      if (cat && cat !== "all") {
+        query = query.eq("category", cat);
+      }
+      const { data: vehicles, error } = await query.limit(50).order("created_at", { ascending: false });
+      if (error) throw error;
+      if (!vehicles || vehicles.length === 0) {
+        toast.error("Nenhum veículo disponível encontrado");
+        setAllVehicles([]);
+        setFetched(true);
+        setLoading(false);
+        return;
+      }
+      const mapped = vehicles.map((v: any) => ({
+        id: v.id,
+        name: v.name,
+        brand: v.brand,
+        model: v.model,
+        image: v.images?.[0] || "",
+      }));
+      setAllVehicles(mapped);
+      setFetched(true);
+    } catch (err: any) {
+      toast.error("Erro ao buscar veículos: " + err.message);
+    }
+    setLoading(false);
+  };
+
+  const toggleVehicle = (vehicle: typeof allVehicles[0]) => {
+    const maxCards = data.config?.maxCards || 10;
+    if (selectedIds.has(vehicle.id)) {
+      updateConfig({ vehicles: selectedVehicles.filter((v) => v.id !== vehicle.id) });
+    } else {
+      if (selectedVehicles.length >= maxCards) {
+        toast.error(`Máximo de ${maxCards} veículos permitidos`);
+        return;
+      }
+      updateConfig({ vehicles: [...selectedVehicles, vehicle] });
+    }
+  };
+
+  return (
+    <>
+      <div className="space-y-1.5">
+        <Label className="text-xs font-medium text-muted-foreground">Mensagem do carrossel</Label>
+        <Textarea className="text-sm min-h-[60px]" placeholder="Confira nossos veículos disponíveis:" value={data.config?.message || ""} onChange={(e) => updateConfig({ message: e.target.value })} />
+      </div>
+      <div className="space-y-1.5">
+        <Label className="text-xs font-medium text-muted-foreground">Texto do botão</Label>
+        <Input className="h-9 text-sm" placeholder="Quero este" maxLength={20} value={data.config?.buttonText || ""} onChange={(e) => updateConfig({ buttonText: e.target.value })} />
+        <p className="text-[10px] text-muted-foreground">Máx. 20 caracteres</p>
+      </div>
+      <div className="space-y-1.5">
+        <Label className="text-xs font-medium text-muted-foreground">Filtrar por categoria</Label>
+        <Select value={data.config?.category || "all"} onValueChange={(v) => { updateConfig({ category: v === "all" ? "" : v }); setFetched(false); setAllVehicles([]); }}>
+          <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Todas as categorias" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todas</SelectItem>
+            <SelectItem value="sedan">Sedan</SelectItem>
+            <SelectItem value="suv">SUV</SelectItem>
+            <SelectItem value="hatch">Hatch</SelectItem>
+            <SelectItem value="pickup">Pickup</SelectItem>
+            <SelectItem value="van">Van</SelectItem>
+            <SelectItem value="luxury">Luxo</SelectItem>
+            <SelectItem value="economy">Econômico</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+      <div className="space-y-1.5">
+        <Label className="text-xs font-medium text-muted-foreground">Máximo de cards</Label>
+        <Input className="h-9 text-sm" type="number" min={2} max={10} value={data.config?.maxCards || 10} onChange={(e) => updateConfig({ maxCards: parseInt(e.target.value) || 10 })} />
+        <p className="text-[10px] text-muted-foreground">Mín. 2, máx. 10 (limitação do WhatsApp)</p>
+      </div>
+
+      {/* Seleção de veículos */}
+      <div className="space-y-2">
+        <div className="flex items-center justify-between">
+          <Label className="text-xs font-medium text-muted-foreground">
+            Selecionar veículos {selectedVehicles.length > 0 && <span className="text-primary">({selectedVehicles.length})</span>}
+          </Label>
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-7 text-[10px]"
+            disabled={loading}
+            onClick={fetchVehicles}
+          >
+            <Search className="h-3 w-3 mr-1" /> {loading ? "Buscando..." : "Buscar veículos"}
+          </Button>
+        </div>
+
+        {fetched && allVehicles.length > 0 && (
+          <div className="space-y-1 max-h-60 overflow-y-auto border border-border rounded-lg p-2">
+            {allVehicles.map((v) => (
+              <label
+                key={v.id}
+                className={`flex items-center gap-2 px-2 py-1.5 rounded-lg cursor-pointer transition-colors ${
+                  selectedIds.has(v.id) ? "bg-primary/10 border border-primary/30" : "hover:bg-muted/50"
+                }`}
+              >
+                <Checkbox
+                  checked={selectedIds.has(v.id)}
+                  onCheckedChange={() => toggleVehicle(v)}
+                  className="h-4 w-4"
+                />
+                {v.image && <img src={v.image} alt="" className="w-8 h-6 rounded object-cover flex-shrink-0" />}
+                <div className="flex-1 min-w-0">
+                  <p className="text-[11px] font-medium truncate">{v.name}</p>
+                  <p className="text-[9px] text-muted-foreground truncate">{v.brand} {v.model}</p>
+                </div>
+              </label>
+            ))}
+          </div>
+        )}
+
+        {fetched && allVehicles.length === 0 && (
+          <p className="text-[10px] text-muted-foreground italic">Nenhum veículo disponível encontrado.</p>
+        )}
+
+        {!fetched && selectedVehicles.length === 0 && (
+          <p className="text-[10px] text-muted-foreground italic">Clique em "Buscar veículos" para selecionar quais aparecem no carrossel.</p>
+        )}
+
+        {!fetched && selectedVehicles.length > 0 && (
+          <div className="space-y-1">
+            {selectedVehicles.map((v) => (
+              <div key={v.id} className="flex items-center gap-2 px-2 py-1.5 rounded-lg bg-primary/10 border border-primary/30">
+                {v.image && <img src={v.image} alt="" className="w-8 h-6 rounded object-cover flex-shrink-0" />}
+                <div className="flex-1 min-w-0">
+                  <p className="text-[11px] font-medium truncate">{v.name}</p>
+                  <p className="text-[9px] text-muted-foreground truncate">{v.brand} {v.model}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div className="bg-muted/50 rounded-lg p-2.5 space-y-1">
+        <p className="text-[11px] font-medium text-foreground/70">ℹ️ Como funciona</p>
+        <p className="text-[10px] text-muted-foreground">Selecione os veículos que deseja exibir no carrossel. Cada veículo terá sua própria saída no fluxo.</p>
+        <p className="text-[10px] text-muted-foreground">Variáveis salvas: <code className="bg-muted px-1 rounded">{'{{veiculo_selecionado}}'}</code> (ID) e <code className="bg-muted px-1 rounded">{'{{veiculo_nome}}'}</code> (nome)</p>
+      </div>
+    </>
   );
 }
