@@ -30,7 +30,7 @@ export const nodeCategories: NodeCategoryConfig[] = [
   { category: "midia", label: "Mídia", icon: Image },
   { category: "entrada", label: "Entrada de Dados", icon: Type },
   { category: "logica", label: "Lógica", icon: GitBranch },
-  { category: "integracao", label: "Integrações", icon: Puzzle },
+  
 ];
 
 export const nodeTypes: NodeTypeConfig[] = [
