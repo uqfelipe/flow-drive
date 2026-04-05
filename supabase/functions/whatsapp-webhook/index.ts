@@ -523,6 +523,18 @@ async function processFlow(
           if (ordered.length < 2) {
             await sendWhatsAppText(inst, phone, "😕 No momento não temos veículos suficientes para exibir. Tente novamente mais tarde!");
           } else {
+            // Send album of extra photos for each vehicle before the carousel
+            for (const v of ordered) {
+              const imgs = (v as any).images || [];
+              if (imgs.length > 1) {
+                for (let i = 1; i < imgs.length; i++) {
+                  const caption = `📸 ${(v as any).name} - Foto ${i + 1}`;
+                  try { await sendWhatsAppMedia(inst, phone, "image", imgs[i], caption); } catch (_) {}
+                  await new Promise(r => setTimeout(r, 300));
+                }
+              }
+            }
+
             const carousel = ordered.map((v: any) => ({
               text: `${v.name} - ${v.brand} ${v.model}\n${v.year} • ${v.color}\nDiária: R$ ${Number(v.daily_rate).toFixed(2)}\nSemanal: R$ ${Number(v.weekly_rate).toFixed(2)}\nMensal: R$ ${Number(v.monthly_rate).toFixed(2)}`,
               image: v.images?.[0] || "",
@@ -534,10 +546,17 @@ async function processFlow(
             } catch (carouselErr) {
               console.error(`[FLOW] /send/carousel failed, sending text fallback`, carouselErr.message);
               for (const v of ordered) {
-                const img = (v as any).images?.[0];
+                const imgs = (v as any).images || [];
                 const text = `🚗 *${(v as any).name}*\n${(v as any).brand} ${(v as any).model} ${(v as any).year}\n${(v as any).color}\n💰 Diária: R$ ${Number((v as any).daily_rate).toFixed(2)}`;
-                if (img) { try { await sendWhatsAppMedia(inst, phone, "image", img, text); } catch (_) {} }
-                else { try { await sendWhatsAppText(inst, phone, text); } catch (_) {} }
+                if (imgs.length > 0) {
+                  for (let i = 0; i < imgs.length; i++) {
+                    const caption = i === 0 ? text : `📸 ${(v as any).name} - Foto ${i + 1}`;
+                    try { await sendWhatsAppMedia(inst, phone, "image", imgs[i], caption); } catch (_) {}
+                    await new Promise(r => setTimeout(r, 300));
+                  }
+                } else {
+                  try { await sendWhatsAppText(inst, phone, text); } catch (_) {} 
+                }
                 await new Promise(r => setTimeout(r, 300));
               }
             }
