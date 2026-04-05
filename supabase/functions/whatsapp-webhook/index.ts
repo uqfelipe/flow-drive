@@ -1298,7 +1298,14 @@ async function processIncomingMessage(phone: string, text: string, mediaUrl?: st
     const flow = await getActiveFlowCached();
     
     if (!flow) {
-      console.log("[AUTO-REPLY] No active flow found");
+      // No active flow — close any existing session so the bot stops replying
+      if (session) {
+        await adminClient.from("chat_sessions")
+          .update({ status: "completed", updated_at: new Date().toISOString() })
+          .eq("id", session.id);
+        console.log("[AUTO-REPLY] Flow deactivated, session completed:", session.id);
+      }
+      console.log("[AUTO-REPLY] No active flow found, ignoring message");
       return;
     }
     const flowNodes = flow.nodes as FlowNode[];
