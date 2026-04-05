@@ -760,14 +760,9 @@ function VehicleCarouselConfig({ data, nodeId, onUpdate, updateConfig }: Vehicle
   };
 
   const toggleVehicle = (vehicle: typeof allVehicles[0]) => {
-    const maxCards = data.config?.maxCards || 10;
     if (selectedIds.has(vehicle.id)) {
       updateConfig({ vehicles: selectedVehicles.filter((v) => v.id !== vehicle.id) });
     } else {
-      if (selectedVehicles.length >= maxCards) {
-        toast.error(`Máximo de ${maxCards} veículos permitidos`);
-        return;
-      }
       updateConfig({ vehicles: [...selectedVehicles, vehicle] });
     }
   };
