@@ -485,7 +485,18 @@ async function processFlow(
       const lat = parseFloat(cfg.latitude);
       const lng = parseFloat(cfg.longitude);
       if (!isNaN(lat) && !isNaN(lng)) {
-        try { await sendWhatsAppLocation(inst, phone, lat, lng, cfg.name, cfg.address); } catch (e) { console.error(`[FLOW]`, e.message); }
+        const locName = replaceVariables(cfg.name || "", vars);
+        const locAddr = replaceVariables(cfg.address || "", vars);
+        try {
+          await sendWhatsAppLocation(inst, phone, lat, lng, locName, locAddr);
+        } catch (e) {
+          console.error(`[FLOW] /send/location failed, sending text fallback`, e.message);
+          const mapsUrl = `https://www.google.com/maps?q=${lat},${lng}`;
+          const fallback = locName ? `📍 ${locName}\n${locAddr || ""}\n${mapsUrl}` : `📍 ${mapsUrl}`;
+          try { await sendWhatsAppText(inst, phone, fallback.trim()); } catch (_) {}
+        }
+      } else {
+        console.warn(`[FLOW] send_location skipped: invalid lat="${cfg.latitude}" lng="${cfg.longitude}"`);
       }
       nodeId = findNextNodeId(flowEdges, nodeId);
       continue;
