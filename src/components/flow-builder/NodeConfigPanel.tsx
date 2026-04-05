@@ -100,7 +100,7 @@ export function NodeConfigPanel({ node, onClose, onUpdate, onDelete, nodes = [] 
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs font-medium text-muted-foreground">Texto para copiar</Label>
-              <Textarea className="text-sm min-h-[80px]" placeholder="Conteúdo que será copiado ao clicar no botão..." value={data.config?.text || ""} onChange={(e) => updateConfig({ text: e.target.value })} />
+              <VariableTextarea className="text-sm min-h-[80px]" placeholder="Conteúdo que será copiado ao clicar no botão..." value={data.config?.text || ""} onChange={(v) => updateConfig({ text: v })} nodes={nodes} />
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs font-medium text-muted-foreground">Label do botão</Label>
