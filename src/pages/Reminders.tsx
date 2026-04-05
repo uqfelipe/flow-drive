@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef } from "react";
 import { AdminLayout } from "@/components/AdminLayout";
 import { useReminders, useCreateReminder, useCancelReminder, useUpdateReminder, useDeleteReminder, useProcessReminders } from "@/hooks/use-reminders";
 import { useCustomers } from "@/hooks/use-customers";
@@ -16,7 +16,7 @@ import { Switch } from "@/components/ui/switch";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
-import { Plus, Ban, AlarmClock, Pencil, Trash2, Play, FlaskConical, Loader2, Radio, CheckCircle2, XCircle } from "lucide-react";
+import { Plus, Ban, AlarmClock, Pencil, Trash2, Radio, CheckCircle2, XCircle } from "lucide-react";
 import type { ReminderWithCustomer } from "@/hooks/use-reminders";
 
 const statusMap: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
@@ -74,11 +74,6 @@ export default function Reminders() {
   const [date, setDate] = useState("");
   const [time, setTime] = useState("");
   const [deleteId, setDeleteId] = useState<string | null>(null);
-
-  // Quick test state
-  const [testCountdown, setTestCountdown] = useState<number | null>(null);
-  const [testReminderId, setTestReminderId] = useState<string | null>(null);
-  const countdownRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Auto-process state
   const autoEnabled = settings?.reminders_auto_process === "true";
@@ -214,95 +209,6 @@ export default function Reminders() {
     }
   };
 
-  const handleProcessNow = async () => {
-    try {
-      const result = await processReminders.mutateAsync(undefined);
-      if (result.sent > 0) {
-        toast.success(`${result.sent} lembrete(s) enviado(s)!`);
-      } else {
-        toast.info("Nenhum lembrete pendente para enviar");
-      }
-      if (result.results?.length) {
-        result.results.forEach((r) => {
-          if (r.status === "failed") {
-            toast.error(`Falha: ${r.detail}`);
-          }
-        });
-      }
-    } catch (err) {
-      toast.error("Erro ao processar lembretes");
-      console.error(err);
-    }
-  };
-
-  // Cleanup countdown on unmount
-  useEffect(() => {
-    return () => {
-      if (countdownRef.current) clearInterval(countdownRef.current);
-    };
-  }, []);
-
-  const processTestReminder = useCallback(async (id: string) => {
-    try {
-      const result = await processReminders.mutateAsync(id);
-      if (result.sent > 0) {
-        toast.success("✅ Teste enviado com sucesso!");
-      } else {
-        const detail = result.results?.[0]?.detail || "unknown";
-        toast.error(`Teste falhou: ${detail}`);
-      }
-    } catch (err) {
-      toast.error("Erro ao processar teste");
-      console.error(err);
-    } finally {
-      setTestReminderId(null);
-    }
-  }, [processReminders]);
-
-  const handleQuickTest = async () => {
-    if (!customers?.length) {
-      toast.error("Nenhum cliente cadastrado para teste");
-      return;
-    }
-
-    const customer = customers[0];
-    const scheduledAt = new Date(Date.now() + 10_000).toISOString();
-
-    try {
-      const result = await createReminder.mutateAsync({
-        customer_id: customer.id,
-        message: `🧪 Teste automático de lembrete — ${new Date().toLocaleTimeString("pt-BR")}`,
-        scheduled_at: scheduledAt,
-      });
-
-      const newId = (result as any)?.id;
-      if (!newId) {
-        toast.error("Erro ao obter ID do lembrete de teste");
-        return;
-      }
-
-      setTestReminderId(newId);
-      setTestCountdown(10);
-      toast.info(`Teste criado! Enviando em 10 segundos para ${customer.name}...`);
-
-      if (countdownRef.current) clearInterval(countdownRef.current);
-      let remaining = 10;
-      countdownRef.current = setInterval(() => {
-        remaining--;
-        setTestCountdown(remaining);
-        if (remaining <= 0) {
-          clearInterval(countdownRef.current!);
-          countdownRef.current = null;
-          setTestCountdown(null);
-          processTestReminder(newId);
-        }
-      }, 1000);
-    } catch (err) {
-      toast.error("Erro ao criar lembrete de teste");
-      console.error(err);
-    }
-  };
-
   const isPending = createReminder.isPending || updateReminder.isPending;
 
   return (
@@ -325,7 +231,7 @@ export default function Reminders() {
             {autoEnabled && (
               <div className="flex items-center gap-2">
                 <Radio className="h-3.5 w-3.5 text-green-500 animate-pulse" />
-                <span className="text-xs text-muted-foreground">Monitorando a cada 5s</span>
+                <span className="text-xs text-muted-foreground">Monitorando a cada 10s</span>
               </div>
             )}
           </div>
@@ -359,22 +265,6 @@ export default function Reminders() {
           </div>
 
           <div className="flex items-center gap-2 flex-wrap">
-            {testCountdown !== null && (
-              <Badge variant="outline" className="animate-pulse text-sm px-3 py-1">
-                Enviando em {testCountdown}s...
-              </Badge>
-            )}
-
-            <Button variant="outline" size="sm" onClick={handleQuickTest} disabled={createReminder.isPending || testCountdown !== null}>
-              <FlaskConical className="h-4 w-4 mr-2" />
-              Teste em 10s
-            </Button>
-
-            <Button variant="outline" size="sm" onClick={handleProcessNow} disabled={processReminders.isPending}>
-              {processReminders.isPending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Play className="h-4 w-4 mr-2" />}
-              Processar agora
-            </Button>
-
             <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) resetForm(); }}>
               <DialogTrigger asChild>
                 <Button>
