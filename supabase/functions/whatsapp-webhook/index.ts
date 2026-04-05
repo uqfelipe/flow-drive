@@ -1005,7 +1005,7 @@ function extractIncomingMessages(body: any): IncomingWebhookMessage[] {
 // ── Flow cache ───────────────────────────────────────────────────────
 let cachedFlow: any = null;
 let lastCacheTime = 0;
-const FLOW_CACHE_TTL = 30_000; // 30s
+const FLOW_CACHE_TTL = 5_000; // 5s – detect deactivation faster
 
 async function getActiveFlowCached() {
   if (cachedFlow && Date.now() - lastCacheTime < FLOW_CACHE_TTL) return cachedFlow;
@@ -1298,7 +1298,14 @@ async function processIncomingMessage(phone: string, text: string, mediaUrl?: st
     const flow = await getActiveFlowCached();
     
     if (!flow) {
-      console.log("[AUTO-REPLY] No active flow found");
+      // No active flow — close any existing session so the bot stops replying
+      if (session) {
+        await adminClient.from("chat_sessions")
+          .update({ status: "completed", updated_at: new Date().toISOString() })
+          .eq("id", session.id);
+        console.log("[AUTO-REPLY] Flow deactivated, session completed:", session.id);
+      }
+      console.log("[AUTO-REPLY] No active flow found, ignoring message");
       return;
     }
     const flowNodes = flow.nodes as FlowNode[];
