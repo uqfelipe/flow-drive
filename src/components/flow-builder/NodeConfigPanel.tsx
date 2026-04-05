@@ -730,7 +730,7 @@ function VehicleCarouselConfig({ data, nodeId, onUpdate, updateConfig }: Vehicle
   const fetchVehicles = async () => {
     setLoading(true);
     try {
-      let query = supabase.from("vehicles").select("id, name, brand, model, images").eq("status", "available");
+      let query = supabase.from("vehicles").select("id, name, brand, model, images, status");
       const { data: vehicles, error } = await query.limit(50).order("created_at", { ascending: false });
       if (error) throw error;
       if (!vehicles || vehicles.length === 0) {
