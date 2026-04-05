@@ -439,6 +439,57 @@ function FlowBuilderContent() {
                 </button>
               </div>
             )}
+
+            {/* Node search overlay */}
+            {showNodeSearch && (
+              <div className="absolute top-4 right-4 z-50 w-72 rounded-xl border border-border bg-popover text-popover-foreground shadow-xl animate-in fade-in-0 slide-in-from-top-2">
+                <div className="flex items-center gap-2 px-3 py-2 border-b border-border">
+                  <Search className="h-4 w-4 text-muted-foreground shrink-0" />
+                  <input
+                    ref={nodeSearchInputRef}
+                    className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+                    placeholder="Buscar componente..."
+                    value={nodeSearch}
+                    onChange={(e) => setNodeSearch(e.target.value)}
+                    autoFocus
+                  />
+                  <button
+                    className="p-0.5 rounded hover:bg-accent transition-colors"
+                    onClick={() => { setShowNodeSearch(false); setNodeSearch(""); }}
+                  >
+                    <X className="h-3.5 w-3.5 text-muted-foreground" />
+                  </button>
+                </div>
+                {nodeSearch.trim() && (
+                  <div className="max-h-[200px] overflow-y-auto py-1">
+                    {filteredSearchNodes.length === 0 ? (
+                      <p className="text-xs text-muted-foreground text-center py-3">Nenhum nó encontrado</p>
+                    ) : (
+                      filteredSearchNodes.map((node) => {
+                        const data = node.data as FlowNodeData;
+                        const config = getNodeTypeConfig(data.nodeType);
+                        const Icon = config?.icon;
+                        return (
+                          <button
+                            key={node.id}
+                            className="flex w-full items-center gap-2.5 px-3 py-2 text-sm hover:bg-accent hover:text-accent-foreground transition-colors"
+                            onClick={() => navigateToNode(node)}
+                          >
+                            {Icon && (
+                              <div className="w-6 h-6 rounded flex items-center justify-center shrink-0" style={{ backgroundColor: `${config.color}20` }}>
+                                <Icon className="h-3.5 w-3.5" style={{ color: config.color }} />
+                              </div>
+                            )}
+                            <span className="truncate">{data.label}</span>
+                            <span className="ml-auto text-[10px] text-muted-foreground">#{node.id}</span>
+                          </button>
+                        );
+                      })
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
           {selectedNode && (
             <NodeConfigPanel node={selectedNode} onClose={() => setSelectedNode(null)} onUpdate={onUpdateNode} onDelete={onDeleteNode} />
