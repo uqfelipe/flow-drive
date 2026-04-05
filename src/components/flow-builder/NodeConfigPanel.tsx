@@ -596,7 +596,7 @@ export function NodeConfigPanel({ node, onClose, onUpdate, onDelete }: NodeConfi
         )}
 
         {/* ─── DELAY / TYPING ─── */}
-        {(nt === "delay" || nt === "typing_indicator") && (
+        {(nt === "delay" || nt === "typing_indicator" || nt === "restart_with_typing") && (
           <div className="space-y-1.5">
             <Label className="text-xs font-medium text-muted-foreground">Tempo (segundos)</Label>
             <Input type="number" className="h-9 text-sm" value={data.config?.seconds || (nt === "typing_indicator" ? 3 : 5)} onChange={(e) => updateConfig({ seconds: parseInt(e.target.value) })} />
