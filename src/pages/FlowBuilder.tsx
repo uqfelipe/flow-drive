@@ -170,9 +170,27 @@ function FlowBuilderContent() {
   }, [currentFlowId]);
 
   const onConnect = useCallback(
-    (params: Connection) => setEdges((eds) => addEdge({ ...params, ...defaultEdgeOptions }, eds)),
-    [setEdges]
+    (params: Connection) => {
+      setEdges((eds) => addEdge({ ...params, ...defaultEdgeOptions }, eds));
+      setTimeout(() => pushHistory(), 50);
+    },
+    [setEdges, pushHistory]
   );
+
+  // Wrap onNodesChange / onEdgesChange to track history on structural changes
+  const handleNodesChange = useCallback((changes: any) => {
+    onNodesChange(changes);
+    const hasStructural = changes.some((c: any) => c.type === 'remove' || c.type === 'add');
+    const hasPosition = changes.some((c: any) => c.type === 'position' && !c.dragging);
+    if (hasStructural) setTimeout(() => pushHistory(), 50);
+    else if (hasPosition) schedulePushHistory();
+  }, [onNodesChange, pushHistory, schedulePushHistory]);
+
+  const handleEdgesChange = useCallback((changes: any) => {
+    onEdgesChange(changes);
+    const hasStructural = changes.some((c: any) => c.type === 'remove' || c.type === 'add');
+    if (hasStructural) setTimeout(() => pushHistory(), 50);
+  }, [onEdgesChange, pushHistory]);
 
   // Copy/paste/duplicate logic
   const handleCopy = useCallback((targetNodes?: Node[]) => {
