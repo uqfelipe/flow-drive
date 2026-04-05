@@ -371,7 +371,7 @@ function FlowBuilderContent() {
               onConnect={onConnect} onInit={setReactFlowInstance}
               onDrop={onDrop} onDragOver={onDragOver}
               
-              nodeTypes={customNodeTypes} fitView
+              nodeTypes={customNodeTypes} edgeTypes={customEdgeTypes} fitView
               minZoom={0.05} maxZoom={4}
               className="!bg-muted/30"
               defaultEdgeOptions={defaultEdgeOptions}
