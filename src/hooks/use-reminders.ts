@@ -80,3 +80,31 @@ export function useCancelReminder() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ["reminders"] }),
   });
 }
+
+export function useUpdateReminder() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, ...updates }: { id: string; customer_id?: string; message?: string; scheduled_at?: string }) => {
+      const { error } = await supabase
+        .from("reminders" as any)
+        .update(updates as any)
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["reminders"] }),
+  });
+}
+
+export function useDeleteReminder() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from("reminders" as any)
+        .delete()
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["reminders"] }),
+  });
+}
