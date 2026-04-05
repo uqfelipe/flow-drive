@@ -3,7 +3,7 @@ import { Handle, Position, type NodeProps, useReactFlow } from "@xyflow/react";
 import { getNodeTypeConfig } from "./nodeTypes";
 import type { FlowNodeData } from "@/types";
 import { X, GripHorizontal, Pencil, Mic, Image, Video, File, Sticker, Copy, Car } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+
 
 function FlowNode({ data, selected, id }: NodeProps) {
   const nodeData = data as unknown as FlowNodeData;
