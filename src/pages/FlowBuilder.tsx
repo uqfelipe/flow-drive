@@ -231,12 +231,22 @@ function FlowBuilderContent() {
   const navigateToNode = useCallback((node: Node) => {
     if (!reactFlowInstance) return;
     reactFlowInstance.setCenter(node.position.x + 100, node.position.y + 50, { zoom: 1.5, duration: 600 });
-    setNodes((nds) => nds.map((n) => ({ ...n, selected: n.id === node.id })));
-    const nd = nodes.find((n) => n.id === node.id);
-    if (nd) setSelectedNode(nd);
+    // Highlight node in red without opening config
+    setNodes((nds) => nds.map((n) => ({
+      ...n,
+      selected: n.id === node.id,
+      data: { ...n.data, _highlight: n.id === node.id },
+    })));
     setShowNodeSearch(false);
     setNodeSearch("");
-  }, [reactFlowInstance, nodes, setNodes]);
+    // Remove highlight after 3 seconds
+    setTimeout(() => {
+      setNodes((nds) => nds.map((n) => ({
+        ...n,
+        data: { ...n.data, _highlight: false },
+      })));
+    }, 3000);
+  }, [reactFlowInstance, setNodes]);
 
   const onDragOver = useCallback((event: React.DragEvent) => {
     event.preventDefault();
