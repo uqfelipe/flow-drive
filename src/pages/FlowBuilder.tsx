@@ -179,13 +179,19 @@ function FlowBuilderContent() {
       const node = nodes.find((n) => n.id === nodeId);
       if (node) handleCopy([node]);
     };
+    const configUpdateHandler = (e: Event) => {
+      const { nodeId, config } = (e as CustomEvent).detail;
+      setNodes((nds) => nds.map((n) => n.id === nodeId ? { ...n, data: { ...n.data, config } } : n));
+    };
     window.addEventListener("flow-edit-node", handler);
     window.addEventListener("flow-copy-node", copyHandler);
+    window.addEventListener("flow-update-node-config", configUpdateHandler);
     return () => {
       window.removeEventListener("flow-edit-node", handler);
       window.removeEventListener("flow-copy-node", copyHandler);
+      window.removeEventListener("flow-update-node-config", configUpdateHandler);
     };
-  }, [nodes, handleCopy]);
+  }, [nodes, handleCopy, setNodes]);
 
   // Keyboard shortcuts
   useEffect(() => {
