@@ -4,7 +4,7 @@ import {
   Image, Mic, Video, File, Sticker, MapPin, Contact, Car,
   Type, Hash, Mail, Calendar, Phone, User, CreditCard,
   GitBranch, Clock, Timer, Variable,
-  List, MapPinned, Keyboard,
+  List, MapPinned, Keyboard, RotateCcw,
 } from "lucide-react";
 import type { FlowNodeCategory } from "@/types";
 
