@@ -1376,7 +1376,18 @@ async function processIncomingMessage(phone: string, text: string, mediaUrl?: st
                 }
               } catch (_) {}
               console.log(`[FLOW] Vehicle selected: ${vehicleId}`);
-              const nextNodeId = findNextNodeId(flowEdges, currentNodeId, "selected");
+              
+              // Find per-vehicle handle based on config vehicles list
+              let handleId = "selected";
+              const configVehicles = (currentNode.data.config?.vehicles || []) as Array<{ id: string }>;
+              if (configVehicles.length > 0) {
+                const vIdx = configVehicles.findIndex(v => v.id === vehicleId);
+                if (vIdx >= 0) {
+                  handleId = `vehicle-${vIdx}`;
+                }
+              }
+              
+              const nextNodeId = findNextNodeId(flowEdges, currentNodeId, handleId);
               if (nextNodeId) {
                 await processFlow(inst, phone, text, session.id, customerId, flowNodes, flowEdges, nextNodeId, variables);
               }
