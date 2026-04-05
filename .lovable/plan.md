@@ -1,76 +1,55 @@
 
 
-## Página de Lembretes com envio via WhatsApp
+## Corrigir envio de lembretes via WhatsApp
 
-Criar uma página para agendar lembretes que serão enviados via WhatsApp na data/hora exata configurada (fuso de São Paulo).
+### Problemas encontrados
 
-### 1. Tabela no Supabase: `reminders`
+1. **Endpoint errado na API do WhatsApp** — a função usa `/message/sendText` mas o endpoint correto (usado no restante do projeto) é `/send/text`
+2. **Cron job não configurado** — a função `send-reminders` nunca é chamada automaticamente. Precisa ser configurada via `pg_cron` no SQL Editor do Supabase.
 
-```sql
-CREATE TABLE public.reminders (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  customer_id uuid NOT NULL,
-  message text NOT NULL DEFAULT '',
-  scheduled_at timestamptz NOT NULL,
-  status text NOT NULL DEFAULT 'pending', -- pending, sent, failed, cancelled
-  sent_at timestamptz,
-  created_at timestamptz NOT NULL DEFAULT now()
-);
+### Correções
 
-ALTER TABLE public.reminders ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Allow all access to reminders" ON public.reminders FOR ALL USING (true) WITH CHECK (true);
+**Arquivo: `supabase/functions/send-reminders/index.ts`**
+
+- Alterar o endpoint de `/message/sendText` para `/send/text` na função `sendWhatsAppText`
+- Adicionar `instance_name` no path da API (padrão do projeto: `${server_url}/message/...` vs `${server_url}/send/text`)
+
+Trecho corrigido:
+```typescript
+const res = await fetch(`${inst.server_url}/send/text`, {
+  method: "POST",
+  headers: { "Content-Type": "application/json", token: inst.instance_token },
+  body: JSON.stringify({ number: phone, text: message }),
+});
 ```
 
-### 2. Edge Function: `send-reminders`
+**SQL (via insert tool — cron job)**
 
-- Função agendada via `pg_cron` (a cada minuto)
-- Consulta lembretes com `status = 'pending'` e `scheduled_at <= now()`
-- Para cada lembrete, busca o telefone do cliente e envia a mensagem via WhatsApp API (mesmo padrão do webhook existente — `waFetch`)
-- Atualiza o status para `sent` ou `failed`
-
-### 3. Página: `src/pages/Reminders.tsx`
-
-- Layout com `AdminLayout`, título "Lembretes"
-- Tabela listando todos os lembretes (cliente, mensagem, data/hora agendada, status)
-- Botão "Novo Lembrete" abre dialog com:
-  - Select de cliente (busca da tabela `customers`)
-  - Textarea para mensagem
-  - Inputs de data e hora (com precisão de segundos), exibidos em horário de São Paulo
-- Botão para cancelar lembretes pendentes
-
-### 4. Hook: `src/hooks/use-reminders.ts`
-
-- `useReminders()` — lista lembretes com join no cliente
-- `useCreateReminder()` — insere novo lembrete
-- `useCancelReminder()` — atualiza status para `cancelled`
-
-### 5. Rota e Sidebar
-
-- **App.tsx**: Adicionar rota `/reminders` → `<Reminders />`
-- **AppSidebar.tsx**: Adicionar item "Lembretes" com ícone `AlarmClock` no grupo "Configuração"
-
-### 6. Cron Job (pg_cron + pg_net)
-
-Agendar chamada à Edge Function a cada minuto:
+Configurar o `pg_cron` para chamar a função a cada minuto:
 ```sql
-SELECT cron.schedule('send-reminders-every-minute', '* * * * *', $$
+SELECT cron.schedule(
+  'send-reminders-every-minute',
+  '* * * * *',
+  $$
   SELECT net.http_post(
     url := 'https://umsyxiztgfiedtibxjeo.supabase.co/functions/v1/send-reminders',
-    headers := '{"Authorization": "Bearer <anon_key>", "Content-Type": "application/json"}'::jsonb,
+    headers := '{"Content-Type": "application/json", "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVtc3l4aXp0Z2ZpZWR0aWJ4amVvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ5NzcyMzksImV4cCI6MjA5MDU1MzIzOX0.BCzXCyXyU62RdJATe0fqCcPiNtjFDy2adP6SpisjYyw"}'::jsonb,
     body := '{}'::jsonb
   ) AS request_id;
-$$);
+  $$
+);
 ```
 
-### Resumo das alterações
+**Resetar o lembrete que falhou** para testar novamente:
+```sql
+UPDATE reminders SET status = 'pending', sent_at = NULL WHERE id = '05c32483-2f6c-4763-b12e-bc865c4b5d7c';
+```
 
-| Arquivo | Ação |
-|---------|------|
-| Migration SQL | Criar tabela `reminders` |
-| `supabase/functions/send-reminders/index.ts` | Nova Edge Function |
-| `src/pages/Reminders.tsx` | Nova página |
-| `src/hooks/use-reminders.ts` | Novo hook |
-| `src/App.tsx` | Adicionar rota |
-| `src/components/AppSidebar.tsx` | Adicionar link na sidebar |
-| SQL (insert tool) | Configurar cron job |
+### Resumo
+
+| Alteração | Arquivo/Local |
+|-----------|---------------|
+| Corrigir endpoint `/send/text` | `supabase/functions/send-reminders/index.ts` |
+| Configurar cron job | SQL Editor do Supabase |
+| Resetar lembrete falhado | SQL Editor do Supabase |
 
