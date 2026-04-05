@@ -1349,6 +1349,42 @@ async function processIncomingMessage(phone: string, text: string, mediaUrl?: st
       if (currentNodeId) {
         const currentNode = flowNodes.find(n => n.id === currentNodeId);
         
+        // ── Global: intercept veiculo_* at ANY node, re-route to the carousel ──
+        const vehicleMatch = text.match(/^veiculo_(.+)$/i);
+        if (vehicleMatch) {
+          // Find the carousel node — either current or search all flow nodes
+          let carouselNode = currentNode?.data?.nodeType === "vehicle_carousel" ? currentNode : null;
+          if (!carouselNode) {
+            carouselNode = flowNodes.find(n => n.data?.nodeType === "vehicle_carousel") || null;
+          }
+          if (carouselNode) {
+            const vehicleId = vehicleMatch[1];
+            variables["veiculo_selecionado"] = vehicleId;
+            try {
+              const { data: vData } = await adminClient.from("vehicles").select("name, brand, model").eq("id", vehicleId).single();
+              if (vData) {
+                variables["veiculo_nome"] = `${vData.name} - ${vData.brand} ${vData.model}`;
+              }
+            } catch (_) {}
+            console.log(`[FLOW] Vehicle selected (global intercept): ${vehicleId}`);
+            
+            let handleId = "selected";
+            const configVehicles = (carouselNode.data.config?.vehicles || []) as Array<{ id: string }>;
+            if (configVehicles.length > 0) {
+              const vIdx = configVehicles.findIndex(v => v.id === vehicleId);
+              if (vIdx >= 0) {
+                handleId = `vehicle-${vIdx}`;
+              }
+            }
+            
+            const nextNodeId = findNextNodeId(flowEdges, carouselNode.id, handleId);
+            if (nextNodeId) {
+              await processFlow(inst, phone, text, session.id, customerId, flowNodes, flowEdges, nextNodeId, variables);
+            }
+            return;
+          }
+        }
+        
         if (currentNode) {
           const nt = currentNode.data.nodeType;
           
@@ -1367,42 +1403,6 @@ async function processIncomingMessage(phone: string, text: string, mediaUrl?: st
             } else {
               try { await sendWhatsAppText(inst, phone, "❌ Opção inválida. Por favor, escolha uma opção válida."); } catch (_) {}
               await new Promise(r => setTimeout(r, 500));
-              await processFlow(inst, phone, "", session.id, customerId, flowNodes, flowEdges, currentNodeId, variables);
-            }
-            return;
-          }
-
-          // Handle vehicle_carousel button response
-          if (nt === "vehicle_carousel") {
-            const match = text.match(/^veiculo_(.+)$/i);
-            if (match) {
-              const vehicleId = match[1];
-              variables["veiculo_selecionado"] = vehicleId;
-              // Fetch vehicle name for convenience
-              try {
-                const { data: vData } = await adminClient.from("vehicles").select("name, brand, model").eq("id", vehicleId).single();
-                if (vData) {
-                  variables["veiculo_nome"] = `${vData.name} - ${vData.brand} ${vData.model}`;
-                }
-              } catch (_) {}
-              console.log(`[FLOW] Vehicle selected: ${vehicleId}`);
-              
-              // Find per-vehicle handle based on config vehicles list
-              let handleId = "selected";
-              const configVehicles = (currentNode.data.config?.vehicles || []) as Array<{ id: string }>;
-              if (configVehicles.length > 0) {
-                const vIdx = configVehicles.findIndex(v => v.id === vehicleId);
-                if (vIdx >= 0) {
-                  handleId = `vehicle-${vIdx}`;
-                }
-              }
-              
-              const nextNodeId = findNextNodeId(flowEdges, currentNodeId, handleId);
-              if (nextNodeId) {
-                await processFlow(inst, phone, text, session.id, customerId, flowNodes, flowEdges, nextNodeId, variables);
-              }
-            } else {
-              try { await sendWhatsAppText(inst, phone, "❌ Por favor, selecione um veículo usando os botões."); } catch (_) {}
               await processFlow(inst, phone, "", session.id, customerId, flowNodes, flowEdges, currentNodeId, variables);
             }
             return;
