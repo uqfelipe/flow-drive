@@ -370,6 +370,7 @@ function FlowBuilderContent() {
               onDrop={onDrop} onDragOver={onDragOver}
               
               nodeTypes={customNodeTypes} fitView
+              minZoom={0.05} maxZoom={4}
               className="!bg-muted/30"
               defaultEdgeOptions={defaultEdgeOptions}
               connectionLineType={ConnectionLineType.SmoothStep}
