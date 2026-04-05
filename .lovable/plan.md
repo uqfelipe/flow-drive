@@ -1,23 +1,22 @@
 
 
-## Múltipla escolha de veículos no Carrossel
+## Arrumar lógica do carrossel de veículos
 
-### Objetivo
-Substituir o botão "Carregar veículos" (que carrega todos automaticamente) por uma lista de checkboxes onde o usuário escolhe manualmente quais veículos aparecem no carrossel.
+### O que muda
+Simplificar a configuração: remover o campo "Máximo de cards" (limite de 10) e o auto-load automático. O usuário simplesmente clica "Buscar veículos", escolhe os que quer com checkboxes, e pronto.
 
 ### Alterações
 
-#### `src/components/flow-builder/NodeConfigPanel.tsx`
-- Adicionar estado local `allVehicles` (lista de todos os veículos disponíveis do banco) e um botão "Buscar veículos" que popula essa lista
-- Renderizar cada veículo como um item com **Checkbox** (múltipla escolha) mostrando imagem, nome e marca
-- Quando o usuário marca/desmarca um checkbox, atualizar `config.vehicles` com apenas os selecionados
-- Importar `Checkbox` de `@/components/ui/checkbox`
-- Adicionar estado com `useState` (o componente precisará ser ajustado para suportar estado local — atualmente é stateless)
-- Manter validação de mín 2, máx 10 veículos selecionados
+#### 1. `src/components/flow-builder/NodeConfigPanel.tsx`
+- Remover o campo "Máximo de cards" (input de número mín 2 / máx 10)
+- Remover a validação de `maxCards` no `toggleVehicle` — o usuário pode selecionar quantos quiser
+- Manter todo o resto: busca, checkboxes, filtro por categoria
 
-#### Fluxo do usuário
-1. Abre o painel de configuração do nó Carrossel
-2. Clica "Buscar veículos" → lista todos os disponíveis com checkboxes
-3. Marca os veículos desejados → apenas esses aparecem como saídas no nó
-4. Pode desmarcar/remarcar a qualquer momento
+#### 2. `src/components/flow-builder/FlowNode.tsx`
+- Remover o `useEffect` de auto-load (linhas 32-62) que carrega veículos automaticamente ao criar o nó
+- Remover o `autoLoadedRef`
+- Os veículos só aparecem no nó quando o usuário seleciona manualmente no painel de configuração
+
+### Resultado
+O carrossel começa vazio. O usuário abre a configuração, busca os veículos, marca os que quer, e cada um aparece como saída individual no nó. Sem limite artificial de 10.
 
