@@ -28,10 +28,16 @@ function FlowNode({ data, selected, id }: NodeProps) {
   const isMediaNode = !!mediaConfig;
   const hasFile = isMediaNode && !!mediaFile;
   const { deleteElements, getEdges } = useReactFlow();
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   const handleDelete = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
+    setShowDeleteConfirm(true);
+  }, []);
+
+  const confirmDelete = useCallback(() => {
     deleteElements({ nodes: [{ id }] });
+    setShowDeleteConfirm(false);
   }, [id, deleteElements]);
 
   const handleDisconnect = useCallback((e: React.MouseEvent) => {
