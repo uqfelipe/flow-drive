@@ -312,6 +312,12 @@ export function NodeConfigPanel({ node, onClose, onUpdate, onDelete }: NodeConfi
               </TabsContent>
             </Tabs>
 
+            {data.config?.file && (
+              <div className="rounded-lg overflow-hidden border border-border">
+                <video src={data.config.file} controls className="w-full max-h-40 bg-muted/30" />
+              </div>
+            )}
+
             <div className="space-y-1.5">
               <Label className="text-xs font-medium text-muted-foreground">Legenda</Label>
               <Input className="h-9 text-sm" placeholder="Legenda (opcional)" value={data.config?.caption || ""} onChange={(e) => updateConfig({ caption: e.target.value })} />
