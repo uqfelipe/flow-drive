@@ -1,9 +1,9 @@
-import { memo, useCallback, useEffect, useRef } from "react";
+import { memo, useCallback } from "react";
 import { Handle, Position, type NodeProps, useReactFlow } from "@xyflow/react";
 import { getNodeTypeConfig } from "./nodeTypes";
 import type { FlowNodeData } from "@/types";
 import { X, GripHorizontal, Pencil, Mic, Image, Video, File, Sticker, Copy, Car } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+
 
 function FlowNode({ data, selected, id }: NodeProps) {
   const nodeData = data as unknown as FlowNodeData;
@@ -27,39 +27,6 @@ function FlowNode({ data, selected, id }: NodeProps) {
   const isMediaNode = !!mediaConfig;
   const hasFile = isMediaNode && !!mediaFile;
   const { deleteElements } = useReactFlow();
-  const autoLoadedRef = useRef(false);
-
-  // Auto-load vehicles when vehicle_carousel node has no vehicles
-  useEffect(() => {
-    if (nodeData.nodeType !== "vehicle_carousel") return;
-    const vehicles = (nodeData.config?.vehicles || []) as any[];
-    if (vehicles.length > 0 || autoLoadedRef.current) return;
-    autoLoadedRef.current = true;
-
-    const loadVehicles = async () => {
-      let query = supabase.from("vehicles").select("id, name, brand, model, images, status").eq("status", "available");
-      const category = nodeData.config?.category as string;
-      if (category) query = query.eq("category", category as any);
-      const maxCards = (nodeData.config?.maxCards as number) || 10;
-      query = query.limit(maxCards);
-
-      const { data, error } = await query;
-      if (error || !data || data.length === 0) return;
-
-      const loadedVehicles = data.map((v: any) => ({
-        id: v.id,
-        name: v.name,
-        brand: v.brand,
-        model: v.model,
-        image: v.images?.[0] || "",
-      }));
-
-      window.dispatchEvent(new CustomEvent("flow-update-node-config", {
-        detail: { nodeId: id, config: { ...nodeData.config, vehicles: loadedVehicles } }
-      }));
-    };
-    loadVehicles();
-  }, [id, nodeData.nodeType, nodeData.config]);
 
   const handleDelete = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();

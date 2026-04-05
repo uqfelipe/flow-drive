@@ -760,14 +760,9 @@ function VehicleCarouselConfig({ data, nodeId, onUpdate, updateConfig }: Vehicle
   };
 
   const toggleVehicle = (vehicle: typeof allVehicles[0]) => {
-    const maxCards = data.config?.maxCards || 10;
     if (selectedIds.has(vehicle.id)) {
       updateConfig({ vehicles: selectedVehicles.filter((v) => v.id !== vehicle.id) });
     } else {
-      if (selectedVehicles.length >= maxCards) {
-        toast.error(`Máximo de ${maxCards} veículos permitidos`);
-        return;
-      }
       updateConfig({ vehicles: [...selectedVehicles, vehicle] });
     }
   };
@@ -798,11 +793,6 @@ function VehicleCarouselConfig({ data, nodeId, onUpdate, updateConfig }: Vehicle
             <SelectItem value="economy">Econômico</SelectItem>
           </SelectContent>
         </Select>
-      </div>
-      <div className="space-y-1.5">
-        <Label className="text-xs font-medium text-muted-foreground">Máximo de cards</Label>
-        <Input className="h-9 text-sm" type="number" min={2} max={10} value={data.config?.maxCards || 10} onChange={(e) => updateConfig({ maxCards: parseInt(e.target.value) || 10 })} />
-        <p className="text-[10px] text-muted-foreground">Mín. 2, máx. 10 (limitação do WhatsApp)</p>
       </div>
 
       {/* Seleção de veículos */}
