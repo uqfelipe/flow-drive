@@ -20,7 +20,7 @@ async function sendWhatsAppText(
   phone: string,
   message: string
 ) {
-  const res = await fetch(`${inst.server_url}/message/sendText`, {
+  const res = await fetch(`${inst.server_url}/send/text`, {
     method: "POST",
     headers: { "Content-Type": "application/json", token: inst.instance_token },
     body: JSON.stringify({ number: phone, text: message }),
