@@ -78,12 +78,6 @@ export const nodeTypes: NodeTypeConfig[] = [
   { type: "set_variable", label: "Definir Variável", category: "logica", icon: Variable, description: "Atribuir valor a variável", color: "#8B5CF6", defaultConfig: { variable: "", value: "" } },
   { type: "typing_indicator", label: "Digitando...", category: "logica", icon: Keyboard, description: "Indicador digitando antes de responder", color: "#A855F7", defaultConfig: { seconds: 3 } },
 
-  // Integrações
-  { type: "webhook", label: "Webhook", category: "integracao", icon: Webhook, description: "Chamada HTTP externa", color: "#F97316", defaultConfig: { url: "", method: "POST" } },
-  { type: "transfer_human", label: "Transferir p/ Humano", category: "integracao", icon: HeadphonesIcon, description: "Transferir para atendente", color: "#3B82F6" },
-  { type: "end", label: "Encerramento", category: "integracao", icon: XCircle, description: "Encerrar conversa", color: "#EF4444" },
-  { type: "integration", label: "Integração", category: "integracao", icon: Puzzle, description: "Integração externa", color: "#10B981", defaultConfig: { service: "" } },
-  { type: "request_payment", label: "Solicitar Pagamento", category: "integracao", icon: DollarSign, description: "Pix, boleto ou link de pagamento", color: "#06B6D4", defaultConfig: { amount: "", pixKey: "", pixType: "cpf", paymentLink: "", boletoCode: "", message: "" } },
 ];
 
 export function getNodeTypeConfig(type: string): NodeTypeConfig | undefined {
