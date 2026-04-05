@@ -360,27 +360,6 @@ function FlowNode({ data, selected, id }: NodeProps) {
           </div>
         )}
       </div>
-      <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
-        <AlertDialogContent onClick={(e) => e.stopPropagation()} className="max-w-[320px] p-4 rounded-xl gap-3">
-          <AlertDialogHeader className="space-y-1">
-            <div className="flex items-center gap-2">
-              <div className="p-1.5 rounded-lg bg-destructive/10">
-                <X className="h-4 w-4 text-destructive" />
-              </div>
-              <AlertDialogTitle className="text-sm">Excluir nó</AlertDialogTitle>
-            </div>
-            <AlertDialogDescription className="text-xs leading-relaxed">
-              Deseja excluir <strong className="text-foreground">{nodeData.label || config?.label}</strong>?
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter className="flex-row gap-2 sm:space-x-0">
-            <AlertDialogCancel className="mt-0 flex-1 h-8 text-xs rounded-lg">Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmDelete} className="flex-1 h-8 text-xs rounded-lg bg-destructive text-destructive-foreground hover:bg-destructive/90">
-              Excluir
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   );
 }
