@@ -1,59 +1,35 @@
 
 
-## Corrigir importação de fluxo JSON
+## Fix Import/Export/Format Flow — Core Race Condition
 
-### Problema
-Ao importar um JSON, os nós podem ser sobrescritos pelo auto-load do fluxo atual (efeito na linha 132 que recarrega do DB quando `dbLoaded` muda). Além disso, os nós importados podem não ter `type: "flowNode"`, causando renderização incorreta. E se `currentFlowId` continua apontando para um fluxo existente, o save sobrescreve esse fluxo ao invés de criar um novo.
+### Problem
+There are two issues:
 
-### Alteração: `src/pages/FlowBuilder.tsx` — função `handleImport`
+1. **Import is overwritten**: `handleImport` sets `currentFlowId(null)` to decouple from the saved flow. But the useEffect at line 126 immediately re-assigns `currentFlowId` to the first flow in the list. Then the useEffect at line 169 resets `dbLoaded = false`. Then the useEffect at line 132 reloads the old flow from DB, overwriting the imported nodes.
 
-1. **Desconectar do fluxo atual**: `setCurrentFlowId(null)` para que o "Salvar" crie um novo fluxo
-2. **Marcar `dbLoaded = true`** para evitar que o useEffect de auto-load sobrescreva os nós importados
-3. **Garantir `type: "flowNode"`** em todos os nós importados
-4. **Atualizar `nodeIdCounter`** para evitar colisão de IDs ao adicionar novos nós
-5. **Resetar histórico** com o estado importado (igual ao handleFormat)
-6. **Atualizar nome e status**: usar nome do JSON, status "draft", `isActive = false`
+2. **Format uses `window.confirm`**: The browser sandbox may block `window.confirm`, causing the format to silently fail. Should use a React-based confirmation dialog instead.
 
-```typescript
-const handleImport = () => {
-  const input = document.createElement("input");
-  input.type = "file";
-  input.accept = ".json";
-  input.onchange = (e) => {
-    const file = (e.target as HTMLInputElement).files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      try {
-        const data = JSON.parse(ev.target?.result as string);
-        if (Array.isArray(data.nodes) && Array.isArray(data.edges)) {
-          const fixedNodes = data.nodes.map(n => ({ ...n, type: "flowNode" }));
-          setNodes(fixedNodes);
-          setEdges(data.edges);
-          setCurrentFlowName(data.name || "Fluxo Importado");
-          setCurrentFlowId(null);     // desvincula — salvar cria novo
-          setDbLoaded(true);          // impede auto-reload do DB
-          setCurrentFlowStatus("draft");
-          setIsActive(false);
-          setSelectedNode(null);
-          // Atualizar counter de IDs
-          const maxId = Math.max(...data.nodes.map(n => parseInt(n.id) || 0), nodeIdCounter);
-          nodeIdCounter = maxId + 1;
-          // Resetar histórico
-          historyRef.current = [{ nodes: JSON.parse(JSON.stringify(fixedNodes)), edges: JSON.parse(JSON.stringify(data.edges)) }];
-          historyIndexRef.current = 0;
-          updateUndoRedoState();
-          toast.success("Fluxo importado com sucesso!");
-        } else {
-          toast.error("Arquivo inválido.");
-        }
-      } catch {
-        toast.error("Erro ao ler o arquivo JSON.");
-      }
-    };
-    reader.readAsText(file);
-  };
-  input.click();
-};
-```
+### Changes: `src/pages/FlowBuilder.tsx`
+
+1. **Add a `skipAutoSelect` ref** to prevent the auto-select useEffect from overriding imported/formatted state:
+   ```typescript
+   const skipAutoSelectRef = useRef(false);
+   ```
+
+2. **Guard the auto-select useEffect** (line 126):
+   ```typescript
+   useEffect(() => {
+     if (flows && flows.length > 0 && !currentFlowId && !skipAutoSelectRef.current) {
+       setCurrentFlowId(flows[0].id);
+     }
+   }, [flows, currentFlowId]);
+   ```
+
+3. **In `handleImport`**: Set `skipAutoSelectRef.current = true` before setting `currentFlowId(null)`. This prevents the auto-select from firing.
+
+4. **In `handleFormat`**: Also set `skipAutoSelectRef.current = true` and set `currentFlowId(null)` so save creates a new flow instead of overwriting the old one.
+
+5. **Replace `window.confirm` with AlertDialog** (shadcn) for the format confirmation — add state `showFormatConfirm` and render a dialog. This ensures it works in all browsers/sandboxes.
+
+6. **In `handleSave` onSuccess**: Reset `skipAutoSelectRef.current = false` after a new flow is created, so auto-select works normally again.
 
