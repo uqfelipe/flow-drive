@@ -2,7 +2,7 @@ import { memo, useCallback } from "react";
 import { Handle, Position, type NodeProps, useReactFlow } from "@xyflow/react";
 import { getNodeTypeConfig } from "./nodeTypes";
 import type { FlowNodeData } from "@/types";
-import { X, GripHorizontal, Pencil, Mic, Image, Video, File, Sticker, Copy, Car } from "lucide-react";
+import { X, GripHorizontal, Pencil, Mic, Image, Video, File, Sticker, Copy, Car, Scissors } from "lucide-react";
 
 
 function FlowNode({ data, selected, id }: NodeProps) {
