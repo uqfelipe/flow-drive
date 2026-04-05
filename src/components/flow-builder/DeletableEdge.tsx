@@ -6,10 +6,14 @@ export default function DeletableEdge({
   sourcePosition, targetPosition, style, markerEnd,
 }: EdgeProps) {
   const { deleteElements } = useReactFlow();
-  const [edgePath, labelX, labelY] = getSmoothStepPath({
+  const [edgePath] = getSmoothStepPath({
     sourceX, sourceY, sourcePosition,
     targetX, targetY, targetPosition,
   });
+
+  // Position near the source node (20% along the edge)
+  const btnX = sourceX + (targetX - sourceX) * 0.15;
+  const btnY = sourceY + (targetY - sourceY) * 0.15;
 
   return (
     <>
