@@ -661,10 +661,10 @@ export function NodeConfigPanel({ node, onClose, onUpdate, onDelete }: NodeConfi
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs font-medium text-muted-foreground">Filtrar por categoria</Label>
-              <Select value={data.config?.category || ""} onValueChange={(v) => updateConfig({ category: v })}>
+              <Select value={data.config?.category || "all"} onValueChange={(v) => updateConfig({ category: v === "all" ? "" : v })}>
                 <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Todas as categorias" /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Todas</SelectItem>
+                  <SelectItem value="all">Todas</SelectItem>
                   <SelectItem value="sedan">Sedan</SelectItem>
                   <SelectItem value="suv">SUV</SelectItem>
                   <SelectItem value="hatch">Hatch</SelectItem>
