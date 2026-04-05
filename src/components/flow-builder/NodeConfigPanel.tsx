@@ -504,28 +504,64 @@ export function NodeConfigPanel({ node, onClose, onUpdate, onDelete }: NodeConfi
         )}
 
         {/* ─── SEND LOCATION ─── */}
-        {nt === "send_location" && (
-          <>
-            <div className="grid grid-cols-2 gap-2">
+        {nt === "send_location" && (() => {
+          const latVal = data.config?.latitude || "";
+          const lngVal = data.config?.longitude || "";
+          const latNum = parseFloat(latVal);
+          const lngNum = parseFloat(lngVal);
+          const latValid = latVal !== "" && !isNaN(latNum) && latNum >= -90 && latNum <= 90;
+          const lngValid = lngVal !== "" && !isNaN(lngNum) && lngNum >= -180 && lngNum <= 180;
+          const bothValid = latValid && lngValid;
+          return (
+            <>
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-medium text-muted-foreground">Latitude *</Label>
+                  <Input
+                    className={`h-9 text-sm ${latVal && !latValid ? "border-destructive" : ""}`}
+                    placeholder="Ex: -23.5505"
+                    value={latVal}
+                    onChange={(e) => updateConfig({ latitude: e.target.value })}
+                  />
+                  {latVal && !latValid && <p className="text-[10px] text-destructive">Valor inválido (-90 a 90)</p>}
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-medium text-muted-foreground">Longitude *</Label>
+                  <Input
+                    className={`h-9 text-sm ${lngVal && !lngValid ? "border-destructive" : ""}`}
+                    placeholder="Ex: -46.6333"
+                    value={lngVal}
+                    onChange={(e) => updateConfig({ longitude: e.target.value })}
+                  />
+                  {lngVal && !lngValid && <p className="text-[10px] text-destructive">Valor inválido (-180 a 180)</p>}
+                </div>
+              </div>
+              {!latVal && !lngVal && (
+                <p className="text-[11px] text-muted-foreground bg-muted/50 rounded px-2 py-1.5">
+                  💡 Abra o Google Maps, clique com o botão direito no local desejado e copie as coordenadas.
+                </p>
+              )}
+              {bothValid && (
+                <a
+                  href={`https://www.google.com/maps?q=${latNum},${lngNum}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-[11px] text-primary hover:underline flex items-center gap-1"
+                >
+                  📍 Ver no Google Maps ({latNum.toFixed(4)}, {lngNum.toFixed(4)})
+                </a>
+              )}
               <div className="space-y-1.5">
-                <Label className="text-xs font-medium text-muted-foreground">Latitude</Label>
-                <Input className="h-9 text-sm" placeholder="-23.55" value={data.config?.latitude || ""} onChange={(e) => updateConfig({ latitude: e.target.value })} />
+                <Label className="text-xs font-medium text-muted-foreground">Nome do local</Label>
+                <Input className="h-9 text-sm" placeholder="Ex: Locadora ABC" value={data.config?.name || ""} onChange={(e) => updateConfig({ name: e.target.value })} />
               </div>
               <div className="space-y-1.5">
-                <Label className="text-xs font-medium text-muted-foreground">Longitude</Label>
-                <Input className="h-9 text-sm" placeholder="-46.63" value={data.config?.longitude || ""} onChange={(e) => updateConfig({ longitude: e.target.value })} />
+                <Label className="text-xs font-medium text-muted-foreground">Endereço</Label>
+                <Input className="h-9 text-sm" placeholder="Ex: Rua das Flores, 123" value={data.config?.address || ""} onChange={(e) => updateConfig({ address: e.target.value })} />
               </div>
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs font-medium text-muted-foreground">Nome do local</Label>
-              <Input className="h-9 text-sm" placeholder="Nome" value={data.config?.name || ""} onChange={(e) => updateConfig({ name: e.target.value })} />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs font-medium text-muted-foreground">Endereço</Label>
-              <Input className="h-9 text-sm" placeholder="Rua..." value={data.config?.address || ""} onChange={(e) => updateConfig({ address: e.target.value })} />
-            </div>
-          </>
-        )}
+            </>
+          );
+        })()}
 
         {/* ─── CONTACT CARD ─── */}
         {nt === "contact_card" && (
