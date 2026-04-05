@@ -441,16 +441,21 @@ function FlowBuilderContent() {
   };
 
   const handleFormat = () => {
-    if (!window.confirm("Tem certeza que deseja formatar? Todos os nós e conexões serão removidos.")) return;
+    setShowFormatConfirm(true);
+  };
+
+  const executeFormat = () => {
+    skipAutoSelectRef.current = true;
     setNodes([]);
     setEdges([]);
     setCurrentFlowName("Novo Fluxo");
+    setCurrentFlowId(null);
     setCurrentFlowStatus("draft");
     setIsActive(false);
     setSelectedNode(null);
     setShowNodeSearch(false);
     setNodeSearch("");
-    // Reset history
+    setDbLoaded(true);
     historyRef.current = [{ nodes: [], edges: [] }];
     historyIndexRef.current = 0;
     updateUndoRedoState();
