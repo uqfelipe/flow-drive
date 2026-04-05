@@ -3,7 +3,7 @@ import { Handle, Position, type NodeProps, useReactFlow } from "@xyflow/react";
 import { getNodeTypeConfig } from "./nodeTypes";
 import type { FlowNodeData } from "@/types";
 import { X, GripHorizontal, Pencil, Mic, Image, Video, File, Sticker, Copy, Car, Scissors } from "lucide-react";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+
 
 
 function FlowNode({ data, selected, id }: NodeProps) {
