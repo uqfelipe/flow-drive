@@ -129,7 +129,7 @@ function FlowBuilderContent() {
 
   // Pick the first flow from list (or allow creation)
   useEffect(() => {
-    if (flows && flows.length > 0 && !currentFlowId) {
+    if (flows && flows.length > 0 && !currentFlowId && !skipAutoSelectRef.current) {
       setCurrentFlowId(flows[0].id);
     }
   }, [flows, currentFlowId]);
