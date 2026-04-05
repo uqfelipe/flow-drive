@@ -438,7 +438,7 @@ function FlowBuilderContent() {
       return;
     }
 
-    saveFlow.mutate({ id: currentFlowId, nodes, edges, name: currentFlowName, status }, {
+    saveFlow.mutate({ id: currentFlowId, nodes, edges, name: currentFlowName }, {
       onSuccess: () => toast.success("Fluxo salvo!"),
       onError: () => toast.error("Erro ao salvar fluxo"),
     });
