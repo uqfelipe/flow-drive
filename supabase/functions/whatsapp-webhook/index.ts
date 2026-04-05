@@ -1377,7 +1377,7 @@ async function processIncomingMessage(phone: string, text: string, mediaUrl?: st
               }
             }
             
-            const nextNodeId = findNextNodeId(flowEdges, carouselNode.id, handleId);
+            const nextNodeId = findNextNodeId(flowEdges, carouselNode.id, handleId) || findNextNodeId(flowEdges, carouselNode.id);
             if (nextNodeId) {
               await processFlow(inst, phone, text, session.id, customerId, flowNodes, flowEdges, nextNodeId, variables);
             }
