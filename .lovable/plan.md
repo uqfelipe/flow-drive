@@ -1,83 +1,38 @@
 
-Objetivo: fazer o envio acontecer automaticamente sem depender do usuário clicar em “Processar agora”, usando uma estratégia que funcione mesmo se o cron do Supabase não estiver configurado.
 
-1. Estratégia principal: auto-processamento no frontend
-- Aproveitar a própria página de lembretes para monitorar os itens `pending`.
-- Criar um loop leve no `src/pages/Reminders.tsx` que:
-  - verifica periodicamente se existe lembrete vencido
-  - dispara `useProcessReminders()` automaticamente
-  - evita chamadas duplicadas enquanto já estiver processando
-- Isso resolve o problema imediatamente para quem estiver com a tela aberta.
+## Corrigir envio automático de lembretes
 
-2. Estratégia complementar: “Auto envio” configurável
-- Adicionar um toggle na página de lembretes: “Enviar automaticamente”.
-- Salvar essa preferência na tabela `settings`, por exemplo em `reminders_auto_process`.
-- Quando ligado:
-  - a tela processa sozinha lembretes vencidos
-  - pode usar polling curto (ex.: 5s) para ficar responsivo
-- Quando desligado:
-  - mantém só os botões manuais atuais
+### Problema identificado
 
-3. Comportamento para não duplicar envios
-- No `src/pages/Reminders.tsx`, só chamar o processamento automático se:
-  - houver lembrete `pending` já vencido
-  - `processReminders.isPending` for falso
-  - o último disparo tiver passado de uma janela mínima de segurança
-- Isso evita spam de chamadas e corrida entre múltiplos renders.
+O `useEffect` do auto-processo tem dois bugs:
 
-4. Melhorar feedback visual
-- Mostrar um badge/aviso quando o auto envio estiver ativo.
-- Exibir status do tipo:
-  - “Monitorando lembretes automaticamente”
-  - “Última verificação: hh:mm:ss”
-  - “Último envio automático: sucesso/falha”
-- Isso ajuda a entender se o automático realmente entrou em ação.
+1. **Depende de `reminders` e `processReminders` no array de dependências** — isso faz o efeito reiniciar (destruir e recriar o interval) toda vez que a lista de lembretes muda ou a mutation muda de estado. Quando o efeito reinicia, ele verifica os dados atuais, mas o timing do interval é resetado.
 
-5. Ajuste no hook existente
-- Reaproveitar `useProcessReminders()` em `src/hooks/use-reminders.ts`.
-- Se necessário, só padronizar o retorno para a UI distinguir:
-  - nenhum lembrete encontrado
-  - lembrete enviado
-  - falha no envio
+2. **Verifica dados do cliente antes de chamar a Edge Function** — o `reminders?.some(r => r.status === "pending" && isOverdue(r.scheduled_at))` usa dados em cache do React Query. Se o lembrete foi criado com horário futuro, os dados não mudam sozinhos quando o horário chega — o array `reminders` continua o mesmo objeto até o próximo refetch. Resultado: a verificação retorna `false` e o auto-processo não dispara.
 
-6. Edge Function
-- Manter `supabase/functions/send-reminders/index.ts` como motor central de envio.
-- Pequeno reforço no plano de implementação:
-  - garantir respostas consistentes
-  - continuar aceitando processamento geral ou por `reminderId`
-- Não preciso mudar a lógica principal de envio para essa estratégia funcionar.
+### Solução
 
-7. Fallback recomendado para produção
-- O auto-processamento da tela resolve quando o usuário está com a página aberta.
-- Para funcionamento 100% automático em produção, complementar com `pg_cron` no Supabase chamando `send-reminders` a cada minuto.
-- Assim teremos duas camadas:
-```text
-Camada 1: página aberta -> envio automático em poucos segundos
-Camada 2: cron do Supabase -> garante processamento em background
-```
+Simplificar: quando o auto-envio está ativo, chamar a Edge Function incondicionalmente a cada 10 segundos. A Edge Function já filtra por `status = 'pending' AND scheduled_at <= now()`, então a verificação client-side é redundante e causa o bug.
 
-Arquivos a ajustar
-- `src/pages/Reminders.tsx`
-  - toggle “Enviar automaticamente”
-  - loop de verificação
-  - proteção contra chamadas duplicadas
-  - indicadores de monitoramento
-- `src/hooks/use-settings.ts`
-  - reutilizar para ler/salvar a preferência do auto envio
-- `src/hooks/use-reminders.ts`
-  - manter/reaproveitar `useProcessReminders`
-- `supabase/functions/send-reminders/index.ts`
-  - no máximo ajustes pequenos de consistência da resposta
+### Alterações em `src/pages/Reminders.tsx`
 
-Detalhes técnicos
-- Hoje já existe processamento manual e teste em 10s, então a base está pronta.
-- O problema é que o envio “automático” real não pode depender apenas do usuário lembrar de clicar.
-- Como neste projeto já existe frontend + Edge Function, a forma mais viável que eu consigo implementar no app é:
-  - auto-disparo na própria tela
-  - com opção configurável
-  - e depois manter o cron como garantia de backend
+1. Reescrever o `useEffect` do auto-processo:
+   - Remover `reminders` e `processReminders` do array de dependências
+   - Usar refs para acessar `processReminders` sem causar restart do efeito
+   - Remover a verificação `hasOverdue` client-side — delegar tudo para a Edge Function
+   - Manter o interval estável com dependência apenas em `autoEnabled`
 
-Resultado esperado
-- Se o usuário deixar a página aberta com “Enviar automaticamente” ligado, o lembrete será enviado sozinho poucos segundos após vencer.
-- O botão “Processar agora” continua como fallback manual.
-- O cron continua sendo a solução ideal de background, mas o app deixa de depender só dele.
+2. Adicionar `refetchInterval: 10000` na query de reminders (no hook) para manter a lista visual atualizada enquanto o auto está ativo
+
+### Alteração em `src/hooks/use-reminders.ts`
+
+- Não precisa de mudança estrutural. Opcionalmente, aceitar um parâmetro `refetchInterval` dinâmico, mas como o `useReminders` já é usado na página, basta adicionar um `refetchInterval` fixo curto (10s) para manter a UI em sincronia.
+
+### Resumo
+
+| O que | Onde |
+|-------|------|
+| Remover deps instáveis do useEffect, usar refs | `src/pages/Reminders.tsx` |
+| Chamar Edge Function incondicionalmente a cada 10s | `src/pages/Reminders.tsx` |
+| Adicionar refetchInterval para atualizar lista | `src/hooks/use-reminders.ts` |
+
