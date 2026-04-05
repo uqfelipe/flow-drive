@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useMemo, useCallback } from "react";
 import { Textarea } from "@/components/ui/textarea";
 import { useCustomerFieldDefinitions } from "@/hooks/use-customer-fields";
+import { Search, Settings, Target, User, SearchX } from "lucide-react";
 import type { Node } from "@xyflow/react";
 import type { FlowNodeData } from "@/types";
 
@@ -13,6 +14,12 @@ const SYSTEM_VARIABLES = [
   { key: "veiculo_nome", label: "Nome do veículo", group: "Sistema" },
   { key: "localizacao", label: "Localização capturada", group: "Sistema" },
 ];
+
+const GROUP_ICONS: Record<string, React.ElementType> = {
+  Sistema: Settings,
+  Captura: Target,
+  "Campos Personalizados": User,
+};
 
 interface VariableTextareaProps {
   value: string;
@@ -91,7 +98,6 @@ export function VariableTextarea({ value, onChange, placeholder, className, node
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (!showDropdown) return;
-
     if (e.key === "ArrowDown") {
       e.preventDefault();
       setSelectedIdx((i) => (i + 1) % Math.max(filtered.length, 1));
@@ -111,11 +117,9 @@ export function VariableTextarea({ value, onChange, placeholder, className, node
   const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const newVal = e.target.value;
     onChange(newVal);
-
     const cursorPos = e.target.selectionStart;
     const textBeforeCursor = newVal.slice(0, cursorPos);
     const lastSlash = textBeforeCursor.lastIndexOf("/");
-
     if (lastSlash !== -1) {
       const textAfterSlash = textBeforeCursor.slice(lastSlash + 1);
       if (!/\s/.test(textAfterSlash) || textAfterSlash === "") {
@@ -132,10 +136,8 @@ export function VariableTextarea({ value, onChange, placeholder, className, node
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (
-        dropdownRef.current &&
-        !dropdownRef.current.contains(e.target as HTMLElement) &&
-        textareaRef.current &&
-        !textareaRef.current.contains(e.target as HTMLElement)
+        dropdownRef.current && !dropdownRef.current.contains(e.target as HTMLElement) &&
+        textareaRef.current && !textareaRef.current.contains(e.target as HTMLElement)
       ) {
         setShowDropdown(false);
         setFilter("");
@@ -161,42 +163,77 @@ export function VariableTextarea({ value, onChange, placeholder, className, node
       <Textarea
         ref={textareaRef}
         className={className}
-        placeholder={placeholder}
+        placeholder={placeholder || "Digite / para buscar variáveis..."}
         value={value}
         onChange={handleChange}
         onKeyDown={handleKeyDown}
       />
-      {showDropdown && filtered.length > 0 && (
+      {showDropdown && (
         <div
           ref={dropdownRef}
-          className="absolute left-0 right-0 top-full mt-1 z-50 max-h-[220px] overflow-y-auto rounded-md border border-border bg-popover text-popover-foreground shadow-lg animate-in fade-in-0 slide-in-from-top-1"
+          className="absolute left-0 right-0 top-full mt-1.5 z-50 rounded-lg border border-border bg-popover text-popover-foreground shadow-xl animate-in fade-in-0 slide-in-from-top-2 overflow-hidden"
         >
-          {Object.entries(grouped).map(([group, vars]) => (
-            <div key={group}>
-              <div className="px-3 py-1.5 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider bg-muted/40 sticky top-0">
-                {group}
-              </div>
-              {vars.map((v) => {
-                const idx = flatIdx++;
+          {/* Search header */}
+          <div className="flex items-center gap-2 px-3 py-2.5 border-b border-border bg-muted/30">
+            <Search className="h-4 w-4 text-muted-foreground shrink-0" />
+            <span className="text-sm text-muted-foreground">
+              {filter ? (
+                <>Buscando: <span className="text-foreground font-medium">{filter}</span></>
+              ) : (
+                "Selecione uma variável"
+              )}
+            </span>
+          </div>
+
+          {filtered.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-8 gap-2">
+              <SearchX className="h-8 w-8 text-muted-foreground/50" />
+              <p className="text-sm text-muted-foreground">Nenhuma variável encontrada</p>
+            </div>
+          ) : (
+            <div className="max-h-[240px] overflow-y-auto py-1">
+              {Object.entries(grouped).map(([group, vars], groupIdx) => {
+                const IconComp = GROUP_ICONS[group] || Settings;
                 return (
-                  <button
-                    key={v.key}
-                    className={`flex w-full items-center gap-2 px-3 py-1.5 text-xs hover:bg-accent transition-colors ${
-                      idx === selectedIdx ? "bg-accent text-accent-foreground" : ""
-                    }`}
-                    onMouseDown={(e) => {
-                      e.preventDefault();
-                      insertVariable(v.key);
-                    }}
-                    onMouseEnter={() => setSelectedIdx(idx)}
-                  >
-                    <code className="text-[11px] font-mono text-primary">{"{{" + v.key + "}}"}</code>
-                    <span className="text-muted-foreground truncate ml-auto">{v.label}</span>
-                  </button>
+                  <div key={group}>
+                    {groupIdx > 0 && <div className="mx-3 my-1 h-px bg-border" />}
+                    <div className="flex items-center gap-1.5 px-3 py-2 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
+                      <IconComp className="h-3.5 w-3.5" />
+                      {group}
+                    </div>
+                    {vars.map((v) => {
+                      const idx = flatIdx++;
+                      return (
+                        <button
+                          key={v.key}
+                          className={`flex w-full items-center gap-2.5 px-3 py-2 text-xs rounded-md mx-0 transition-colors ${
+                            idx === selectedIdx
+                              ? "bg-accent text-accent-foreground"
+                              : "hover:bg-accent/50"
+                          }`}
+                          onMouseDown={(e) => {
+                            e.preventDefault();
+                            insertVariable(v.key);
+                          }}
+                          onMouseEnter={() => setSelectedIdx(idx)}
+                        >
+                          <span className="inline-flex items-center rounded-md bg-primary/10 text-primary px-2 py-0.5 text-[11px] font-mono font-medium border border-primary/20">
+                            {`{{${v.key}}}`}
+                          </span>
+                          <span className="text-muted-foreground truncate ml-auto text-[11px]">{v.label}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
                 );
               })}
             </div>
-          ))}
+          )}
+
+          {/* Footer hint */}
+          <div className="px-3 py-2 border-t border-border bg-muted/20 text-[10px] text-muted-foreground text-center">
+            ↑↓ navegar · Enter selecionar · Esc fechar
+          </div>
         </div>
       )}
     </div>
