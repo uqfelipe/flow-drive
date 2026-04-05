@@ -1,44 +1,30 @@
 
 
-## Adicionar nó "Recomeçar com Digitando" ao Flow Builder
+## Adicionar campo de timeout configurável no nó "Reinício Digitando"
 
-### O que é
-Um novo tipo de nó no flow builder chamado **"Reinício com Digitando"** (ou "Boas-vindas de Retorno"). Quando a sessão expira por inatividade (30 min), em vez de ir direto pro primeiro nó do fluxo, o sistema:
-
-1. Envia o indicador "digitando..." por X segundos
-2. Depois redireciona para o nó que o usuário conectou como saída desse nó
+### O que muda
+O nó `restart_with_typing` passa a ter **dois campos** de configuração:
+1. **Tempo digitando** (segundos) — já existe, controla quanto tempo fica "digitando..."
+2. **Tempo de inatividade** (minutos) — **novo**, define após quantos minutos sem resposta o sistema considera a sessão expirada e usa este nó para reiniciar (padrão: 30 min)
 
 ### Alterações
 
-#### 1. Novo tipo de nó (`src/components/flow-builder/nodeTypes.ts`)
-Adicionar na categoria "lógica" um novo nó:
-- **type**: `restart_with_typing`
-- **label**: "Reinício Digitando"
-- **icon**: `RotateCcw` (do lucide)
-- **description**: "Digitando + redirecionamento ao retornar"
-- **defaultConfig**: `{ seconds: 3 }`
+#### 1. `src/components/flow-builder/nodeTypes.ts`
+- Atualizar `defaultConfig` do `restart_with_typing` para incluir `timeoutMinutes: 30`
 
-#### 2. Painel de configuração (`src/components/flow-builder/NodeConfigPanel.tsx`)
-Adicionar case para `restart_with_typing` com campo de tempo em segundos (slider ou input numérico).
+#### 2. `src/components/flow-builder/NodeConfigPanel.tsx`
+- Separar o `restart_with_typing` do bloco compartilhado com `delay`/`typing_indicator`
+- Adicionar campo "Tempo digitando (segundos)" + campo "Tempo de inatividade (minutos)" com input numérico
+- Descrição explicativa: "Sessão reinicia após X minutos sem interação"
 
-#### 3. Preview no nó (`src/components/flow-builder/FlowNode.tsx`)
-Mostrar preview do tempo configurado (ex: "Digitando 3s → próximo nó").
+#### 3. `src/components/flow-builder/FlowNode.tsx`
+- Adicionar preview para `restart_with_typing` mostrando ex: "⏱ Inatividade: 120min → Digitando 3s → próximo nó"
 
-#### 4. Webhook — lógica de timeout (`supabase/functions/whatsapp-webhook/index.ts`)
-Alterar o trecho de expiração de sessão (linhas 1330-1342):
-- Após detectar que a sessão expirou, buscar no fluxo ativo se existe um nó do tipo `restart_with_typing`
-- Se existir: enviar presença "composing" pelo tempo configurado, depois iniciar nova sessão a partir do nó conectado à saída do `restart_with_typing`
-- Se não existir: comportamento atual (reinicia do primeiro nó)
+#### 4. `supabase/functions/whatsapp-webhook/index.ts`
+- Remover o `SESSION_TIMEOUT_MS` hardcoded de 30 min
+- Ao encontrar o nó `restart_with_typing` no fluxo, usar `config.timeoutMinutes` (ou 30 como fallback) para calcular o timeout
+- A verificação de expiração passa a ser: `now - lastUpdate > (restartNode.config.timeoutMinutes || 30) * 60 * 1000`
 
-#### 5. Webhook — processFlow
-Adicionar handler para `restart_with_typing` no `processFlow` (junto aos outros nós), igual ao `typing_indicator`: envia presença composing, aguarda, e segue pro próximo nó.
-
-### Fluxo resultante
-```text
-Usuário volta após 2h
-  → Webhook detecta sessão expirada
-  → Procura nó "restart_with_typing" no fluxo
-  → Envia "digitando..." por 3s
-  → Segue para o nó conectado (ex: mensagem de boas-vindas de retorno)
-```
+### Resultado
+O usuário configura no nó "Reinício Digitando" que quer 120 minutos de inatividade. Se o cliente voltar após 2h, o sistema detecta, manda "digitando..." por X segundos, e redireciona pro nó conectado.
 
