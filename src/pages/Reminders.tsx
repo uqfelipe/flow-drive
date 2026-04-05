@@ -75,10 +75,6 @@ export default function Reminders() {
   const [time, setTime] = useState("");
   const [deleteId, setDeleteId] = useState<string | null>(null);
 
-  // Quick test state
-  const [testCountdown, setTestCountdown] = useState<number | null>(null);
-  const [testReminderId, setTestReminderId] = useState<string | null>(null);
-  const countdownRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Auto-process state
   const autoEnabled = settings?.reminders_auto_process === "true";
