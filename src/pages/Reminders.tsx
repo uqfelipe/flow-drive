@@ -1,10 +1,10 @@
-import { useState } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { AdminLayout } from "@/components/AdminLayout";
-import { useReminders, useCreateReminder, useCancelReminder, useUpdateReminder, useDeleteReminder } from "@/hooks/use-reminders";
+import { useReminders, useCreateReminder, useCancelReminder, useUpdateReminder, useDeleteReminder, useProcessReminders } from "@/hooks/use-reminders";
 import { useCustomers } from "@/hooks/use-customers";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -14,7 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
-import { Plus, Ban, AlarmClock, Pencil, Trash2 } from "lucide-react";
+import { Plus, Ban, AlarmClock, Pencil, Trash2, Play, FlaskConical, Loader2 } from "lucide-react";
 import type { ReminderWithCustomer } from "@/hooks/use-reminders";
 
 const statusMap: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
@@ -46,6 +46,10 @@ function isoToSpTime(isoStr: string): string {
   return `${String(sp.getHours()).padStart(2, "0")}:${String(sp.getMinutes()).padStart(2, "0")}:${String(sp.getSeconds()).padStart(2, "0")}`;
 }
 
+function isOverdue(isoStr: string): boolean {
+  return new Date(isoStr) < new Date();
+}
+
 export default function Reminders() {
   const { data: reminders, isLoading } = useReminders();
   const { data: customers } = useCustomers();
@@ -53,6 +57,7 @@ export default function Reminders() {
   const cancelReminder = useCancelReminder();
   const updateReminder = useUpdateReminder();
   const deleteReminder = useDeleteReminder();
+  const processReminders = useProcessReminders();
 
   const [open, setOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -61,6 +66,11 @@ export default function Reminders() {
   const [date, setDate] = useState("");
   const [time, setTime] = useState("");
   const [deleteId, setDeleteId] = useState<string | null>(null);
+
+  // Quick test state
+  const [testCountdown, setTestCountdown] = useState<number | null>(null);
+  const [testReminderId, setTestReminderId] = useState<string | null>(null);
+  const countdownRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const resetForm = () => {
     setEditingId(null);
@@ -121,72 +131,182 @@ export default function Reminders() {
     }
   };
 
+  const handleProcessNow = async () => {
+    try {
+      const result = await processReminders.mutateAsync(undefined);
+      if (result.sent > 0) {
+        toast.success(`${result.sent} lembrete(s) enviado(s)!`);
+      } else {
+        toast.info("Nenhum lembrete pendente para enviar");
+      }
+      if (result.results?.length) {
+        result.results.forEach((r) => {
+          if (r.status === "failed") {
+            toast.error(`Falha: ${r.detail}`);
+          }
+        });
+      }
+    } catch (err) {
+      toast.error("Erro ao processar lembretes");
+      console.error(err);
+    }
+  };
+
+  // Cleanup countdown on unmount
+  useEffect(() => {
+    return () => {
+      if (countdownRef.current) clearInterval(countdownRef.current);
+    };
+  }, []);
+
+  const processTestReminder = useCallback(async (id: string) => {
+    try {
+      const result = await processReminders.mutateAsync(id);
+      if (result.sent > 0) {
+        toast.success("✅ Teste enviado com sucesso!");
+      } else {
+        const detail = result.results?.[0]?.detail || "unknown";
+        toast.error(`Teste falhou: ${detail}`);
+      }
+    } catch (err) {
+      toast.error("Erro ao processar teste");
+      console.error(err);
+    } finally {
+      setTestReminderId(null);
+    }
+  }, [processReminders]);
+
+  const handleQuickTest = async () => {
+    if (!customers?.length) {
+      toast.error("Nenhum cliente cadastrado para teste");
+      return;
+    }
+
+    const customer = customers[0];
+    const scheduledAt = new Date(Date.now() + 10_000).toISOString(); // 10s from now
+
+    try {
+      const result = await createReminder.mutateAsync({
+        customer_id: customer.id,
+        message: `🧪 Teste automático de lembrete — ${new Date().toLocaleTimeString("pt-BR")}`,
+        scheduled_at: scheduledAt,
+      });
+
+      const newId = (result as any)?.id;
+      if (!newId) {
+        toast.error("Erro ao obter ID do lembrete de teste");
+        return;
+      }
+
+      setTestReminderId(newId);
+      setTestCountdown(10);
+      toast.info(`Teste criado! Enviando em 10 segundos para ${customer.name}...`);
+
+      if (countdownRef.current) clearInterval(countdownRef.current);
+      let remaining = 10;
+      countdownRef.current = setInterval(() => {
+        remaining--;
+        setTestCountdown(remaining);
+        if (remaining <= 0) {
+          clearInterval(countdownRef.current!);
+          countdownRef.current = null;
+          setTestCountdown(null);
+          processTestReminder(newId);
+        }
+      }, 1000);
+    } catch (err) {
+      toast.error("Erro ao criar lembrete de teste");
+      console.error(err);
+    }
+  };
+
   const isPending = createReminder.isPending || updateReminder.isPending;
 
   return (
     <AdminLayout title="Lembretes" subtitle="Agende envios via WhatsApp">
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between flex-wrap gap-2">
           <div className="flex items-center gap-2 text-muted-foreground">
             <AlarmClock className="h-5 w-5" />
             <span className="text-sm">{reminders?.length || 0} lembretes</span>
           </div>
 
-          <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) resetForm(); }}>
-            <DialogTrigger asChild>
-              <Button>
-                <Plus className="h-4 w-4 mr-2" />
-                Novo Lembrete
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-md">
-              <DialogHeader>
-                <DialogTitle>{editingId ? "Editar Lembrete" : "Novo Lembrete"}</DialogTitle>
-              </DialogHeader>
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label>Cliente</Label>
-                  <Select value={customerId} onValueChange={setCustomerId}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione o cliente" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {customers?.map((c) => (
-                        <SelectItem key={c.id} value={c.id}>
-                          {c.name} — {c.phone}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+          <div className="flex items-center gap-2 flex-wrap">
+            {testCountdown !== null && (
+              <Badge variant="outline" className="animate-pulse text-sm px-3 py-1">
+                Enviando em {testCountdown}s...
+              </Badge>
+            )}
 
-                <div className="space-y-2">
-                  <Label>Mensagem</Label>
-                  <Textarea
-                    value={message}
-                    onChange={(e) => setMessage(e.target.value)}
-                    placeholder="Texto do lembrete..."
-                    rows={3}
-                  />
-                </div>
+            <Button variant="outline" size="sm" onClick={handleQuickTest} disabled={createReminder.isPending || testCountdown !== null}>
+              <FlaskConical className="h-4 w-4 mr-2" />
+              Teste em 10s
+            </Button>
 
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>Data (São Paulo)</Label>
-                    <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Hora (HH:MM:SS)</Label>
-                    <Input type="time" step="1" value={time} onChange={(e) => setTime(e.target.value)} />
-                  </div>
-                </div>
+            <Button variant="outline" size="sm" onClick={handleProcessNow} disabled={processReminders.isPending}>
+              {processReminders.isPending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Play className="h-4 w-4 mr-2" />}
+              Processar agora
+            </Button>
 
-                <Button onClick={handleSubmit} disabled={isPending} className="w-full">
-                  {isPending ? "Salvando..." : editingId ? "Salvar Alterações" : "Criar Lembrete"}
+            <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) resetForm(); }}>
+              <DialogTrigger asChild>
+                <Button>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Novo Lembrete
                 </Button>
-              </div>
-            </DialogContent>
-          </Dialog>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-md">
+                <DialogHeader>
+                  <DialogTitle>{editingId ? "Editar Lembrete" : "Novo Lembrete"}</DialogTitle>
+                  <DialogDescription>
+                    {editingId ? "Altere os dados do lembrete agendado." : "Agende um novo lembrete para envio via WhatsApp."}
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label>Cliente</Label>
+                    <Select value={customerId} onValueChange={setCustomerId}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione o cliente" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {customers?.map((c) => (
+                          <SelectItem key={c.id} value={c.id}>
+                            {c.name} — {c.phone}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Mensagem</Label>
+                    <Textarea
+                      value={message}
+                      onChange={(e) => setMessage(e.target.value)}
+                      placeholder="Texto do lembrete..."
+                      rows={3}
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>Data (São Paulo)</Label>
+                      <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Hora (HH:MM:SS)</Label>
+                      <Input type="time" step="1" value={time} onChange={(e) => setTime(e.target.value)} />
+                    </div>
+                  </div>
+
+                  <Button onClick={handleSubmit} disabled={isPending} className="w-full">
+                    {isPending ? "Salvando..." : editingId ? "Salvar Alterações" : "Criar Lembrete"}
+                  </Button>
+                </div>
+              </DialogContent>
+            </Dialog>
+          </div>
         </div>
 
         <Card>
@@ -218,11 +338,19 @@ export default function Reminders() {
                 <TableBody>
                   {reminders.map((r) => {
                     const st = statusMap[r.status] || statusMap.pending;
+                    const overdue = r.status === "pending" && isOverdue(r.scheduled_at);
                     return (
-                      <TableRow key={r.id}>
+                      <TableRow key={r.id} className={overdue ? "bg-destructive/5" : undefined}>
                         <TableCell className="font-medium">{r.customer_name}</TableCell>
                         <TableCell className="max-w-[200px] truncate">{r.message}</TableCell>
-                        <TableCell className="whitespace-nowrap">{formatSP(r.scheduled_at)}</TableCell>
+                        <TableCell className="whitespace-nowrap">
+                          {formatSP(r.scheduled_at)}
+                          {overdue && (
+                            <Badge variant="destructive" className="ml-2 text-[10px] px-1 py-0">
+                              Vencido
+                            </Badge>
+                          )}
+                        </TableCell>
                         <TableCell>
                           <Badge variant={st.variant}>{st.label}</Badge>
                         </TableCell>
