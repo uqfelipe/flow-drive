@@ -1005,7 +1005,7 @@ function extractIncomingMessages(body: any): IncomingWebhookMessage[] {
 // ── Flow cache ───────────────────────────────────────────────────────
 let cachedFlow: any = null;
 let lastCacheTime = 0;
-const FLOW_CACHE_TTL = 30_000; // 30s
+const FLOW_CACHE_TTL = 5_000; // 5s – detect deactivation faster
 
 async function getActiveFlowCached() {
   if (cachedFlow && Date.now() - lastCacheTime < FLOW_CACHE_TTL) return cachedFlow;
