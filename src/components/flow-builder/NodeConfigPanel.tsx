@@ -299,9 +299,11 @@ export function NodeConfigPanel({ node, onClose, onUpdate, onDelete }: NodeConfi
                       onChange={async (e) => {
                         const file = e.target.files?.[0];
                         if (!file) return;
-                        const fileName = `vid_${Date.now()}_${file.name}`;
+                        const maxSize = 50 * 1024 * 1024;
+                        if (file.size > maxSize) { toast.error(`Arquivo muito grande (${(file.size / 1024 / 1024).toFixed(1)}MB). Limite: 50MB`); return; }
+                        const fileName = `vid_${Date.now()}_${file.name.replace(/\s+/g, '_')}`;
                         const { error } = await supabase.storage.from("audio-files").upload(fileName, file, { contentType: file.type });
-                        if (error) { toast.error("Erro ao fazer upload"); return; }
+                        if (error) { toast.error("Erro ao fazer upload: " + error.message); return; }
                         const { data: urlData } = supabase.storage.from("audio-files").getPublicUrl(fileName);
                         updateConfig({ file: urlData.publicUrl, videoSource: "upload" });
                         toast.success("Vídeo enviado com sucesso");
