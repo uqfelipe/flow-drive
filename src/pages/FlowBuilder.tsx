@@ -396,20 +396,35 @@ function FlowBuilderContent() {
     setTimeout(() => pushHistory(), 50);
   }, [setNodes, setEdges, pushHistory]);
 
-  const handleSave = async () => {
-    const status = isActive ? "active" : "inactive";
-
-    // If activating, deactivate all other flows first
-    if (status === "active") {
-      const { error: deactivateErr } = await supabase
-        .from("chatbot_flows")
-        .update({ status: "inactive" as any, updated_at: new Date().toISOString() })
-        .neq("id", currentFlowId || "");
-      if (deactivateErr) {
-        console.error("Failed to deactivate other flows:", deactivateErr);
-      }
+  const handleToggleActive = async (checked: boolean) => {
+    if (!currentFlowId) {
+      toast.error("Salve o fluxo primeiro antes de ativá-lo");
+      return;
     }
+    const newStatus = checked ? "active" : "inactive";
+    try {
+      if (checked) {
+        // Deactivate all other flows first
+        await supabase
+          .from("chatbot_flows")
+          .update({ status: "inactive" as any, updated_at: new Date().toISOString() })
+          .neq("id", currentFlowId);
+      }
+      const { error } = await supabase
+        .from("chatbot_flows")
+        .update({ status: newStatus as any, updated_at: new Date().toISOString() })
+        .eq("id", currentFlowId);
+      if (error) throw error;
+      setIsActive(checked);
+      setCurrentFlowStatus(newStatus);
+      toast.success(checked ? "Bot ativado!" : "Bot desativado!");
+    } catch (err) {
+      console.error("Toggle active error:", err);
+      toast.error("Erro ao alterar status do bot");
+    }
+  };
 
+  const handleSave = async () => {
     if (!currentFlowId) {
       // Create new flow
       createFlow.mutate({ name: currentFlowName, nodes: nodes as any, edges: edges as any }, {
@@ -423,7 +438,7 @@ function FlowBuilderContent() {
       return;
     }
 
-    saveFlow.mutate({ id: currentFlowId, nodes, edges, name: currentFlowName, status }, {
+    saveFlow.mutate({ id: currentFlowId, nodes, edges, name: currentFlowName }, {
       onSuccess: () => toast.success("Fluxo salvo!"),
       onError: () => toast.error("Erro ao salvar fluxo"),
     });
@@ -543,7 +558,7 @@ function FlowBuilderContent() {
               <span className="text-xs text-muted-foreground">{isActive ? "Ativo" : "Inativo"}</span>
               <Switch
                 checked={isActive}
-                onCheckedChange={setIsActive}
+                onCheckedChange={handleToggleActive}
               />
             </div>
 
