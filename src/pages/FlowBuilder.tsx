@@ -9,6 +9,10 @@ import "@xyflow/react/dist/style.css";
 import { AdminLayout } from "@/components/AdminLayout";
 import { NodePalette } from "@/components/flow-builder/NodePalette";
 import { NodeConfigPanel } from "@/components/flow-builder/NodeConfigPanel";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 import FlowNode from "@/components/flow-builder/FlowNode";
 import { Button } from "@/components/ui/button";
