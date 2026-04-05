@@ -55,6 +55,8 @@ function FlowBuilderContent() {
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
   const [showNodeSearch, setShowNodeSearch] = useState(false);
   const [nodeSearch, setNodeSearch] = useState("");
+  const [showFormatConfirm, setShowFormatConfirm] = useState(false);
+  const skipAutoSelectRef = useRef(false);
   const nodeSearchInputRef = useRef<HTMLInputElement>(null);
 
   // Undo/Redo history system
