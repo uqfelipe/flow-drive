@@ -488,10 +488,10 @@ function FlowBuilderContent() {
           </div>
 
           <div className="flex items-center gap-2">
-            <Button variant="ghost" size="icon" className="h-8 w-8" title="Desfazer">
+            <Button variant="ghost" size="icon" className="h-8 w-8" title="Desfazer (Ctrl+Z)" onClick={handleUndo} disabled={!canUndo}>
               <Undo2 className="h-4 w-4" />
             </Button>
-            <Button variant="ghost" size="icon" className="h-8 w-8" title="Refazer">
+            <Button variant="ghost" size="icon" className="h-8 w-8" title="Refazer (Ctrl+Shift+Z)" onClick={handleRedo} disabled={!canRedo}>
               <Redo2 className="h-4 w-4" />
             </Button>
 
