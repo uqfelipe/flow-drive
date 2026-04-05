@@ -4,6 +4,7 @@ import { AudioRecorder } from "./AudioRecorder";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { VariableTextarea } from "./VariableTextarea";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -19,9 +20,10 @@ interface NodeConfigPanelProps {
   onClose: () => void;
   onUpdate: (nodeId: string, data: Partial<FlowNodeData>) => void;
   onDelete: (nodeId: string) => void;
+  nodes?: Node[];
 }
 
-export function NodeConfigPanel({ node, onClose, onUpdate, onDelete }: NodeConfigPanelProps) {
+export function NodeConfigPanel({ node, onClose, onUpdate, onDelete, nodes = [] }: NodeConfigPanelProps) {
   if (!node) return null;
 
   const data = node.data as unknown as FlowNodeData;
@@ -65,7 +67,7 @@ export function NodeConfigPanel({ node, onClose, onUpdate, onDelete }: NodeConfi
         {nt === "message" && (
           <div className="space-y-1.5">
             <Label className="text-xs font-medium text-muted-foreground">Mensagem</Label>
-            <Textarea className="text-sm min-h-[80px]" placeholder="Digite a mensagem..." value={data.config?.message || ""} onChange={(e) => updateConfig({ message: e.target.value })} />
+            <VariableTextarea className="text-sm min-h-[80px]" placeholder="Digite a mensagem..." value={data.config?.message || ""} onChange={(v) => updateConfig({ message: v })} nodes={nodes} />
             <p className="text-[10px] text-muted-foreground">Use {"{{variavel}}"} para valores dinâmicos</p>
           </div>
         )}
@@ -75,7 +77,7 @@ export function NodeConfigPanel({ node, onClose, onUpdate, onDelete }: NodeConfi
           <>
             <div className="space-y-1.5">
               <Label className="text-xs font-medium text-muted-foreground">Mensagem</Label>
-              <Textarea className="text-sm min-h-[60px]" placeholder="Texto exibido acima do botão..." value={data.config?.message || ""} onChange={(e) => updateConfig({ message: e.target.value })} />
+              <VariableTextarea className="text-sm min-h-[60px]" placeholder="Texto exibido acima do botão..." value={data.config?.message || ""} onChange={(v) => updateConfig({ message: v })} nodes={nodes} />
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs font-medium text-muted-foreground">URL do Link</Label>
@@ -94,11 +96,11 @@ export function NodeConfigPanel({ node, onClose, onUpdate, onDelete }: NodeConfi
           <>
             <div className="space-y-1.5">
               <Label className="text-xs font-medium text-muted-foreground">Mensagem</Label>
-              <Textarea className="text-sm min-h-[60px]" placeholder="Texto exibido acima do botão..." value={data.config?.message || ""} onChange={(e) => updateConfig({ message: e.target.value })} />
+              <VariableTextarea className="text-sm min-h-[60px]" placeholder="Texto exibido acima do botão..." value={data.config?.message || ""} onChange={(v) => updateConfig({ message: v })} nodes={nodes} />
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs font-medium text-muted-foreground">Texto para copiar</Label>
-              <Textarea className="text-sm min-h-[80px]" placeholder="Conteúdo que será copiado ao clicar no botão..." value={data.config?.text || ""} onChange={(e) => updateConfig({ text: e.target.value })} />
+              <VariableTextarea className="text-sm min-h-[80px]" placeholder="Conteúdo que será copiado ao clicar no botão..." value={data.config?.text || ""} onChange={(v) => updateConfig({ text: v })} nodes={nodes} />
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs font-medium text-muted-foreground">Label do botão</Label>
@@ -117,7 +119,7 @@ export function NodeConfigPanel({ node, onClose, onUpdate, onDelete }: NodeConfi
               {/* Seção: Mensagem */}
               <div className="space-y-1.5">
                 <Label className="text-xs font-medium text-muted-foreground">Mensagem</Label>
-                <Textarea className="text-sm min-h-[70px]" placeholder="Texto antes dos botões..." value={data.config?.message || ""} onChange={(e) => updateConfig({ message: e.target.value })} />
+                <VariableTextarea className="text-sm min-h-[70px]" placeholder="Texto antes dos botões..." value={data.config?.message || ""} onChange={(v) => updateConfig({ message: v })} nodes={nodes} />
               </div>
 
               {/* Seção: Botões */}
@@ -154,7 +156,7 @@ export function NodeConfigPanel({ node, onClose, onUpdate, onDelete }: NodeConfi
         {nt === "menu_list" && (
           <div className="space-y-1.5">
             <Label className="text-xs font-medium text-muted-foreground">Mensagem</Label>
-            <Textarea className="text-sm min-h-[60px]" placeholder="Texto do menu lista..." value={data.config?.message || ""} onChange={(e) => updateConfig({ message: e.target.value })} />
+            <VariableTextarea className="text-sm min-h-[60px]" placeholder="Texto do menu lista..." value={data.config?.message || ""} onChange={(v) => updateConfig({ message: v })} nodes={nodes} />
             <Label className="text-xs font-medium text-muted-foreground">Texto do botão</Label>
             <Input className="h-9 text-sm" value={data.config?.listButton || "Ver opções"} onChange={(e) => updateConfig({ listButton: e.target.value })} />
             <Label className="text-xs font-medium text-muted-foreground mt-2">Seções</Label>
@@ -203,7 +205,7 @@ export function NodeConfigPanel({ node, onClose, onUpdate, onDelete }: NodeConfi
         {nt === "request_location" && (
           <div className="space-y-1.5">
             <Label className="text-xs font-medium text-muted-foreground">Mensagem</Label>
-            <Textarea className="text-sm min-h-[60px]" placeholder="Compartilhe sua localização..." value={data.config?.message || ""} onChange={(e) => updateConfig({ message: e.target.value })} />
+            <VariableTextarea className="text-sm min-h-[60px]" placeholder="Compartilhe sua localização..." value={data.config?.message || ""} onChange={(v) => updateConfig({ message: v })} nodes={nodes} />
           </div>
         )}
 
@@ -629,7 +631,7 @@ export function NodeConfigPanel({ node, onClose, onUpdate, onDelete }: NodeConfi
             {data.category === "entrada" && (
               <div className="space-y-1.5">
                 <Label className="text-xs font-medium text-muted-foreground">Mensagem de prompt</Label>
-                <Textarea className="text-sm min-h-[60px]" placeholder="Mensagem pedindo o dado..." value={data.config?.message || ""} onChange={(e) => updateConfig({ message: e.target.value })} />
+                <VariableTextarea className="text-sm min-h-[60px]" placeholder="Mensagem pedindo o dado..." value={data.config?.message || ""} onChange={(v) => updateConfig({ message: v })} nodes={nodes} />
               </div>
             )}
           </>
@@ -703,7 +705,7 @@ export function NodeConfigPanel({ node, onClose, onUpdate, onDelete }: NodeConfi
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs font-medium text-muted-foreground">Mensagem</Label>
-              <Textarea className="text-sm min-h-[60px]" placeholder="Mensagem do pagamento..." value={data.config?.message || ""} onChange={(e) => updateConfig({ message: e.target.value })} />
+              <VariableTextarea className="text-sm min-h-[60px]" placeholder="Mensagem do pagamento..." value={data.config?.message || ""} onChange={(v) => updateConfig({ message: v })} nodes={nodes} />
             </div>
           </>
         )}
