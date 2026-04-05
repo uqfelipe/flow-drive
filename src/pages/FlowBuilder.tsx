@@ -260,7 +260,8 @@ function FlowBuilderContent() {
     setNodes((nds) => [...nds.map((n) => ({ ...n, selected: false })), ...newNodes]);
     setEdges((eds) => [...eds, ...internalEdges]);
     toast.success(`${newNodes.length} componente(s) duplicado(s)`);
-  }, [nodes, edges, setNodes, setEdges]);
+    setTimeout(() => pushHistory(), 50);
+  }, [nodes, edges, setNodes, setEdges, pushHistory]);
 
   // Only open config panel via pencil icon (custom event), not on selection
   useEffect(() => {
