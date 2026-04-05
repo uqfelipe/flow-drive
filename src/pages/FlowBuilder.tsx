@@ -11,6 +11,7 @@ import { NodePalette } from "@/components/flow-builder/NodePalette";
 import { NodeConfigPanel } from "@/components/flow-builder/NodeConfigPanel";
 
 import FlowNode from "@/components/flow-builder/FlowNode";
+import DeletableEdge from "@/components/flow-builder/DeletableEdge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
