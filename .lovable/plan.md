@@ -1,16 +1,26 @@
 
 
-## Remover modal de confirmação ao excluir nó
+## Mostrar todas as fotos de cada veículo no carrossel WhatsApp
 
-Simplificar a exclusão de nós no Flow Builder — ao clicar no botão de excluir, o nó é removido imediatamente sem modal de confirmação.
+### Problema
+Atualmente, o carrossel envia apenas `images[0]` de cada veículo. O cliente só vê uma foto por veículo.
 
-### Alterações em `src/components/flow-builder/FlowNode.tsx`
+### Solução
+No webhook `whatsapp-webhook/index.ts`, enviar as fotos adicionais de cada veículo como mensagens de imagem separadas **antes** do card do carrossel, criando um efeito de álbum.
 
-1. **Remover estado e função do modal**: Remover `showDeleteConfirm`, `setShowDeleteConfirm`, `confirmDelete` e `handleDelete`. Substituir por um único `handleDelete` que chama `deleteElements` diretamente.
+### Alterações em `supabase/functions/whatsapp-webhook/index.ts`
 
-2. **Remover o bloco `<AlertDialog>`** (linhas 370-390) por completo.
+1. **Antes de enviar o carrossel** (linhas ~525-532): Para cada veículo que tem mais de 1 imagem, enviar as imagens extras (a partir do índice 1) como mensagens individuais via `sendWhatsAppMedia`, com legenda identificando o veículo (ex: `📸 {nome} - Foto {n}`). Um pequeno delay entre envios para evitar throttling.
 
-3. **Remover import do AlertDialog** (linha 6) — não será mais usado.
+2. **No fallback de texto** (linhas ~536-542): Já envia imagem individual por veículo — alterar para enviar **todas** as imagens do veículo, não apenas `images[0]`.
 
-4. **Atualizar o botão de delete** no header do nó para chamar `deleteElements` diretamente em vez de abrir o modal.
+### Fluxo resultante
+```text
+1. Envia álbum de fotos extras de cada veículo (imagens 2, 3, 4...)
+2. Envia o carrossel com a foto principal (imagem 1) + botão de seleção
+3. Cliente vê todas as fotos E pode selecionar via carrossel
+```
+
+### Arquivo alterado
+- `supabase/functions/whatsapp-webhook/index.ts`
 
