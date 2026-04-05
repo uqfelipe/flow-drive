@@ -201,6 +201,20 @@ function FlowBuilderContent() {
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement;
+      if ((e.ctrlKey || e.metaKey) && e.key === "f") {
+        e.preventDefault();
+        setShowNodeSearch((v) => {
+          if (!v) setTimeout(() => nodeSearchInputRef.current?.focus(), 50);
+          else setNodeSearch("");
+          return !v;
+        });
+        return;
+      }
+      if (e.key === "Escape" && showNodeSearch) {
+        setShowNodeSearch(false);
+        setNodeSearch("");
+        return;
+      }
       if (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable) return;
       if ((e.ctrlKey || e.metaKey) && e.key === "c") { e.preventDefault(); handleCopy(); }
       if ((e.ctrlKey || e.metaKey) && e.key === "v") { e.preventDefault(); handlePaste(); }
@@ -208,7 +222,7 @@ function FlowBuilderContent() {
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [handleCopy, handlePaste, handleDuplicate]);
+  }, [handleCopy, handlePaste, handleDuplicate, showNodeSearch]);
 
   const onDragOver = useCallback((event: React.DragEvent) => {
     event.preventDefault();
