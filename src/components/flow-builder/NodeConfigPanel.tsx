@@ -205,7 +205,7 @@ export function NodeConfigPanel({ node, onClose, onUpdate, onDelete, nodes = [] 
         {nt === "request_location" && (
           <div className="space-y-1.5">
             <Label className="text-xs font-medium text-muted-foreground">Mensagem</Label>
-            <Textarea className="text-sm min-h-[60px]" placeholder="Compartilhe sua localização..." value={data.config?.message || ""} onChange={(e) => updateConfig({ message: e.target.value })} />
+            <VariableTextarea className="text-sm min-h-[60px]" placeholder="Compartilhe sua localização..." value={data.config?.message || ""} onChange={(v) => updateConfig({ message: v })} nodes={nodes} />
           </div>
         )}
 
