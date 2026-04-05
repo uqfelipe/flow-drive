@@ -457,10 +457,22 @@ async function processFlow(
     }
 
     // ─── Media nodes ───
-    if (nt === "send_image" || nt === "send_video" || nt === "send_audio" || nt === "send_file" || nt === "send_sticker") {
+    // ─── Sticker (dedicated endpoint) ───
+    if (nt === "send_sticker") {
       const file = cfg.file || "";
       if (file) {
-        const mediaType = nt === "send_image" ? "image" : nt === "send_video" ? "video" : nt === "send_audio" ? "ptt" : nt === "send_file" ? "document" : "sticker";
+        try { await sendWhatsAppSticker(inst, phone, replaceVariables(file, vars)); } catch (e) { console.error(`[FLOW]`, e.message); }
+        await new Promise(r => setTimeout(r, 500));
+      }
+      nodeId = findNextNodeId(flowEdges, nodeId);
+      continue;
+    }
+
+    // ─── Media nodes ───
+    if (nt === "send_image" || nt === "send_video" || nt === "send_audio" || nt === "send_file") {
+      const file = cfg.file || "";
+      if (file) {
+        const mediaType = nt === "send_image" ? "image" : nt === "send_video" ? "video" : nt === "send_audio" ? "ptt" : "document";
         try { await sendWhatsAppMedia(inst, phone, mediaType, replaceVariables(file, vars), cfg.caption ? replaceVariables(cfg.caption, vars) : undefined); } catch (e) { console.error(`[FLOW]`, e.message); }
         await new Promise(r => setTimeout(r, 500));
       }
