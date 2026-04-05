@@ -26,20 +26,12 @@ function FlowNode({ data, selected, id }: NodeProps) {
   const mediaConfig = mediaNodeConfig[nodeData.nodeType];
   const isMediaNode = !!mediaConfig;
   const hasFile = isMediaNode && !!mediaFile;
-  const { deleteElements, getEdges } = useReactFlow();
+  const { deleteElements } = useReactFlow();
 
   const handleDelete = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
     deleteElements({ nodes: [{ id }] });
   }, [id, deleteElements]);
-
-  const handleDisconnect = useCallback((e: React.MouseEvent) => {
-    e.stopPropagation();
-    const connectedEdges = getEdges().filter((edge) => edge.source === id || edge.target === id);
-    if (connectedEdges.length > 0) {
-      deleteElements({ edges: connectedEdges.map((edge) => ({ id: edge.id })) });
-    }
-  }, [id, deleteElements, getEdges]);
 
   const isMenu = nodeData.nodeType === "menu_text" || nodeData.nodeType === "menu_buttons";
   
