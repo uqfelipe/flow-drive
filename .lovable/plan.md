@@ -1,33 +1,25 @@
 
 
-## Carrossel de Veículos com saída por veículo (estilo menu)
+## Auto-carregar veículos no nó Carrossel
 
-### Ideia
-Transformar o nó `vehicle_carousel` para que ele carregue os veículos disponíveis do banco e mostre cada veículo como uma opção com seu próprio handle de saída — igual ao menu de botões. Assim o usuário pode conectar cada veículo a um caminho diferente no fluxo.
+### Situação atual
+O nó Carrossel de Veículos já suporta saídas individuais por veículo, mas o usuário precisa abrir o painel de configuração e clicar em "Carregar veículos" manualmente. Você quer que os veículos apareçam automaticamente no nó assim que ele for adicionado ao fluxo.
 
 ### Alterações
 
-#### 1. `src/components/flow-builder/NodeConfigPanel.tsx`
-- Adicionar botão **"Carregar veículos"** que busca veículos disponíveis do Supabase (filtrados pela categoria selecionada)
-- Salvar a lista de veículos carregados no config do nó como `vehicles: [{ id, name, brand, model, image }]`
-- Mostrar os veículos carregados na lista com nome e marca
-- Permitir remover veículos individualmente da lista
+#### 1. `src/components/flow-builder/FlowNode.tsx`
+- Adicionar um `useEffect` que detecta quando o nó `vehicle_carousel` é criado sem veículos carregados (`config.vehicles` vazio ou undefined)
+- Buscar automaticamente os veículos disponíveis do Supabase (respeitando categoria e maxCards do config)
+- Atualizar o config do nó com os veículos carregados usando um custom event (`flow-update-node-config`)
 
-#### 2. `src/components/flow-builder/FlowNode.tsx`
-- Ler `nodeData.config?.vehicles` (lista de veículos carregados)
-- Renderizar cada veículo como uma linha com handle de saída individual (igual ao menu), usando `id={`vehicle-${idx}`}`
-- Mostrar nome + marca de cada veículo truncado
-- Remover o handle único "selected" quando há veículos carregados
+#### 2. `src/pages/FlowBuilder.tsx`
+- Escutar o evento `flow-update-node-config` para receber atualizações automáticas de config do nó
+- Atualizar o nó no estado do React Flow quando o evento for disparado
 
-#### 3. `supabase/functions/whatsapp-webhook/index.ts`
-- Na resposta do carrossel (`veiculo_XXX`), buscar o índice do veículo na lista de veículos do config do nó
-- Usar `findNextNodeId(flowEdges, currentNodeId, `vehicle-${idx}`)` para seguir pela saída correspondente ao veículo escolhido
-- Fallback: se o veículo não estiver na lista do config, usar o handle "selected" como padrão
+#### 3. `src/components/flow-builder/NodeConfigPanel.tsx`
+- Manter o botão "Carregar veículos" para recarregar manualmente se necessário (ex: novos veículos adicionados)
+- Sem mudanças funcionais, apenas complementar
 
-### Fluxo do usuário
-1. Arrasta o nó Carrossel de Veículos
-2. No painel de configuração, seleciona categoria (opcional) e clica "Carregar veículos"
-3. Os veículos disponíveis aparecem no nó, cada um com sua saída
-4. Conecta cada saída a um nó diferente (ex: Corolla → mensagem A, Civic → mensagem B)
-5. No WhatsApp, quando o cliente escolhe o Corolla, o fluxo segue pela saída correspondente
+### Resultado
+Ao arrastar o nó Carrossel de Veículos para o canvas, os veículos disponíveis serão carregados automaticamente e cada um aparecerá como uma saída individual no nó, sem necessidade de abrir o painel de configuração.
 
