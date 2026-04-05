@@ -387,7 +387,8 @@ function FlowBuilderContent() {
     setNodes((nds) => nds.filter((n) => n.id !== id));
     setEdges((eds) => eds.filter((e) => e.source !== id && e.target !== id));
     setSelectedNode(null);
-  }, [setNodes, setEdges]);
+    setTimeout(() => pushHistory(), 50);
+  }, [setNodes, setEdges, pushHistory]);
 
   const handleSave = async () => {
     const status = isActive ? "active" : "inactive";
