@@ -265,14 +265,68 @@ export function NodeConfigPanel({ node, onClose, onUpdate, onDelete }: NodeConfi
           </div>
         )}
 
-        {/* ─── MEDIA NODES (exceto áudio e imagem) ─── */}
-        {(nt === "send_video" || nt === "send_file" || nt === "send_sticker") && (
+        {/* ─── SEND VIDEO ─── */}
+        {nt === "send_video" && (
+          <div className="space-y-3">
+            <Tabs value={data.config?.videoSource || "link"} onValueChange={(v) => updateConfig({ videoSource: v })}>
+              <TabsList className="w-full grid grid-cols-2 h-8">
+                <TabsTrigger value="link" className="text-xs gap-1"><LinkIcon className="h-3 w-3" />Link</TabsTrigger>
+                <TabsTrigger value="upload" className="text-xs gap-1"><Upload className="h-3 w-3" />Upload</TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="link" className="mt-3">
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-medium text-muted-foreground">URL do vídeo</Label>
+                  <Input className="h-9 text-sm" placeholder="https://..." value={data.config?.file || ""} onChange={(e) => updateConfig({ file: e.target.value })} />
+                </div>
+              </TabsContent>
+
+              <TabsContent value="upload" className="mt-3">
+                <div className="space-y-2">
+                  {data.config?.file && data.config?.videoSource === "upload" && (
+                    <div className="flex items-center gap-2 p-2 rounded-md bg-muted/50 border border-border">
+                      <Upload className="h-4 w-4 text-primary shrink-0" />
+                      <span className="text-xs text-muted-foreground truncate flex-1">{data.config.file.split("/").pop()}</span>
+                    </div>
+                  )}
+                  <label className="flex flex-col items-center gap-2 p-4 rounded-lg border-2 border-dashed border-border hover:border-primary/50 cursor-pointer transition-colors">
+                    <Upload className="h-5 w-5 text-muted-foreground" />
+                    <span className="text-xs text-muted-foreground">Clique para selecionar um vídeo</span>
+                    <input
+                      type="file"
+                      accept="video/*"
+                      className="hidden"
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0];
+                        if (!file) return;
+                        const fileName = `vid_${Date.now()}_${file.name}`;
+                        const { error } = await supabase.storage.from("audio-files").upload(fileName, file, { contentType: file.type });
+                        if (error) { toast.error("Erro ao fazer upload"); return; }
+                        const { data: urlData } = supabase.storage.from("audio-files").getPublicUrl(fileName);
+                        updateConfig({ file: urlData.publicUrl, videoSource: "upload" });
+                        toast.success("Vídeo enviado com sucesso");
+                      }}
+                    />
+                  </label>
+                </div>
+              </TabsContent>
+            </Tabs>
+
+            <div className="space-y-1.5">
+              <Label className="text-xs font-medium text-muted-foreground">Legenda</Label>
+              <Input className="h-9 text-sm" placeholder="Legenda (opcional)" value={data.config?.caption || ""} onChange={(e) => updateConfig({ caption: e.target.value })} />
+            </div>
+          </div>
+        )}
+
+        {/* ─── MEDIA NODES (arquivo e sticker) ─── */}
+        {(nt === "send_file" || nt === "send_sticker") && (
           <>
             <div className="space-y-1.5">
               <Label className="text-xs font-medium text-muted-foreground">URL do arquivo</Label>
               <Input className="h-9 text-sm" placeholder="https://..." value={data.config?.file || ""} onChange={(e) => updateConfig({ file: e.target.value })} />
             </div>
-            {(nt === "send_video" || nt === "send_file") && (
+            {nt === "send_file" && (
               <div className="space-y-1.5">
                 <Label className="text-xs font-medium text-muted-foreground">Legenda</Label>
                 <Input className="h-9 text-sm" placeholder="Legenda (opcional)" value={data.config?.caption || ""} onChange={(e) => updateConfig({ caption: e.target.value })} />
