@@ -372,6 +372,9 @@ function FlowBuilderContent() {
 
             <div className="h-5 w-px bg-border mx-1" />
 
+            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => { setShowNodeSearch((v) => !v); setTimeout(() => nodeSearchInputRef.current?.focus(), 50); }} title="Buscar nó (Ctrl+F)">
+              <Search className="h-4 w-4" />
+            </Button>
             <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleExport} title="Exportar">
               <Download className="h-4 w-4" />
             </Button>
