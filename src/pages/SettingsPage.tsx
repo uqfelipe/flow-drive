@@ -86,66 +86,7 @@ export default function SettingsPage() {
           </CardContent>
         </Card>
 
-        <Card className="bg-card border-border">
-          <CardHeader>
-            <CardTitle className="text-sm font-display flex items-center gap-2"><MessageCircle className="h-4 w-4 text-primary" /> Mensagem de Boas-Vindas</CardTitle>
-            <CardDescription className="text-xs">Enviada apenas no primeiro contato do cliente</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium">Ativar boas-vindas</p>
-                <p className="text-[11px] text-muted-foreground">Enviar mensagem automática no primeiro contato</p>
-              </div>
-              <Switch checked={welcomeForm.welcome_enabled === "true"} onCheckedChange={async (v) => {
-                const newVal = v ? "true" : "false";
-                setWelcomeForm(f => ({ ...f, welcome_enabled: newVal }));
-                try {
-                  await updateSetting.mutateAsync({ key: "welcome_enabled", value: newVal });
-                  toast.success(v ? "Boas-vindas ativada!" : "Boas-vindas desativada!");
-                } catch { toast.error("Erro ao salvar"); }
-              }} />
-            </div>
-            {welcomeForm.welcome_enabled === "true" && (
-              <>
-                <div className="space-y-2">
-                  <Label className="text-xs">Tipo de mensagem</Label>
-                  <RadioGroup value={welcomeForm.welcome_type} onValueChange={(v) => setWelcomeForm(f => ({ ...f, welcome_type: v }))} className="flex gap-4">
-                    <div className="flex items-center gap-2">
-                      <RadioGroupItem value="text" id="wt-text" />
-                      <Label htmlFor="wt-text" className="text-xs cursor-pointer">Texto</Label>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <RadioGroupItem value="audio" id="wt-audio" />
-                      <Label htmlFor="wt-audio" className="text-xs cursor-pointer">Áudio</Label>
-                    </div>
-                  </RadioGroup>
-                </div>
-                {welcomeForm.welcome_type === "text" ? (
-                  <div className="space-y-2">
-                    <Label className="text-xs">Mensagem de texto</Label>
-                    <Textarea className="bg-muted/50" rows={3} placeholder="Olá! Bem-vindo à nossa locadora..." value={welcomeForm.welcome_text} onChange={(e) => setWelcomeForm(f => ({ ...f, welcome_text: e.target.value }))} />
-                  </div>
-                ) : (
-                  <div className="space-y-2">
-                    <Label className="text-xs">URL do áudio</Label>
-                    <Input className="bg-muted/50" placeholder="https://exemplo.com/audio.mp3" value={welcomeForm.welcome_audio_url} onChange={(e) => setWelcomeForm(f => ({ ...f, welcome_audio_url: e.target.value }))} />
-                  </div>
-                )}
-                <Button size="sm" onClick={async () => {
-                  try {
-                    await Promise.all([
-                      updateSetting.mutateAsync({ key: "welcome_type", value: welcomeForm.welcome_type }),
-                      updateSetting.mutateAsync({ key: "welcome_text", value: welcomeForm.welcome_text }),
-                      updateSetting.mutateAsync({ key: "welcome_audio_url", value: welcomeForm.welcome_audio_url }),
-                    ]);
-                    toast.success("Configuração de boas-vindas salva!");
-                  } catch { toast.error("Erro ao salvar"); }
-                }} disabled={updateSetting.isPending}><Save className="h-4 w-4 mr-1" /> Salvar</Button>
-              </>
-            )}
-          </CardContent>
-        </Card>
+
 
         <Card className="bg-card border-border">
           <CardHeader>
