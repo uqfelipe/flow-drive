@@ -799,11 +799,6 @@ function VehicleCarouselConfig({ data, nodeId, onUpdate, updateConfig }: Vehicle
           </SelectContent>
         </Select>
       </div>
-      <div className="space-y-1.5">
-        <Label className="text-xs font-medium text-muted-foreground">Máximo de cards</Label>
-        <Input className="h-9 text-sm" type="number" min={2} max={10} value={data.config?.maxCards || 10} onChange={(e) => updateConfig({ maxCards: parseInt(e.target.value) || 10 })} />
-        <p className="text-[10px] text-muted-foreground">Mín. 2, máx. 10 (limitação do WhatsApp)</p>
-      </div>
 
       {/* Seleção de veículos */}
       <div className="space-y-2">
