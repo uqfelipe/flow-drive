@@ -462,13 +462,25 @@ function FlowBuilderContent() {
       reader.onload = (ev) => {
         try {
           const data = JSON.parse(ev.target?.result as string);
-          if (Array.isArray(data.nodes) && Array.isArray(data.edges)) {
-            setNodes(data.nodes);
-            setEdges(data.edges);
-            if (data.name) setCurrentFlowName(data.name);
-             toast.success("Fluxo importado com sucesso!");
-            setTimeout(() => pushHistory(), 50);
-          } else {
+            if (Array.isArray(data.nodes) && Array.isArray(data.edges)) {
+              const fixedNodes = data.nodes.map((n: any) => ({ ...n, type: "flowNode" }));
+              setNodes(fixedNodes);
+              setEdges(data.edges);
+              setCurrentFlowName(data.name || "Fluxo Importado");
+              setCurrentFlowId(null);
+              setDbLoaded(true);
+              setCurrentFlowStatus("draft");
+              setIsActive(false);
+              setSelectedNode(null);
+              setShowNodeSearch(false);
+              setNodeSearch("");
+              const maxId = Math.max(...data.nodes.map((n: any) => parseInt(n.id) || 0), nodeIdCounter);
+              nodeIdCounter = maxId + 1;
+              historyRef.current = [{ nodes: JSON.parse(JSON.stringify(fixedNodes)), edges: JSON.parse(JSON.stringify(data.edges)) }];
+              historyIndexRef.current = 0;
+              updateUndoRedoState();
+              toast.success("Fluxo importado com sucesso!");
+            } else {
             toast.error("Arquivo inválido: estrutura de nós/edges não encontrada.");
           }
         } catch {
