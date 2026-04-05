@@ -61,6 +61,10 @@ async function sendWhatsAppContact(inst: Inst, phone: string, fullName: string, 
   await waFetch(inst, "/send/contact", { number: phone, fullName, phoneNumber, ...(org ? { organization: org } : {}), ...(email ? { email } : {}) });
 }
 
+async function sendWhatsAppSticker(inst: Inst, phone: string, file: string) {
+  await waFetch(inst, "/send/sticker", { number: phone, file });
+}
+
 async function sendWhatsAppLocation(inst: Inst, phone: string, lat: number, lng: number, name?: string, address?: string) {
   await waFetch(inst, "/send/location", { number: phone, latitude: lat, longitude: lng, ...(name ? { name } : {}), ...(address ? { address } : {}) });
 }
