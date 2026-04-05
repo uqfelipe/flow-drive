@@ -67,7 +67,7 @@ export function NodeConfigPanel({ node, onClose, onUpdate, onDelete, nodes = [] 
         {nt === "message" && (
           <div className="space-y-1.5">
             <Label className="text-xs font-medium text-muted-foreground">Mensagem</Label>
-            <Textarea className="text-sm min-h-[80px]" placeholder="Digite a mensagem..." value={data.config?.message || ""} onChange={(e) => updateConfig({ message: e.target.value })} />
+            <VariableTextarea className="text-sm min-h-[80px]" placeholder="Digite a mensagem..." value={data.config?.message || ""} onChange={(v) => updateConfig({ message: v })} nodes={nodes} />
             <p className="text-[10px] text-muted-foreground">Use {"{{variavel}}"} para valores dinâmicos</p>
           </div>
         )}
