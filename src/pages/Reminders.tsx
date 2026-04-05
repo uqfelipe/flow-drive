@@ -133,7 +133,7 @@ export default function Reminders() {
 
   const handleProcessNow = async () => {
     try {
-      const result = await processReminders.mutateAsync();
+      const result = await processReminders.mutateAsync(undefined);
       if (result.sent > 0) {
         toast.success(`${result.sent} lembrete(s) enviado(s)!`);
       } else {
