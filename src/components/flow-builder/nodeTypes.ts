@@ -57,6 +57,7 @@ export const nodeTypes: NodeTypeConfig[] = [
   { type: "send_sticker", label: "Enviar Figurinha", category: "midia", icon: Sticker, description: "Enviar sticker", color: "#A855F7", defaultConfig: { file: "" } },
   { type: "send_location", label: "Enviar Localização", category: "midia", icon: MapPin, description: "Compartilhar localização", color: "#22C55E", defaultConfig: { latitude: "", longitude: "", name: "", address: "" } },
   { type: "contact_card", label: "Cartão de Contato", category: "midia", icon: Contact, description: "Enviar cartão de contato", color: "#0EA5E9", defaultConfig: { fullName: "", phoneNumber: "", organization: "", email: "" } },
+  { type: "vehicle_carousel", label: "Carrossel Veículos", category: "midia", icon: Car, description: "Exibir veículos disponíveis em carrossel", color: "#F59E0B", defaultConfig: { message: "Confira nossos veículos disponíveis:", buttonText: "Quero este", category: "", maxCards: 10 } },
 
   // Entrada de Dados
   { type: "capture_text", label: "Capturar Texto", category: "entrada", icon: Type, description: "Capturar texto livre", color: "#8B5CF6", defaultConfig: { variable: "", message: "" } },
