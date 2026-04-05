@@ -10,6 +10,7 @@ import {
   LogOut,
   Smartphone,
   Variable,
+  AlarmClock,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
@@ -42,6 +43,7 @@ const chatItems = [
 ];
 
 const configItems = [
+  { title: "Lembretes", url: "/reminders", icon: AlarmClock },
   { title: "WhatsApp", url: "/whatsapp", icon: Smartphone },
   { title: "Configurações", url: "/settings", icon: Settings },
 ];
