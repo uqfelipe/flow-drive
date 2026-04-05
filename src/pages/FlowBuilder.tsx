@@ -152,8 +152,17 @@ function FlowBuilderContent() {
         setEdges([]);
       }
       setDbLoaded(true);
+      // Initialize history with loaded state
+      setTimeout(() => {
+        historyRef.current = [{
+          nodes: JSON.parse(JSON.stringify(dbNodes.length > 0 ? dbNodes.map(n => ({ ...n, type: "flowNode" })) : [])),
+          edges: JSON.parse(JSON.stringify(dbEdges)),
+        }];
+        historyIndexRef.current = 0;
+        updateUndoRedoState();
+      }, 100);
     }
-  }, [flowDetail, dbLoaded, setNodes, setEdges]);
+  }, [flowDetail, dbLoaded, setNodes, setEdges, updateUndoRedoState]);
 
   // Reset dbLoaded when flowId changes
   useEffect(() => {
