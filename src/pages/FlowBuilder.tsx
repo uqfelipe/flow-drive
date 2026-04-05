@@ -53,6 +53,69 @@ function FlowBuilderContent() {
   const [nodeSearch, setNodeSearch] = useState("");
   const nodeSearchInputRef = useRef<HTMLInputElement>(null);
 
+  // Undo/Redo history system
+  const historyRef = useRef<{ nodes: Node[]; edges: Edge[] }[]>([]);
+  const historyIndexRef = useRef(-1);
+  const isRestoringRef = useRef(false);
+  const MAX_HISTORY = 50;
+
+  const pushHistory = useCallback((currentNodes: Node[], currentEdges: Edge[]) => {
+    if (isRestoringRef.current) return;
+    const hist = historyRef.current;
+    const idx = historyIndexRef.current;
+    // Discard future entries
+    historyRef.current = hist.slice(0, idx + 1);
+    historyRef.current.push({
+      nodes: JSON.parse(JSON.stringify(currentNodes)),
+      edges: JSON.parse(JSON.stringify(currentEdges)),
+    });
+    if (historyRef.current.length > MAX_HISTORY) {
+      historyRef.current.shift();
+    }
+    historyIndexRef.current = historyRef.current.length - 1;
+  }, []);
+
+  const [canUndo, setCanUndo] = useState(false);
+  const [canRedo, setCanRedo] = useState(false);
+
+  const updateUndoRedoState = useCallback(() => {
+    setCanUndo(historyIndexRef.current > 0);
+    setCanRedo(historyIndexRef.current < historyRef.current.length - 1);
+  }, []);
+
+  const handleUndo = useCallback(() => {
+    if (historyIndexRef.current <= 0) return;
+    historyIndexRef.current -= 1;
+    const snapshot = historyRef.current[historyIndexRef.current];
+    isRestoringRef.current = true;
+    setNodes(JSON.parse(JSON.stringify(snapshot.nodes)));
+    setEdges(JSON.parse(JSON.stringify(snapshot.edges)));
+    requestAnimationFrame(() => { isRestoringRef.current = false; });
+    updateUndoRedoState();
+  }, [setNodes, setEdges, updateUndoRedoState]);
+
+  const handleRedo = useCallback(() => {
+    if (historyIndexRef.current >= historyRef.current.length - 1) return;
+    historyIndexRef.current += 1;
+    const snapshot = historyRef.current[historyIndexRef.current];
+    isRestoringRef.current = true;
+    setNodes(JSON.parse(JSON.stringify(snapshot.nodes)));
+    setEdges(JSON.parse(JSON.stringify(snapshot.edges)));
+    requestAnimationFrame(() => { isRestoringRef.current = false; });
+    updateUndoRedoState();
+  }, [setNodes, setEdges, updateUndoRedoState]);
+
+  // Debounced history push for node/edge changes
+  const historyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const scheduleHistoryPush = useCallback(() => {
+    if (isRestoringRef.current) return;
+    if (historyTimerRef.current) clearTimeout(historyTimerRef.current);
+    historyTimerRef.current = setTimeout(() => {
+      // Access latest nodes/edges via refs won't work with useNodesState,
+      // so we use a trick: store them in a ref updated by the wrapper
+    }, 300);
+  }, []);
+
   const { data: flows, isLoading } = useFlows();
   const { data: flowDetail } = useFlow(currentFlowId);
   const saveFlow = useSaveFlow();
