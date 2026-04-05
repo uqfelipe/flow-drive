@@ -384,9 +384,61 @@ export function NodeConfigPanel({ node, onClose, onUpdate, onDelete }: NodeConfi
 
         {/* ─── SEND STICKER ─── */}
         {nt === "send_sticker" && (
-          <div className="space-y-1.5">
-            <Label className="text-xs font-medium text-muted-foreground">URL do arquivo</Label>
-            <Input className="h-9 text-sm" placeholder="https://..." value={data.config?.file || ""} onChange={(e) => updateConfig({ file: e.target.value })} />
+          <div className="space-y-3">
+            <Tabs value={data.config?.stickerSource || "link"} onValueChange={(v) => updateConfig({ stickerSource: v })}>
+              <TabsList className="w-full grid grid-cols-2 h-8">
+                <TabsTrigger value="link" className="text-xs gap-1"><LinkIcon className="h-3 w-3" />Link</TabsTrigger>
+                <TabsTrigger value="upload" className="text-xs gap-1"><Upload className="h-3 w-3" />Upload</TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="link" className="mt-3">
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-medium text-muted-foreground">URL da figurinha</Label>
+                  <Input className="h-9 text-sm" placeholder="https://..." value={data.config?.file || ""} onChange={(e) => updateConfig({ file: e.target.value })} />
+                </div>
+              </TabsContent>
+
+              <TabsContent value="upload" className="mt-3">
+                <div className="space-y-2">
+                  <Label className="text-xs font-medium text-muted-foreground">Upload de figurinha (máx 1MB)</Label>
+                  <Input
+                    type="file"
+                    accept="image/webp,image/png,image/jpeg"
+                    className="h-9 text-sm"
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      const maxSize = 1 * 1024 * 1024;
+                      if (file.size > maxSize) {
+                        toast.error("Arquivo muito grande. O limite para figurinhas é 1MB.");
+                        e.target.value = "";
+                        return;
+                      }
+                      const fileName = `sticker_${Date.now()}_${file.name.replace(/\s+/g, '_')}`;
+                      const { error } = await supabase.storage.from("audio-files").upload(fileName, file, { contentType: file.type });
+                      if (error) {
+                        toast.error("Erro ao enviar figurinha: " + error.message);
+                        return;
+                      }
+                      const { data: urlData } = supabase.storage.from("audio-files").getPublicUrl(fileName);
+                      updateConfig({ file: urlData.publicUrl, stickerSource: "upload" });
+                      toast.success("Figurinha enviada!");
+                    }}
+                  />
+                  {data.config?.file && data.config?.stickerSource === "upload" && (
+                    <p className="text-xs text-muted-foreground truncate">
+                      📎 {data.config.file.split("/").pop()}
+                    </p>
+                  )}
+                </div>
+              </TabsContent>
+            </Tabs>
+
+            {data.config?.file && (
+              <div className="rounded-md border border-border p-2">
+                <img src={data.config.file} alt="Preview" className="max-h-32 mx-auto rounded" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+              </div>
+            )}
           </div>
         )}
 
