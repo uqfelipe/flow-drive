@@ -1,19 +1,34 @@
 
 
-## Importar fluxo a partir de arquivo JSON
+## Corrigir Undo/Redo (Desfazer/Refazer) no Flow Builder
 
-### O que faz
-Adiciona um botão de importação na toolbar (ícone Upload) ao lado do botão de exportação. Ao clicar, abre um file picker para selecionar um `.json`. O arquivo é validado e os nós/edges são carregados no canvas, substituindo o conteúdo atual.
+### Problema
+Os botões de desfazer e refazer não têm nenhuma lógica conectada — são apenas ícones visuais sem funcionalidade.
 
-### Alteração
+### Solução
+Implementar um sistema de histórico manual que rastreia snapshots de `nodes` e `edges` a cada mudança.
 
-#### `src/pages/FlowBuilder.tsx`
-- Adicionar import do ícone `Upload` do lucide-react
-- Criar função `handleImport`:
-  - Cria um `<input type="file" accept=".json">` invisível via JS e dispara o click
-  - No `onChange`, lê o arquivo com `FileReader`
-  - Faz `JSON.parse` e valida que o objeto tem `nodes` (array) e `edges` (array)
-  - Se válido: `setNodes(data.nodes)`, `setEdges(data.edges)`, e opcionalmente atualiza `currentFlowName` se presente no JSON
-  - Se inválido: exibe toast de erro
-- Adicionar botão `Upload` na toolbar, ao lado do botão de exportar
+### Alteração: `src/pages/FlowBuilder.tsx`
+
+1. **Criar sistema de histórico** com `useRef`:
+   - `historyRef` — array de snapshots `{ nodes, edges }`
+   - `historyIndexRef` — ponteiro para posição atual no histórico
+   - Limite de ~50 entradas para não consumir memória
+
+2. **Função `pushHistory`** — chamada após cada mudança significativa (adicionar/remover nó, conectar, mover, importar):
+   - Descarta entradas futuras se o índice não está no fim (após um undo)
+   - Salva snapshot atual de `nodes` e `edges`
+
+3. **Funções `handleUndo` e `handleRedo`**:
+   - `handleUndo`: decrementa índice, restaura `setNodes`/`setEdges` do snapshot anterior
+   - `handleRedo`: incrementa índice, restaura do snapshot seguinte
+
+4. **Conectar aos botões existentes** (linhas 394-399):
+   - Adicionar `onClick={handleUndo}` e `onClick={handleRedo}`
+   - Desabilitar botões quando não há histórico disponível (`disabled`)
+
+5. **Chamar `pushHistory`** nos pontos de mutação:
+   - `onConnect`, `onDrop` (adicionar nó), delete de nó, `handleImport`, mudanças via `onNodesChange`/`onEdgesChange` (debounced para moves)
+
+6. **Atalhos de teclado**: `Ctrl+Z` para undo, `Ctrl+Shift+Z` para redo
 
