@@ -120,8 +120,15 @@ function FlowNode({ data, selected, id }: NodeProps) {
           </div>
         )}
 
+        {/* Restart with typing preview */}
+        {nodeData.nodeType === "restart_with_typing" && (
+          <div className="px-2 py-1.5 rounded-lg bg-rose-50 dark:bg-rose-950/30 text-[10px] text-rose-600 dark:text-rose-400 font-medium">
+            ⏱ Inatividade: {(nodeData.config?.timeoutMinutes as number) || 30}min → Digitando {(nodeData.config?.seconds as number) || 3}s → próximo nó
+          </div>
+        )}
+
         {/* Description */}
-        {nodeData.description && !messageText && !isAudioNode && !isMediaNode && (
+        {nodeData.description && !messageText && !isAudioNode && !isMediaNode && nodeData.nodeType !== "restart_with_typing" && (
           <p className="text-[10px] text-muted-foreground px-1 truncate">{nodeData.description}</p>
         )}
 

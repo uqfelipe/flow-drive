@@ -596,10 +596,26 @@ export function NodeConfigPanel({ node, onClose, onUpdate, onDelete }: NodeConfi
         )}
 
         {/* ─── DELAY / TYPING ─── */}
-        {(nt === "delay" || nt === "typing_indicator" || nt === "restart_with_typing") && (
+        {(nt === "delay" || nt === "typing_indicator") && (
           <div className="space-y-1.5">
             <Label className="text-xs font-medium text-muted-foreground">Tempo (segundos)</Label>
             <Input type="number" className="h-9 text-sm" value={data.config?.seconds || (nt === "typing_indicator" ? 3 : 5)} onChange={(e) => updateConfig({ seconds: parseInt(e.target.value) })} />
+          </div>
+        )}
+
+        {/* ─── RESTART WITH TYPING ─── */}
+        {nt === "restart_with_typing" && (
+          <div className="space-y-3">
+            <div className="space-y-1.5">
+              <Label className="text-xs font-medium text-muted-foreground">Tempo de inatividade (minutos)</Label>
+              <Input type="number" className="h-9 text-sm" min={1} placeholder="30" value={data.config?.timeoutMinutes || 30} onChange={(e) => updateConfig({ timeoutMinutes: parseInt(e.target.value) || 30 })} />
+              <p className="text-[10px] text-muted-foreground">Sessão reinicia após este tempo sem interação do cliente</p>
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs font-medium text-muted-foreground">Tempo digitando (segundos)</Label>
+              <Input type="number" className="h-9 text-sm" min={1} max={15} placeholder="3" value={data.config?.seconds || 3} onChange={(e) => updateConfig({ seconds: parseInt(e.target.value) || 3 })} />
+              <p className="text-[10px] text-muted-foreground">Duração do indicador "digitando..." antes de redirecionar</p>
+            </div>
           </div>
         )}
 

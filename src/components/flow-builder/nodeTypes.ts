@@ -78,7 +78,7 @@ export const nodeTypes: NodeTypeConfig[] = [
   { type: "delay", label: "Delay", category: "logica", icon: Timer, description: "Aguardar tempo definido", color: "#0EA5E9", defaultConfig: { seconds: 5 } },
   { type: "set_variable", label: "Definir Variável", category: "logica", icon: Variable, description: "Atribuir valor a variável", color: "#8B5CF6", defaultConfig: { variable: "", value: "" } },
   { type: "typing_indicator", label: "Digitando...", category: "logica", icon: Keyboard, description: "Indicador digitando antes de responder", color: "#A855F7", defaultConfig: { seconds: 3 } },
-  { type: "restart_with_typing", label: "Reinício Digitando", category: "logica", icon: RotateCcw, description: "Digitando + redirecionamento ao retornar", color: "#F43F5E", defaultConfig: { seconds: 3 } },
+  { type: "restart_with_typing", label: "Reinício Digitando", category: "logica", icon: RotateCcw, description: "Digitando + redirecionamento ao retornar", color: "#F43F5E", defaultConfig: { seconds: 3, timeoutMinutes: 30 } },
 
 ];
 
