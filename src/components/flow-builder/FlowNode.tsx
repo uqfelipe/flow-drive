@@ -1,8 +1,9 @@
-import { memo, useCallback } from "react";
+import { memo, useCallback, useState } from "react";
 import { Handle, Position, type NodeProps, useReactFlow } from "@xyflow/react";
 import { getNodeTypeConfig } from "./nodeTypes";
 import type { FlowNodeData } from "@/types";
 import { X, GripHorizontal, Pencil, Mic, Image, Video, File, Sticker, Copy, Car, Scissors } from "lucide-react";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 
 
 function FlowNode({ data, selected, id }: NodeProps) {
@@ -27,10 +28,16 @@ function FlowNode({ data, selected, id }: NodeProps) {
   const isMediaNode = !!mediaConfig;
   const hasFile = isMediaNode && !!mediaFile;
   const { deleteElements, getEdges } = useReactFlow();
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   const handleDelete = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
+    setShowDeleteConfirm(true);
+  }, []);
+
+  const confirmDelete = useCallback(() => {
     deleteElements({ nodes: [{ id }] });
+    setShowDeleteConfirm(false);
   }, [id, deleteElements]);
 
   const handleDisconnect = useCallback((e: React.MouseEvent) => {
@@ -357,6 +364,22 @@ function FlowNode({ data, selected, id }: NodeProps) {
           </div>
         )}
       </div>
+      <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+        <AlertDialogContent onClick={(e) => e.stopPropagation()}>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir nó</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja excluir <strong>{nodeData.label || config?.label}</strong>? Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
