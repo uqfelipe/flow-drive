@@ -375,7 +375,7 @@ async function processFlow(
     }
     
     // ─── Typing indicator ───
-    if (nt === "typing_indicator") {
+    if (nt === "typing_indicator" || nt === "restart_with_typing") {
       const seconds = Math.min(cfg.seconds || 3, 15);
       try { await sendWhatsAppPresence(inst, phone, "composing", seconds * 1000); } catch (_) {}
       await new Promise(r => setTimeout(r, seconds * 1000));
