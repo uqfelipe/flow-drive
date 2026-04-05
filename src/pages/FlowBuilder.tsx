@@ -9,6 +9,10 @@ import "@xyflow/react/dist/style.css";
 import { AdminLayout } from "@/components/AdminLayout";
 import { NodePalette } from "@/components/flow-builder/NodePalette";
 import { NodeConfigPanel } from "@/components/flow-builder/NodeConfigPanel";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 import FlowNode from "@/components/flow-builder/FlowNode";
 import { Button } from "@/components/ui/button";
@@ -51,6 +55,8 @@ function FlowBuilderContent() {
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
   const [showNodeSearch, setShowNodeSearch] = useState(false);
   const [nodeSearch, setNodeSearch] = useState("");
+  const [showFormatConfirm, setShowFormatConfirm] = useState(false);
+  const skipAutoSelectRef = useRef(false);
   const nodeSearchInputRef = useRef<HTMLInputElement>(null);
 
   // Undo/Redo history system
@@ -123,7 +129,7 @@ function FlowBuilderContent() {
 
   // Pick the first flow from list (or allow creation)
   useEffect(() => {
-    if (flows && flows.length > 0 && !currentFlowId) {
+    if (flows && flows.length > 0 && !currentFlowId && !skipAutoSelectRef.current) {
       setCurrentFlowId(flows[0].id);
     }
   }, [flows, currentFlowId]);
@@ -408,6 +414,7 @@ function FlowBuilderContent() {
       // Create new flow
       createFlow.mutate({ name: currentFlowName, nodes: nodes as any, edges: edges as any }, {
         onSuccess: (data) => {
+          skipAutoSelectRef.current = false;
           setCurrentFlowId(data.id);
           toast.success("Fluxo criado!");
         },
@@ -435,16 +442,21 @@ function FlowBuilderContent() {
   };
 
   const handleFormat = () => {
-    if (!window.confirm("Tem certeza que deseja formatar? Todos os nós e conexões serão removidos.")) return;
+    setShowFormatConfirm(true);
+  };
+
+  const executeFormat = () => {
+    skipAutoSelectRef.current = true;
     setNodes([]);
     setEdges([]);
     setCurrentFlowName("Novo Fluxo");
+    setCurrentFlowId(null);
     setCurrentFlowStatus("draft");
     setIsActive(false);
     setSelectedNode(null);
     setShowNodeSearch(false);
     setNodeSearch("");
-    // Reset history
+    setDbLoaded(true);
     historyRef.current = [{ nodes: [], edges: [] }];
     historyIndexRef.current = 0;
     updateUndoRedoState();
@@ -463,6 +475,7 @@ function FlowBuilderContent() {
         try {
           const data = JSON.parse(ev.target?.result as string);
             if (Array.isArray(data.nodes) && Array.isArray(data.edges)) {
+              skipAutoSelectRef.current = true;
               const fixedNodes = data.nodes.map((n: any) => ({ ...n, type: "flowNode" }));
               setNodes(fixedNodes);
               setEdges(data.edges);
@@ -666,6 +679,21 @@ function FlowBuilderContent() {
           )}
         </div>
       </div>
+
+      <AlertDialog open={showFormatConfirm} onOpenChange={setShowFormatConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Formatar canvas</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja formatar? Todos os nós e conexões serão removidos.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={() => executeFormat()}>Formatar</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </AdminLayout>
   );
 }
