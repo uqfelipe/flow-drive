@@ -282,8 +282,24 @@ function FlowNode({ data, selected, id }: NodeProps) {
           </div>
         )}
 
-        {/* Default source handle (non-menu, non-condition, non-menu_list) */}
-        {!isMenu && !isMenuList && nodeData.nodeType !== "condition" && (
+        {/* Vehicle carousel selected handle */}
+        {nodeData.nodeType === "vehicle_carousel" && (
+          <div className="space-y-1 mt-1">
+            <div className="flex items-center gap-2 px-2 py-1.5 rounded-lg text-[11px] font-medium bg-amber-50 dark:bg-amber-950/30 text-amber-600 relative">
+              <Car className="h-3 w-3" />
+              <span className="flex-1">Veículo selecionado</span>
+              <Handle
+                type="source"
+                position={Position.Right}
+                id="selected"
+                className="!w-3 !h-3 !bg-amber-500 !border-2 !border-white dark:!border-card !rounded-full !-right-4 !top-auto !relative"
+              />
+            </div>
+          </div>
+        )}
+
+        {/* Default source handle (non-menu, non-condition, non-menu_list, non-vehicle_carousel) */}
+        {!isMenu && !isMenuList && nodeData.nodeType !== "condition" && nodeData.nodeType !== "vehicle_carousel" && (
           <div className="flex justify-end pr-0">
             <Handle
               type="source"
