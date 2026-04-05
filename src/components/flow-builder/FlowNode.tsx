@@ -1,9 +1,9 @@
-import { memo, useCallback, useState } from "react";
+import { memo, useCallback } from "react";
 import { Handle, Position, type NodeProps, useReactFlow } from "@xyflow/react";
 import { getNodeTypeConfig } from "./nodeTypes";
 import type { FlowNodeData } from "@/types";
 import { X, GripHorizontal, Pencil, Mic, Image, Video, File, Sticker, Copy, Car, Scissors } from "lucide-react";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+
 
 
 function FlowNode({ data, selected, id }: NodeProps) {
@@ -28,16 +28,9 @@ function FlowNode({ data, selected, id }: NodeProps) {
   const isMediaNode = !!mediaConfig;
   const hasFile = isMediaNode && !!mediaFile;
   const { deleteElements, getEdges } = useReactFlow();
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-
   const handleDelete = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
-    setShowDeleteConfirm(true);
-  }, []);
-
-  const confirmDelete = useCallback(() => {
     deleteElements({ nodes: [{ id }] });
-    setShowDeleteConfirm(false);
   }, [id, deleteElements]);
 
   const handleDisconnect = useCallback((e: React.MouseEvent) => {
@@ -367,27 +360,6 @@ function FlowNode({ data, selected, id }: NodeProps) {
           </div>
         )}
       </div>
-      <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
-        <AlertDialogContent onClick={(e) => e.stopPropagation()} className="max-w-[320px] p-4 rounded-xl gap-3">
-          <AlertDialogHeader className="space-y-1">
-            <div className="flex items-center gap-2">
-              <div className="p-1.5 rounded-lg bg-destructive/10">
-                <X className="h-4 w-4 text-destructive" />
-              </div>
-              <AlertDialogTitle className="text-sm">Excluir nó</AlertDialogTitle>
-            </div>
-            <AlertDialogDescription className="text-xs leading-relaxed">
-              Deseja excluir <strong className="text-foreground">{nodeData.label || config?.label}</strong>?
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter className="flex-row gap-2 sm:space-x-0">
-            <AlertDialogCancel className="mt-0 flex-1 h-8 text-xs rounded-lg">Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmDelete} className="flex-1 h-8 text-xs rounded-lg bg-destructive text-destructive-foreground hover:bg-destructive/90">
-              Excluir
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   );
 }
