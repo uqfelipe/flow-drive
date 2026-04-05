@@ -1340,8 +1340,8 @@ async function processIncomingMessage(phone: string, text: string, mediaUrl?: st
           .eq("id", session.id);
         session = undefined;
 
-        // Check if flow has a restart_with_typing node to use as entry point
-        const restartNode = flowNodes.find((n: any) => n.data?.nodeType === "restart_with_typing");
+        // Use the restartNode already found above
+        if (restartNode) {
         if (restartNode) {
           console.log(`[AUTO-REPLY] Found restart_with_typing node ${restartNode.id}, using as entry`);
           const restartSeconds = Math.min(restartNode.data?.config?.seconds || 3, 15);
