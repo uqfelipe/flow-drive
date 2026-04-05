@@ -119,7 +119,7 @@ export function NodeConfigPanel({ node, onClose, onUpdate, onDelete, nodes = [] 
               {/* Seção: Mensagem */}
               <div className="space-y-1.5">
                 <Label className="text-xs font-medium text-muted-foreground">Mensagem</Label>
-                <Textarea className="text-sm min-h-[70px]" placeholder="Texto antes dos botões..." value={data.config?.message || ""} onChange={(e) => updateConfig({ message: e.target.value })} />
+                <VariableTextarea className="text-sm min-h-[70px]" placeholder="Texto antes dos botões..." value={data.config?.message || ""} onChange={(v) => updateConfig({ message: v })} nodes={nodes} />
               </div>
 
               {/* Seção: Botões */}
