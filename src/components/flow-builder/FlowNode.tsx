@@ -282,21 +282,45 @@ function FlowNode({ data, selected, id }: NodeProps) {
           </div>
         )}
 
-        {/* Vehicle carousel selected handle */}
-        {nodeData.nodeType === "vehicle_carousel" && (
-          <div className="space-y-1 mt-1">
-            <div className="flex items-center gap-2 px-2 py-1.5 rounded-lg text-[11px] font-medium bg-amber-50 dark:bg-amber-950/30 text-amber-600 relative">
-              <Car className="h-3 w-3" />
-              <span className="flex-1">Veículo selecionado</span>
-              <Handle
-                type="source"
-                position={Position.Right}
-                id="selected"
-                className="!w-3 !h-3 !bg-amber-500 !border-2 !border-white dark:!border-card !rounded-full !-right-4 !top-auto !relative"
-              />
+        {/* Vehicle carousel per-vehicle handles */}
+        {nodeData.nodeType === "vehicle_carousel" && (() => {
+          const vehicles = (nodeData.config?.vehicles || []) as Array<{ id: string; name: string; brand: string; model: string; image: string }>;
+          if (vehicles.length > 0) {
+            return (
+              <div className="space-y-1 mt-1">
+                {vehicles.map((v, idx) => (
+                  <div
+                    key={v.id}
+                    className="flex items-center gap-2 px-2 py-1.5 rounded-lg text-[11px] font-medium bg-amber-50 dark:bg-amber-950/30 text-amber-600 relative"
+                  >
+                    {v.image && <img src={v.image} alt="" className="w-6 h-4 rounded object-cover flex-shrink-0" />}
+                    <span className="flex-1 truncate">{v.name} - {v.brand}</span>
+                    <Handle
+                      type="source"
+                      position={Position.Right}
+                      id={`vehicle-${idx}`}
+                      className="!w-3 !h-3 !bg-amber-500 !border-2 !border-white dark:!border-card !rounded-full !-right-4 !top-auto !relative"
+                    />
+                  </div>
+                ))}
+              </div>
+            );
+          }
+          return (
+            <div className="space-y-1 mt-1">
+              <div className="flex items-center gap-2 px-2 py-1.5 rounded-lg text-[11px] font-medium bg-amber-50 dark:bg-amber-950/30 text-amber-600 relative">
+                <Car className="h-3 w-3" />
+                <span className="flex-1">Veículo selecionado</span>
+                <Handle
+                  type="source"
+                  position={Position.Right}
+                  id="selected"
+                  className="!w-3 !h-3 !bg-amber-500 !border-2 !border-white dark:!border-card !rounded-full !-right-4 !top-auto !relative"
+                />
+              </div>
             </div>
-          </div>
-        )}
+          );
+        })()}
 
         {/* Default source handle (non-menu, non-condition, non-menu_list, non-vehicle_carousel) */}
         {!isMenu && !isMenuList && nodeData.nodeType !== "condition" && nodeData.nodeType !== "vehicle_carousel" && (

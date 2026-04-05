@@ -680,9 +680,77 @@ export function NodeConfigPanel({ node, onClose, onUpdate, onDelete }: NodeConfi
               <Input className="h-9 text-sm" type="number" min={2} max={10} value={data.config?.maxCards || 10} onChange={(e) => updateConfig({ maxCards: parseInt(e.target.value) || 10 })} />
               <p className="text-[10px] text-muted-foreground">Mín. 2, máx. 10 (limitação do WhatsApp)</p>
             </div>
+
+            {/* Carregar veículos */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label className="text-xs font-medium text-muted-foreground">Veículos carregados</Label>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-7 text-[10px]"
+                  onClick={async () => {
+                    try {
+                      let query = supabase.from("vehicles").select("id, name, brand, model, images").eq("status", "available");
+                      const cat = data.config?.category;
+                      if (cat && cat !== "all") {
+                        query = query.eq("category", cat);
+                      }
+                      const maxCards = data.config?.maxCards || 10;
+                      const { data: vehicles, error } = await query.limit(maxCards).order("created_at", { ascending: false });
+                      if (error) throw error;
+                      if (!vehicles || vehicles.length === 0) {
+                        toast.error("Nenhum veículo disponível encontrado");
+                        return;
+                      }
+                      const mapped = vehicles.map((v: any) => ({
+                        id: v.id,
+                        name: v.name,
+                        brand: v.brand,
+                        model: v.model,
+                        image: v.images?.[0] || "",
+                      }));
+                      updateConfig({ vehicles: mapped });
+                      toast.success(`${mapped.length} veículo(s) carregado(s)`);
+                    } catch (err: any) {
+                      toast.error("Erro ao carregar veículos: " + err.message);
+                    }
+                  }}
+                >
+                  <Plus className="h-3 w-3 mr-1" /> Carregar veículos
+                </Button>
+              </div>
+
+              {((data.config?.vehicles || []) as Array<{ id: string; name: string; brand: string; model: string; image: string }>).map((v, idx) => (
+                <div key={v.id} className="flex items-center gap-2 px-2 py-1.5 rounded-lg bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-300">
+                  {v.image && <img src={v.image} alt="" className="w-8 h-6 rounded object-cover flex-shrink-0" />}
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[11px] font-medium truncate">{v.name}</p>
+                    <p className="text-[9px] text-muted-foreground truncate">{v.brand} {v.model}</p>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-6 w-6 text-destructive hover:text-destructive"
+                    onClick={() => {
+                      const vehicles = [...(data.config?.vehicles || [])];
+                      vehicles.splice(idx, 1);
+                      updateConfig({ vehicles });
+                    }}
+                  >
+                    <X className="h-3 w-3" />
+                  </Button>
+                </div>
+              ))}
+
+              {(!data.config?.vehicles || (data.config.vehicles as any[]).length === 0) && (
+                <p className="text-[10px] text-muted-foreground italic">Nenhum veículo carregado. Clique em "Carregar veículos" acima.</p>
+              )}
+            </div>
+
             <div className="bg-muted/50 rounded-lg p-2.5 space-y-1">
               <p className="text-[11px] font-medium text-foreground/70">ℹ️ Como funciona</p>
-              <p className="text-[10px] text-muted-foreground">O carrossel busca automaticamente os veículos com status "disponível" do seu cadastro e envia como cards interativos no WhatsApp.</p>
+              <p className="text-[10px] text-muted-foreground">Carregue os veículos para criar saídas individuais. Cada veículo terá sua própria conexão no fluxo.</p>
               <p className="text-[10px] text-muted-foreground">Variáveis salvas: <code className="bg-muted px-1 rounded">{'{{veiculo_selecionado}}'}</code> (ID) e <code className="bg-muted px-1 rounded">{'{{veiculo_nome}}'}</code> (nome)</p>
             </div>
           </>
