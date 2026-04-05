@@ -338,6 +338,34 @@ function FlowBuilderContent() {
     toast.success("Fluxo exportado!");
   };
 
+  const handleImport = () => {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = ".json";
+    input.onchange = (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        try {
+          const data = JSON.parse(ev.target?.result as string);
+          if (Array.isArray(data.nodes) && Array.isArray(data.edges)) {
+            setNodes(data.nodes);
+            setEdges(data.edges);
+            if (data.name) setCurrentFlowName(data.name);
+            toast.success("Fluxo importado com sucesso!");
+          } else {
+            toast.error("Arquivo inválido: estrutura de nós/edges não encontrada.");
+          }
+        } catch {
+          toast.error("Erro ao ler o arquivo JSON.");
+        }
+      };
+      reader.readAsText(file);
+    };
+    input.click();
+  };
+
   if (isLoading) {
     return (
       <AdminLayout title="Construtor de Fluxos" subtitle="Monte automações visuais para o chatbot">
