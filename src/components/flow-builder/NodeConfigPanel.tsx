@@ -20,6 +20,7 @@ interface NodeConfigPanelProps {
   onClose: () => void;
   onUpdate: (nodeId: string, data: Partial<FlowNodeData>) => void;
   onDelete: (nodeId: string) => void;
+  nodes?: Node[];
 }
 
 export function NodeConfigPanel({ node, onClose, onUpdate, onDelete }: NodeConfigPanelProps) {
