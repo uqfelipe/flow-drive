@@ -16,7 +16,7 @@ import { Switch } from "@/components/ui/switch";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
-import { Plus, Ban, AlarmClock, Pencil, Trash2, Play, FlaskConical, Loader2, Radio, CheckCircle2, XCircle } from "lucide-react";
+import { Plus, Ban, AlarmClock, Pencil, Trash2, Loader2, Radio, CheckCircle2, XCircle } from "lucide-react";
 import type { ReminderWithCustomer } from "@/hooks/use-reminders";
 
 const statusMap: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
