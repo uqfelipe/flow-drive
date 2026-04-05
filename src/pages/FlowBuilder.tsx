@@ -679,6 +679,21 @@ function FlowBuilderContent() {
           )}
         </div>
       </div>
+
+      <AlertDialog open={showFormatConfirm} onOpenChange={setShowFormatConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Formatar canvas</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja formatar? Todos os nós e conexões serão removidos.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={() => executeFormat()}>Formatar</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </AdminLayout>
   );
 }
