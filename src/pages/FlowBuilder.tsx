@@ -58,30 +58,33 @@ function FlowBuilderContent() {
   const historyIndexRef = useRef(-1);
   const isRestoringRef = useRef(false);
   const MAX_HISTORY = 50;
-
-  const pushHistory = useCallback((currentNodes: Node[], currentEdges: Edge[]) => {
-    if (isRestoringRef.current) return;
-    const hist = historyRef.current;
-    const idx = historyIndexRef.current;
-    // Discard future entries
-    historyRef.current = hist.slice(0, idx + 1);
-    historyRef.current.push({
-      nodes: JSON.parse(JSON.stringify(currentNodes)),
-      edges: JSON.parse(JSON.stringify(currentEdges)),
-    });
-    if (historyRef.current.length > MAX_HISTORY) {
-      historyRef.current.shift();
-    }
-    historyIndexRef.current = historyRef.current.length - 1;
-  }, []);
-
   const [canUndo, setCanUndo] = useState(false);
   const [canRedo, setCanRedo] = useState(false);
+  const latestNodesRef = useRef<Node[]>([]);
+  const latestEdgesRef = useRef<Edge[]>([]);
+
+  // Keep refs in sync
+  useEffect(() => { latestNodesRef.current = nodes; }, [nodes]);
+  useEffect(() => { latestEdgesRef.current = edges; }, [edges]);
 
   const updateUndoRedoState = useCallback(() => {
     setCanUndo(historyIndexRef.current > 0);
     setCanRedo(historyIndexRef.current < historyRef.current.length - 1);
   }, []);
+
+  const pushHistory = useCallback(() => {
+    if (isRestoringRef.current) return;
+    const hist = historyRef.current;
+    const idx = historyIndexRef.current;
+    historyRef.current = hist.slice(0, idx + 1);
+    historyRef.current.push({
+      nodes: JSON.parse(JSON.stringify(latestNodesRef.current)),
+      edges: JSON.parse(JSON.stringify(latestEdgesRef.current)),
+    });
+    if (historyRef.current.length > MAX_HISTORY) historyRef.current.shift();
+    historyIndexRef.current = historyRef.current.length - 1;
+    updateUndoRedoState();
+  }, [updateUndoRedoState]);
 
   const handleUndo = useCallback(() => {
     if (historyIndexRef.current <= 0) return;
@@ -90,7 +93,7 @@ function FlowBuilderContent() {
     isRestoringRef.current = true;
     setNodes(JSON.parse(JSON.stringify(snapshot.nodes)));
     setEdges(JSON.parse(JSON.stringify(snapshot.edges)));
-    requestAnimationFrame(() => { isRestoringRef.current = false; });
+    setTimeout(() => { isRestoringRef.current = false; }, 50);
     updateUndoRedoState();
   }, [setNodes, setEdges, updateUndoRedoState]);
 
@@ -101,20 +104,17 @@ function FlowBuilderContent() {
     isRestoringRef.current = true;
     setNodes(JSON.parse(JSON.stringify(snapshot.nodes)));
     setEdges(JSON.parse(JSON.stringify(snapshot.edges)));
-    requestAnimationFrame(() => { isRestoringRef.current = false; });
+    setTimeout(() => { isRestoringRef.current = false; }, 50);
     updateUndoRedoState();
   }, [setNodes, setEdges, updateUndoRedoState]);
 
-  // Debounced history push for node/edge changes
+  // Debounced history push for drag/move changes
   const historyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const scheduleHistoryPush = useCallback(() => {
+  const schedulePushHistory = useCallback(() => {
     if (isRestoringRef.current) return;
     if (historyTimerRef.current) clearTimeout(historyTimerRef.current);
-    historyTimerRef.current = setTimeout(() => {
-      // Access latest nodes/edges via refs won't work with useNodesState,
-      // so we use a trick: store them in a ref updated by the wrapper
-    }, 300);
-  }, []);
+    historyTimerRef.current = setTimeout(() => pushHistory(), 300);
+  }, [pushHistory]);
 
   const { data: flows, isLoading } = useFlows();
   const { data: flowDetail } = useFlow(currentFlowId);
