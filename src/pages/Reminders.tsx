@@ -98,7 +98,11 @@ export default function Reminders() {
     }
   };
 
-  // Auto-process loop
+  // Stable ref for processReminders to avoid restarting interval
+  const processRef = useRef(processReminders);
+  processRef.current = processReminders;
+
+  // Auto-process loop — calls Edge Function unconditionally every 10s
   useEffect(() => {
     if (!autoEnabled) {
       if (autoIntervalRef.current) {
@@ -109,24 +113,12 @@ export default function Reminders() {
     }
 
     const runAutoProcess = async () => {
-      // Guard: skip if already processing
-      if (autoProcessingRef.current || processReminders.isPending) return;
-
-      // Check if there are any overdue pending reminders
-      const hasOverdue = reminders?.some(
-        (r) => r.status === "pending" && isOverdue(r.scheduled_at)
-      );
-
-      setLastCheck(new Date());
-
-      if (!hasOverdue) {
-        setLastResult("none");
-        return;
-      }
+      if (autoProcessingRef.current) return;
 
       autoProcessingRef.current = true;
+      setLastCheck(new Date());
       try {
-        const result = await processReminders.mutateAsync(undefined);
+        const result = await processRef.current.mutateAsync(undefined);
         setLastSentCount(result.sent);
         if (result.sent > 0) {
           setLastResult("success");
@@ -152,8 +144,8 @@ export default function Reminders() {
     // Run immediately on enable
     runAutoProcess();
 
-    // Then poll every 5 seconds
-    autoIntervalRef.current = setInterval(runAutoProcess, 5000);
+    // Then poll every 10 seconds
+    autoIntervalRef.current = setInterval(runAutoProcess, 10000);
 
     return () => {
       if (autoIntervalRef.current) {
@@ -161,7 +153,7 @@ export default function Reminders() {
         autoIntervalRef.current = null;
       }
     };
-  }, [autoEnabled, reminders, processReminders]);
+  }, [autoEnabled]);
 
   const resetForm = () => {
     setEditingId(null);

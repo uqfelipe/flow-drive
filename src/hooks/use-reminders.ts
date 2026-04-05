@@ -19,6 +19,7 @@ export interface ReminderWithCustomer extends ReminderRow {
 export function useReminders() {
   return useQuery({
     queryKey: ["reminders"],
+    refetchInterval: 10000,
     queryFn: async (): Promise<ReminderWithCustomer[]> => {
       const { data, error } = await supabase
         .from("reminders")
