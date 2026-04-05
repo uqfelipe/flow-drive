@@ -439,11 +439,15 @@ function FlowBuilderContent() {
     setNodes([]);
     setEdges([]);
     setCurrentFlowName("Novo Fluxo");
-    setCurrentFlowId(null);
+    setCurrentFlowStatus("draft");
+    setIsActive(false);
     setSelectedNode(null);
     setShowNodeSearch(false);
     setNodeSearch("");
-    setTimeout(() => pushHistory(), 50);
+    // Reset history
+    historyRef.current = [{ nodes: [], edges: [] }];
+    historyIndexRef.current = 0;
+    updateUndoRedoState();
     toast.success("Canvas formatado");
   };
 
