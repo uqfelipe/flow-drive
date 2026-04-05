@@ -65,14 +65,17 @@ function FlowNode({ data, selected, id }: NodeProps) {
     }
   }
 
+  const isHighlighted = !!(nodeData as any)._highlight;
+
   return (
     <div
       className={`
         relative rounded-2xl bg-white dark:bg-card border-2 overflow-visible
         min-w-[260px] max-w-[320px] transition-all duration-200 cursor-pointer
-        ${selected ? "shadow-lg" : "shadow-md hover:shadow-lg"}
+        ${isHighlighted ? "ring-2 ring-red-500 ring-offset-2 shadow-[0_0_20px_rgba(239,68,68,0.4)]" : ""}
+        ${selected && !isHighlighted ? "shadow-lg" : "shadow-md hover:shadow-lg"}
       `}
-      style={{ borderColor: selected ? color : `${color}40` }}
+      style={{ borderColor: isHighlighted ? "#EF4444" : selected ? color : `${color}40` }}
     >
       {/* Target Handle */}
       <Handle
