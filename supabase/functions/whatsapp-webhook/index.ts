@@ -1327,20 +1327,20 @@ async function processIncomingMessage(phone: string, text: string, mediaUrl?: st
     
     let session = existingSessions?.[0];
 
-    // ── Session timeout: expire after 30 min of inactivity ──
-    const SESSION_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutos
+    // ── Session timeout: expire after configured inactivity ──
+    const restartNode = flowNodes.find((n: any) => n.data?.nodeType === "restart_with_typing");
+    const sessionTimeoutMs = ((restartNode?.data?.config?.timeoutMinutes as number) || 30) * 60 * 1000;
     if (session) {
       const lastUpdate = new Date(session.updated_at).getTime();
       const now = Date.now();
-      if (now - lastUpdate > SESSION_TIMEOUT_MS) {
+      if (now - lastUpdate > sessionTimeoutMs) {
         console.log(`[AUTO-REPLY] Session expired (inactive ${Math.round((now - lastUpdate) / 60000)}min), restarting`);
         await adminClient.from("chat_sessions")
           .update({ status: "completed", updated_at: new Date().toISOString() })
           .eq("id", session.id);
         session = undefined;
 
-        // Check if flow has a restart_with_typing node to use as entry point
-        const restartNode = flowNodes.find((n: any) => n.data?.nodeType === "restart_with_typing");
+        // Use the restartNode already found above
         if (restartNode) {
           console.log(`[AUTO-REPLY] Found restart_with_typing node ${restartNode.id}, using as entry`);
           const restartSeconds = Math.min(restartNode.data?.config?.seconds || 3, 15);
