@@ -1362,6 +1362,31 @@ async function processIncomingMessage(phone: string, text: string, mediaUrl?: st
             return;
           }
 
+          // Handle vehicle_carousel button response
+          if (nt === "vehicle_carousel") {
+            const match = text.match(/^veiculo_(.+)$/i);
+            if (match) {
+              const vehicleId = match[1];
+              variables["veiculo_selecionado"] = vehicleId;
+              // Fetch vehicle name for convenience
+              try {
+                const { data: vData } = await adminClient.from("vehicles").select("name, brand, model").eq("id", vehicleId).single();
+                if (vData) {
+                  variables["veiculo_nome"] = `${vData.name} - ${vData.brand} ${vData.model}`;
+                }
+              } catch (_) {}
+              console.log(`[FLOW] Vehicle selected: ${vehicleId}`);
+              const nextNodeId = findNextNodeId(flowEdges, currentNodeId);
+              if (nextNodeId) {
+                await processFlow(inst, phone, text, session.id, customerId, flowNodes, flowEdges, nextNodeId, variables);
+              }
+            } else {
+              try { await sendWhatsAppText(inst, phone, "❌ Por favor, selecione um veículo usando os botões."); } catch (_) {}
+              await processFlow(inst, phone, "", session.id, customerId, flowNodes, flowEdges, currentNodeId, variables);
+            }
+            return;
+          }
+
           // Handle request_location — save coordinates to {{localizacao}}
           if (nt === "request_location") {
             if (latitude != null && longitude != null) {

@@ -647,6 +647,47 @@ export function NodeConfigPanel({ node, onClose, onUpdate, onDelete }: NodeConfi
         )}
 
         {/* ─── REQUEST PAYMENT ─── */}
+        {/* ─── VEHICLE CAROUSEL ─── */}
+        {nt === "vehicle_carousel" && (
+          <>
+            <div className="space-y-1.5">
+              <Label className="text-xs font-medium text-muted-foreground">Mensagem do carrossel</Label>
+              <Textarea className="text-sm min-h-[60px]" placeholder="Confira nossos veículos disponíveis:" value={data.config?.message || ""} onChange={(e) => updateConfig({ message: e.target.value })} />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs font-medium text-muted-foreground">Texto do botão</Label>
+              <Input className="h-9 text-sm" placeholder="Quero este" maxLength={20} value={data.config?.buttonText || ""} onChange={(e) => updateConfig({ buttonText: e.target.value })} />
+              <p className="text-[10px] text-muted-foreground">Máx. 20 caracteres</p>
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs font-medium text-muted-foreground">Filtrar por categoria</Label>
+              <Select value={data.config?.category || ""} onValueChange={(v) => updateConfig({ category: v })}>
+                <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Todas as categorias" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">Todas</SelectItem>
+                  <SelectItem value="sedan">Sedan</SelectItem>
+                  <SelectItem value="suv">SUV</SelectItem>
+                  <SelectItem value="hatch">Hatch</SelectItem>
+                  <SelectItem value="pickup">Pickup</SelectItem>
+                  <SelectItem value="van">Van</SelectItem>
+                  <SelectItem value="luxury">Luxo</SelectItem>
+                  <SelectItem value="economy">Econômico</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs font-medium text-muted-foreground">Máximo de cards</Label>
+              <Input className="h-9 text-sm" type="number" min={2} max={10} value={data.config?.maxCards || 10} onChange={(e) => updateConfig({ maxCards: parseInt(e.target.value) || 10 })} />
+              <p className="text-[10px] text-muted-foreground">Mín. 2, máx. 10 (limitação do WhatsApp)</p>
+            </div>
+            <div className="bg-muted/50 rounded-lg p-2.5 space-y-1">
+              <p className="text-[11px] font-medium text-foreground/70">ℹ️ Como funciona</p>
+              <p className="text-[10px] text-muted-foreground">O carrossel busca automaticamente os veículos com status "disponível" do seu cadastro e envia como cards interativos no WhatsApp.</p>
+              <p className="text-[10px] text-muted-foreground">Variáveis salvas: <code className="bg-muted px-1 rounded">{'{{veiculo_selecionado}}'}</code> (ID) e <code className="bg-muted px-1 rounded">{'{{veiculo_nome}}'}</code> (nome)</p>
+            </div>
+          </>
+        )}
+
         {nt === "request_payment" && (
           <>
             <div className="space-y-1.5">
