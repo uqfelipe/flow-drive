@@ -1488,7 +1488,7 @@ async function processIncomingMessage(phone: string, text: string, mediaUrl?: st
           }
         }
 
-        const nextNodeId = findNextNodeId(flowEdges, carouselNode.id, handleId);
+        const nextNodeId = findNextNodeId(flowEdges, carouselNode.id, handleId) || findNextNodeId(flowEdges, carouselNode.id);
         if (nextNodeId) {
           console.log(`[AUTO-REPLY] Rehydrating vehicle selection without active session: ${vehicleId} -> ${nextNodeId}`);
 
