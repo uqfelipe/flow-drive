@@ -23,7 +23,7 @@ interface NodeConfigPanelProps {
   nodes?: Node[];
 }
 
-export function NodeConfigPanel({ node, onClose, onUpdate, onDelete }: NodeConfigPanelProps) {
+export function NodeConfigPanel({ node, onClose, onUpdate, onDelete, nodes = [] }: NodeConfigPanelProps) {
   if (!node) return null;
 
   const data = node.data as unknown as FlowNodeData;
