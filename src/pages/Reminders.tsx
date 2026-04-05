@@ -1,5 +1,5 @@
 import { useState } from "react";
-import AdminLayout from "@/components/AdminLayout";
+import { AdminLayout } from "@/components/AdminLayout";
 import { useReminders, useCreateReminder, useCancelReminder } from "@/hooks/use-reminders";
 import { useCustomers } from "@/hooks/use-customers";
 import { Button } from "@/components/ui/button";

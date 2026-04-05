@@ -43,6 +43,7 @@ const chatItems = [
 ];
 
 const configItems = [
+  { title: "Lembretes", url: "/reminders", icon: AlarmClock },
   { title: "WhatsApp", url: "/whatsapp", icon: Smartphone },
   { title: "Configurações", url: "/settings", icon: Settings },
 ];

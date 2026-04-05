@@ -39,6 +39,7 @@ const App = () => (
           <Route path="/flow-builder" element={<FlowBuilder />} />
           <Route path="/whatsapp" element={<WhatsAppConfig />} />
           <Route path="/settings" element={<SettingsPage />} />
+          <Route path="/reminders" element={<Reminders />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
