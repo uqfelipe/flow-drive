@@ -25,12 +25,6 @@ export default function SettingsPage() {
         company_cnpj: settings.company_cnpj ?? "",
         company_phone: settings.company_phone ?? "",
       });
-      setWelcomeForm({
-        welcome_enabled: settings.welcome_enabled ?? "false",
-        welcome_type: settings.welcome_type ?? "text",
-        welcome_text: settings.welcome_text ?? "",
-        welcome_audio_url: settings.welcome_audio_url ?? "",
-      });
     }
   }, [settings]);
 
