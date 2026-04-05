@@ -690,7 +690,7 @@ function FlowBuilderContent() {
             )}
           </div>
           {selectedNode && (
-            <NodeConfigPanel node={selectedNode} onClose={() => setSelectedNode(null)} onUpdate={onUpdateNode} onDelete={onDeleteNode} />
+            <NodeConfigPanel node={selectedNode} onClose={() => setSelectedNode(null)} onUpdate={onUpdateNode} onDelete={onDeleteNode} nodes={nodes} />
           )}
         </div>
       </div>
