@@ -2,7 +2,7 @@ import { memo, useCallback } from "react";
 import { Handle, Position, type NodeProps, useReactFlow } from "@xyflow/react";
 import { getNodeTypeConfig } from "./nodeTypes";
 import type { FlowNodeData } from "@/types";
-import { X, GripHorizontal, Pencil, Mic, Image, Video, File, Sticker, Copy, Car } from "lucide-react";
+import { X, GripHorizontal, Pencil, Mic, Image, Video, File, Sticker, Copy, Car, Scissors } from "lucide-react";
 
 
 function FlowNode({ data, selected, id }: NodeProps) {
@@ -26,12 +26,20 @@ function FlowNode({ data, selected, id }: NodeProps) {
   const mediaConfig = mediaNodeConfig[nodeData.nodeType];
   const isMediaNode = !!mediaConfig;
   const hasFile = isMediaNode && !!mediaFile;
-  const { deleteElements } = useReactFlow();
+  const { deleteElements, getEdges } = useReactFlow();
 
   const handleDelete = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
     deleteElements({ nodes: [{ id }] });
   }, [id, deleteElements]);
+
+  const handleDisconnect = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    const connectedEdges = getEdges().filter((edge) => edge.source === id || edge.target === id);
+    if (connectedEdges.length > 0) {
+      deleteElements({ edges: connectedEdges.map((edge) => ({ id: edge.id })) });
+    }
+  }, [id, deleteElements, getEdges]);
 
   const isMenu = nodeData.nodeType === "menu_text" || nodeData.nodeType === "menu_buttons";
   
@@ -79,6 +87,13 @@ function FlowNode({ data, selected, id }: NodeProps) {
         <span className="text-xs font-semibold flex-1 truncate" style={{ color }}>
           {config?.label || nodeData.nodeType}
         </span>
+        <button
+          onClick={handleDisconnect}
+          className="p-0.5 rounded hover:bg-black/10 dark:hover:bg-white/10 transition-colors"
+          title="Desconectar"
+        >
+          <Scissors className="h-3.5 w-3.5 text-muted-foreground" />
+        </button>
         <button
           onClick={(e) => {
             e.stopPropagation();
