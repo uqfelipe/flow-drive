@@ -1,25 +1,19 @@
 
 
-## Adicionar buscador de nós no canvas do Flow Builder
+## Importar fluxo a partir de arquivo JSON
 
 ### O que faz
-Um campo de busca flutuante no canvas que permite digitar o nome de um nó e, ao selecionar, faz zoom/pan automático até ele, destacando-o visualmente.
+Adiciona um botão de importação na toolbar (ícone Upload) ao lado do botão de exportação. Ao clicar, abre um file picker para selecionar um `.json`. O arquivo é validado e os nós/edges são carregados no canvas, substituindo o conteúdo atual.
 
 ### Alteração
 
 #### `src/pages/FlowBuilder.tsx`
-- Adicionar estado `nodeSearch` (string) e `showNodeSearch` (boolean)
-- Adicionar botão com ícone `Search` na toolbar (junto aos controles existentes)
-- Renderizar um popover/input flutuante no canto superior direito do canvas quando ativo
-- Filtrar `nodes` pelo label (`node.data.label`) conforme o usuário digita
-- Mostrar lista dropdown com os nós encontrados (ícone + nome)
-- Ao clicar em um resultado: usar `reactFlowInstance.setCenter(node.position.x, node.position.y, { zoom: 1.5, duration: 600 })` para animar até o nó
-- Selecionar o nó encontrado (`setSelectedNode`) para destacá-lo
-- Atalho `Ctrl+F` para abrir/fechar o buscador
-
-### UI do buscador
-- Caixa flutuante `absolute top-4 right-4` sobre o canvas, `w-72`, com bordas arredondadas e sombra
-- Input com ícone de busca + lista de resultados abaixo (max 5 itens visíveis com scroll)
-- Cada item mostra ícone colorido do tipo + label do nó
-- Botão X para fechar
+- Adicionar import do ícone `Upload` do lucide-react
+- Criar função `handleImport`:
+  - Cria um `<input type="file" accept=".json">` invisível via JS e dispara o click
+  - No `onChange`, lê o arquivo com `FileReader`
+  - Faz `JSON.parse` e valida que o objeto tem `nodes` (array) e `edges` (array)
+  - Se válido: `setNodes(data.nodes)`, `setEdges(data.edges)`, e opcionalmente atualiza `currentFlowName` se presente no JSON
+  - Se inválido: exibe toast de erro
+- Adicionar botão `Upload` na toolbar, ao lado do botão de exportar
 
