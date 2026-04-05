@@ -224,14 +224,18 @@ export default function Reminders() {
                 disabled={updateSetting.isPending}
               />
               <Label className="cursor-pointer font-medium" onClick={toggleAutoProcess}>
-                Enviar automaticamente
+                Reforço local (com a tela aberta)
               </Label>
             </div>
+
+            <span className="text-xs text-muted-foreground">
+              ✅ Envio automático ativo no servidor (a cada 1 min)
+            </span>
 
             {autoEnabled && (
               <div className="flex items-center gap-2">
                 <Radio className="h-3.5 w-3.5 text-green-500 animate-pulse" />
-                <span className="text-xs text-muted-foreground">Monitorando a cada 10s</span>
+                <span className="text-xs text-muted-foreground">Reforço local a cada 10s</span>
               </div>
             )}
           </div>
