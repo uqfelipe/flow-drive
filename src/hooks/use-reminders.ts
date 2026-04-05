@@ -114,7 +114,7 @@ export function useDeleteReminder() {
 export function useProcessReminders() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (reminderId?: string) => {
+    mutationFn: async (reminderId: string | undefined = undefined) => {
       const { data, error } = await supabase.functions.invoke("send-reminders", {
         body: reminderId ? { reminderId } : {},
       });
