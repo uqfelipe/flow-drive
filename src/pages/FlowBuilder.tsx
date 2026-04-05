@@ -11,7 +11,6 @@ import { NodePalette } from "@/components/flow-builder/NodePalette";
 import { NodeConfigPanel } from "@/components/flow-builder/NodeConfigPanel";
 
 import FlowNode from "@/components/flow-builder/FlowNode";
-import DeletableEdge from "@/components/flow-builder/DeletableEdge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
@@ -25,7 +24,6 @@ import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 
 const customNodeTypes = { flowNode: FlowNode };
-const customEdgeTypes = { smoothstep: DeletableEdge };
 
 const defaultEdgeOptions = {
   type: "smoothstep",
@@ -371,7 +369,7 @@ function FlowBuilderContent() {
               onConnect={onConnect} onInit={setReactFlowInstance}
               onDrop={onDrop} onDragOver={onDragOver}
               
-              nodeTypes={customNodeTypes} edgeTypes={customEdgeTypes} fitView
+              nodeTypes={customNodeTypes} fitView
               minZoom={0.05} maxZoom={4}
               className="!bg-muted/30"
               defaultEdgeOptions={defaultEdgeOptions}
