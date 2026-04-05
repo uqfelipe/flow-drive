@@ -434,6 +434,17 @@ function FlowBuilderContent() {
     toast.success("Fluxo exportado!");
   };
 
+  const handleClearCanvas = () => {
+    if (!window.confirm("Tem certeza que deseja limpar todo o canvas? Esta ação não pode ser desfeita.")) return;
+    setNodes([]);
+    setEdges([]);
+    setCurrentFlowName("Novo Fluxo");
+    setCurrentFlowId(null);
+    setSelectedNode(null);
+    setTimeout(() => pushHistory(), 50);
+    toast.success("Canvas limpo");
+  };
+
   const handleImport = () => {
     const input = document.createElement("input");
     input.type = "file";
