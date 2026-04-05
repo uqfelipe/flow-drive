@@ -229,7 +229,8 @@ function FlowBuilderContent() {
     setEdges((eds) => [...eds, ...internalEdges]);
     setPasteCount((c) => c + 1);
     toast.success(`${newNodes.length} componente(s) colado(s)`);
-  }, [clipboard, pasteCount, edges, setNodes, setEdges]);
+    setTimeout(() => pushHistory(), 50);
+  }, [clipboard, pasteCount, edges, setNodes, setEdges, pushHistory]);
 
   const handleDuplicate = useCallback(() => {
     const selected = nodes.filter((n) => n.selected);
