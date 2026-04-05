@@ -910,12 +910,15 @@ function extractIncomingMessages(body: any): IncomingWebhookMessage[] {
   for (const msg of rawMessages) {
     const chatId = (msg.chatid ?? msg.chat ?? msg.key?.remoteJid ?? msg.from ?? body.chatid ?? body.from ?? "").toString();
     const text = (
-      msg.body ??
-      msg.text ??
-      msg.conversation ??
-      msg.message?.conversation ??
-      msg.message?.extendedTextMessage?.text ??
-      (typeof msg.content === "object" && msg.content !== null ? msg.content.selectedDisplayText : undefined) ??
+      msg.body ||
+      msg.text ||
+      msg.conversation ||
+      msg.message?.conversation ||
+      msg.message?.extendedTextMessage?.text ||
+      (typeof msg.content === "object" && msg.content !== null
+        ? (msg.content.selectedID || msg.content.selectedDisplayText)
+        : undefined) ||
+      msg.buttonOrListid ||
       ""
     ).toString().trim();
     const fromMe = Boolean(msg.fromMe ?? msg.key?.fromMe ?? false);
