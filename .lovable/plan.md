@@ -1,25 +1,23 @@
 
 
-## Auto-carregar veículos no nó Carrossel
+## Múltipla escolha de veículos no Carrossel
 
-### Situação atual
-O nó Carrossel de Veículos já suporta saídas individuais por veículo, mas o usuário precisa abrir o painel de configuração e clicar em "Carregar veículos" manualmente. Você quer que os veículos apareçam automaticamente no nó assim que ele for adicionado ao fluxo.
+### Objetivo
+Substituir o botão "Carregar veículos" (que carrega todos automaticamente) por uma lista de checkboxes onde o usuário escolhe manualmente quais veículos aparecem no carrossel.
 
 ### Alterações
 
-#### 1. `src/components/flow-builder/FlowNode.tsx`
-- Adicionar um `useEffect` que detecta quando o nó `vehicle_carousel` é criado sem veículos carregados (`config.vehicles` vazio ou undefined)
-- Buscar automaticamente os veículos disponíveis do Supabase (respeitando categoria e maxCards do config)
-- Atualizar o config do nó com os veículos carregados usando um custom event (`flow-update-node-config`)
+#### `src/components/flow-builder/NodeConfigPanel.tsx`
+- Adicionar estado local `allVehicles` (lista de todos os veículos disponíveis do banco) e um botão "Buscar veículos" que popula essa lista
+- Renderizar cada veículo como um item com **Checkbox** (múltipla escolha) mostrando imagem, nome e marca
+- Quando o usuário marca/desmarca um checkbox, atualizar `config.vehicles` com apenas os selecionados
+- Importar `Checkbox` de `@/components/ui/checkbox`
+- Adicionar estado com `useState` (o componente precisará ser ajustado para suportar estado local — atualmente é stateless)
+- Manter validação de mín 2, máx 10 veículos selecionados
 
-#### 2. `src/pages/FlowBuilder.tsx`
-- Escutar o evento `flow-update-node-config` para receber atualizações automáticas de config do nó
-- Atualizar o nó no estado do React Flow quando o evento for disparado
-
-#### 3. `src/components/flow-builder/NodeConfigPanel.tsx`
-- Manter o botão "Carregar veículos" para recarregar manualmente se necessário (ex: novos veículos adicionados)
-- Sem mudanças funcionais, apenas complementar
-
-### Resultado
-Ao arrastar o nó Carrossel de Veículos para o canvas, os veículos disponíveis serão carregados automaticamente e cada um aparecerá como uma saída individual no nó, sem necessidade de abrir o painel de configuração.
+#### Fluxo do usuário
+1. Abre o painel de configuração do nó Carrossel
+2. Clica "Buscar veículos" → lista todos os disponíveis com checkboxes
+3. Marca os veículos desejados → apenas esses aparecem como saídas no nó
+4. Pode desmarcar/remarcar a qualquer momento
 
