@@ -15,7 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ArrowLeft, Undo2, Redo2, Download, Upload, Save, Clipboard, Search, X } from "lucide-react";
+import { ArrowLeft, Undo2, Redo2, Download, Upload, Save, Clipboard, Search, X, Trash2 } from "lucide-react";
 import { getNodeTypeConfig } from "@/components/flow-builder/nodeTypes";
 import type { NodeTypeConfig } from "@/components/flow-builder/nodeTypes";
 import type { FlowNodeData } from "@/types";
@@ -434,6 +434,17 @@ function FlowBuilderContent() {
     toast.success("Fluxo exportado!");
   };
 
+  const handleClearCanvas = () => {
+    if (!window.confirm("Tem certeza que deseja limpar todo o canvas? Esta ação não pode ser desfeita.")) return;
+    setNodes([]);
+    setEdges([]);
+    setCurrentFlowName("Novo Fluxo");
+    setCurrentFlowId(null);
+    setSelectedNode(null);
+    setTimeout(() => pushHistory(), 50);
+    toast.success("Canvas limpo");
+  };
+
   const handleImport = () => {
     const input = document.createElement("input");
     input.type = "file";
@@ -515,6 +526,9 @@ function FlowBuilderContent() {
             </Button>
             <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleExport} title="Exportar">
               <Download className="h-4 w-4" />
+            </Button>
+            <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" onClick={handleClearCanvas} title="Limpar canvas">
+              <Trash2 className="h-4 w-4" />
             </Button>
             <Button size="sm" className="h-8 text-xs" onClick={handleSave} disabled={saveFlow.isPending}>
               <Save className="h-3.5 w-3.5 mr-1.5" /> Salvar
