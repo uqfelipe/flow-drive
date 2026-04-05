@@ -1,43 +1,41 @@
 
 
-## Corrigir recebimento da resposta do carrossel no webhook
+## Expirar sessão e reiniciar fluxo automaticamente
 
-### Problema raiz
-Quando o usuário seleciona um veículo no carrossel do WhatsApp, a mensagem chega com `msg.text = ""` (string vazia). O campo `text` vazio impede que o fallback `??` alcance `content.selectedDisplayText` (porque `??` só faz fallback para `null`/`undefined`, não para `""`). Resultado: `text = ""`, a mensagem é filtrada na linha 1143 (`!text && !mediaUrl...`) e nunca chega ao motor de fluxo.
+### Problema
+Quando o fluxo chega num nó final (ex: mensagem do veículo) ou o usuário simplesmente para de responder, a sessão fica com status `waiting` para sempre. Se o cliente voltar horas depois, o sistema tenta continuar de onde parou em vez de recomeçar do zero.
 
-Os logs confirmam:
-- `content_keys=selectedID,selectedDisplayText,contextInfo,selectedIndex,selectedCarouselCardIndex`
-- `text=""` → `valid=0` → FILTERED
+### Solução
+Adicionar um **timeout de inatividade** na busca de sessão existente. Quando o webhook encontra uma sessão `active`/`waiting`, verificar o `updated_at`: se passou mais de X minutos (configurável, padrão 30 min), considerar a sessão expirada, marcá-la como `completed` e iniciar uma nova do zero.
 
 ### Alteração
 
 #### `supabase/functions/whatsapp-webhook/index.ts`
 
-**1. Corrigir extração do texto (linhas 912-920)**
-
-Na cadeia de extração de `text`, adicionar fallback para `content.selectedID` e `msg.buttonOrListid` (que contém o ID do botão selecionado no carrossel, ex: `veiculo_<uuid>`). Trocar `??` por `||` para que strings vazias caiam no próximo fallback:
+**1. Após encontrar a sessão existente (linha ~1328-1330)**, adicionar verificação de timeout:
 
 ```typescript
-const text = (
-  msg.body ||
-  msg.text ||
-  msg.conversation ||
-  msg.message?.conversation ||
-  msg.message?.extendedTextMessage?.text ||
-  (typeof msg.content === "object" && msg.content !== null
-    ? (msg.content.selectedID || msg.content.selectedDisplayText)
-    : undefined) ||
-  msg.buttonOrListid ||
-  ""
-).toString().trim();
+let session = existingSessions?.[0];
+
+// Se a sessão existe mas está inativa há mais de 30 minutos, expirar
+if (session) {
+  const lastUpdate = new Date(session.updated_at).getTime();
+  const now = Date.now();
+  const SESSION_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutos
+  
+  if (now - lastUpdate > SESSION_TIMEOUT_MS) {
+    console.log(`[AUTO-REPLY] Session expired (inactive ${Math.round((now - lastUpdate) / 60000)}min), restarting`);
+    await adminClient.from("chat_sessions")
+      .update({ status: "completed", updated_at: new Date().toISOString() })
+      .eq("id", session.id);
+    session = undefined; // forçar criação de nova sessão
+  }
+}
 ```
 
-Isso garante que quando `msg.text` é `""`, a cadeia continua e pega `content.selectedID` (ex: `veiculo_abc123`) que é exatamente o que o handler do carrossel espera no `text.match(/^veiculo_(.+)$/i)`.
+Isso faz com que, se o cliente voltar depois de 30 minutos sem interação, o fluxo reinicie do começo automaticamente. Se voltar antes de 30 min, continua de onde parou.
 
 ### Resultado
-1. Mensagem do carrossel chega com `text = "veiculo_<uuid>"` em vez de `""`
-2. Passa pelo filtro de validação (text não é vazio)
-3. Chega ao handler `vehicle_carousel` (linha 1373)
-4. Faz match com `veiculo_<id>`, encontra o índice no `config.vehicles`, usa handle `vehicle-0`, `vehicle-1`, etc.
-5. Segue para o nó de mensagem conectado àquela saída
+- Cliente sai e volta em 5 min → continua de onde parou
+- Cliente sai e volta em 2 horas → fluxo recomeça do zero, como se fosse nova conversa
 
