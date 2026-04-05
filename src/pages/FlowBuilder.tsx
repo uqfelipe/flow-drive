@@ -15,7 +15,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ArrowLeft, Undo2, Redo2, Download, Save, Clipboard } from "lucide-react";
+import { ArrowLeft, Undo2, Redo2, Download, Save, Clipboard, Search, X } from "lucide-react";
+import { getNodeTypeConfig } from "@/components/flow-builder/nodeTypes";
 import type { NodeTypeConfig } from "@/components/flow-builder/nodeTypes";
 import type { FlowNodeData } from "@/types";
 import { useFlows, useFlow, useSaveFlow, useCreateFlow } from "@/hooks/use-flows";
@@ -48,6 +49,9 @@ function FlowBuilderContent() {
   const [clipboard, setClipboard] = useState<Node[]>([]);
   const [pasteCount, setPasteCount] = useState(0);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
+  const [showNodeSearch, setShowNodeSearch] = useState(false);
+  const [nodeSearch, setNodeSearch] = useState("");
+  const nodeSearchInputRef = useRef<HTMLInputElement>(null);
 
   const { data: flows, isLoading } = useFlows();
   const { data: flowDetail } = useFlow(currentFlowId);
@@ -197,6 +201,20 @@ function FlowBuilderContent() {
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement;
+      if ((e.ctrlKey || e.metaKey) && e.key === "f") {
+        e.preventDefault();
+        setShowNodeSearch((v) => {
+          if (!v) setTimeout(() => nodeSearchInputRef.current?.focus(), 50);
+          else setNodeSearch("");
+          return !v;
+        });
+        return;
+      }
+      if (e.key === "Escape" && showNodeSearch) {
+        setShowNodeSearch(false);
+        setNodeSearch("");
+        return;
+      }
       if (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable) return;
       if ((e.ctrlKey || e.metaKey) && e.key === "c") { e.preventDefault(); handleCopy(); }
       if ((e.ctrlKey || e.metaKey) && e.key === "v") { e.preventDefault(); handlePaste(); }
@@ -204,7 +222,21 @@ function FlowBuilderContent() {
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [handleCopy, handlePaste, handleDuplicate]);
+  }, [handleCopy, handlePaste, handleDuplicate, showNodeSearch]);
+
+  const filteredSearchNodes = nodes.filter((n) =>
+    nodeSearch.trim() && (n.data as FlowNodeData)?.label?.toLowerCase().includes(nodeSearch.toLowerCase())
+  ).slice(0, 5);
+
+  const navigateToNode = useCallback((node: Node) => {
+    if (!reactFlowInstance) return;
+    reactFlowInstance.setCenter(node.position.x + 100, node.position.y + 50, { zoom: 1.5, duration: 600 });
+    setNodes((nds) => nds.map((n) => ({ ...n, selected: n.id === node.id })));
+    const nd = nodes.find((n) => n.id === node.id);
+    if (nd) setSelectedNode(nd);
+    setShowNodeSearch(false);
+    setNodeSearch("");
+  }, [reactFlowInstance, nodes, setNodes]);
 
   const onDragOver = useCallback((event: React.DragEvent) => {
     event.preventDefault();
@@ -340,6 +372,9 @@ function FlowBuilderContent() {
 
             <div className="h-5 w-px bg-border mx-1" />
 
+            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => { setShowNodeSearch((v) => !v); setTimeout(() => nodeSearchInputRef.current?.focus(), 50); }} title="Buscar nó (Ctrl+F)">
+              <Search className="h-4 w-4" />
+            </Button>
             <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleExport} title="Exportar">
               <Download className="h-4 w-4" />
             </Button>
@@ -402,6 +437,57 @@ function FlowBuilderContent() {
                   <Clipboard className="h-4 w-4" />
                   Colar {clipboard.length > 0 ? `(${clipboard.length})` : ""}
                 </button>
+              </div>
+            )}
+
+            {/* Node search overlay */}
+            {showNodeSearch && (
+              <div className="absolute top-4 right-4 z-50 w-72 rounded-xl border border-border bg-popover text-popover-foreground shadow-xl animate-in fade-in-0 slide-in-from-top-2">
+                <div className="flex items-center gap-2 px-3 py-2 border-b border-border">
+                  <Search className="h-4 w-4 text-muted-foreground shrink-0" />
+                  <input
+                    ref={nodeSearchInputRef}
+                    className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+                    placeholder="Buscar componente..."
+                    value={nodeSearch}
+                    onChange={(e) => setNodeSearch(e.target.value)}
+                    autoFocus
+                  />
+                  <button
+                    className="p-0.5 rounded hover:bg-accent transition-colors"
+                    onClick={() => { setShowNodeSearch(false); setNodeSearch(""); }}
+                  >
+                    <X className="h-3.5 w-3.5 text-muted-foreground" />
+                  </button>
+                </div>
+                {nodeSearch.trim() && (
+                  <div className="max-h-[200px] overflow-y-auto py-1">
+                    {filteredSearchNodes.length === 0 ? (
+                      <p className="text-xs text-muted-foreground text-center py-3">Nenhum nó encontrado</p>
+                    ) : (
+                      filteredSearchNodes.map((node) => {
+                        const data = node.data as FlowNodeData;
+                        const config = getNodeTypeConfig(data.nodeType);
+                        const Icon = config?.icon;
+                        return (
+                          <button
+                            key={node.id}
+                            className="flex w-full items-center gap-2.5 px-3 py-2 text-sm hover:bg-accent hover:text-accent-foreground transition-colors"
+                            onClick={() => navigateToNode(node)}
+                          >
+                            {Icon && (
+                              <div className="w-6 h-6 rounded flex items-center justify-center shrink-0" style={{ backgroundColor: `${config.color}20` }}>
+                                <Icon className="h-3.5 w-3.5" style={{ color: config.color }} />
+                              </div>
+                            )}
+                            <span className="truncate">{data.label}</span>
+                            <span className="ml-auto text-[10px] text-muted-foreground">#{node.id}</span>
+                          </button>
+                        );
+                      })
+                    )}
+                  </div>
+                )}
               </div>
             )}
           </div>
