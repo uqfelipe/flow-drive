@@ -6,10 +6,14 @@ export default function DeletableEdge({
   sourcePosition, targetPosition, style, markerEnd,
 }: EdgeProps) {
   const { deleteElements } = useReactFlow();
-  const [edgePath, labelX, labelY] = getSmoothStepPath({
+  const [edgePath] = getSmoothStepPath({
     sourceX, sourceY, sourcePosition,
     targetX, targetY, targetPosition,
   });
+
+  // Position near the source node (20% along the edge)
+  const btnX = sourceX + (targetX - sourceX) * 0.15;
+  const btnY = sourceY + (targetY - sourceY) * 0.15;
 
   return (
     <>
@@ -18,7 +22,7 @@ export default function DeletableEdge({
         <div
           style={{
             position: "absolute",
-            transform: `translate(-50%, -50%) translate(${labelX}px,${labelY}px)`,
+            transform: `translate(-50%, -50%) translate(${btnX}px,${btnY}px)`,
             pointerEvents: "all",
           }}
           className="nodrag nopan"
