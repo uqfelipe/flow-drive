@@ -21,7 +21,7 @@ export default function Dashboard() {
   const { data: customers, isLoading: cLoading } = useCustomers();
   
 
-  const isLoading = vLoading || rLoading || pLoading || cLoading;
+  const isLoading = vLoading || pLoading || cLoading;
 
   const totalVehicles = vehicles?.length ?? 0;
   const available = vehicles?.filter((v) => v.status === "available").length ?? 0;
