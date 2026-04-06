@@ -19,12 +19,6 @@ const statusMap: Record<string, { label: string; className: string }> = {
   completed: { label: "Concluído", className: "bg-muted text-muted-foreground border-border" },
 };
 
-const alertTypeMap: Record<string, { bg: string; text: string }> = {
-  warning: { bg: "bg-warning/10 border-l-warning", text: "text-warning" },
-  error: { bg: "bg-destructive/10 border-l-destructive", text: "text-destructive" },
-  info: { bg: "bg-primary/10 border-l-primary", text: "text-primary" },
-  success: { bg: "bg-success/10 border-l-success", text: "text-success" },
-};
 
 export default function Dashboard() {
   const { data: vehicles, isLoading: vLoading } = useVehicles();
