@@ -16,7 +16,7 @@ import { NotesBlock } from "@/components/NotesBlock";
 
 export default function Dashboard() {
   const { data: vehicles, isLoading: vLoading } = useVehicles();
-  const { data: rentals, isLoading: rLoading } = useRentals();
+  
   const { data: payments, isLoading: pLoading } = usePayments();
   const { data: customers, isLoading: cLoading } = useCustomers();
   
