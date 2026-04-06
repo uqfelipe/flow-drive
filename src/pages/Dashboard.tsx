@@ -99,35 +99,7 @@ export default function Dashboard() {
               ))}
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <Card className="border-border/60">
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-sm font-display flex items-center gap-2">
-                    <CalendarCheck className="h-4 w-4 text-primary" /> Locações Recentes
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-2">
-                    {recentRentals.map((rental) => {
-                      const vehicleName = rental.vehicles ? `${rental.vehicles.brand} ${rental.vehicles.model} ${rental.vehicles.year}` : "—";
-                      const st = statusMap[rental.payment_status] || statusMap.pending;
-                      return (
-                        <div key={rental.id} className="flex items-center justify-between p-3 rounded-lg bg-muted/40 hover:bg-muted/60 transition-colors">
-                          <div className="space-y-0.5">
-                            <p className="text-xs font-medium">{rental.customers?.name ?? "—"}</p>
-                            <p className="text-[11px] text-muted-foreground">{vehicleName}</p>
-                          </div>
-                          <div className="flex items-center gap-3">
-                            <span className="text-xs font-semibold">{fmt(Number(rental.total_value))}</span>
-                            <Badge variant="outline" className={`text-[10px] ${st.className}`}>{st.label}</Badge>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </CardContent>
-              </Card>
-
+            <div className="grid grid-cols-1 gap-6">
               <NotesBlock />
             </div>
           </>
