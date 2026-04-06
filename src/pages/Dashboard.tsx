@@ -25,7 +25,7 @@ export default function Dashboard() {
   const { data: rentals, isLoading: rLoading } = useRentals();
   const { data: payments, isLoading: pLoading } = usePayments();
   const { data: customers, isLoading: cLoading } = useCustomers();
-  const { data: notifications } = useNotifications();
+  
 
   const isLoading = vLoading || rLoading || pLoading || cLoading;
 
