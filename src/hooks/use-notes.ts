@@ -4,6 +4,7 @@ export interface Note {
   id: string;
   title: string;
   content: string;
+  audioUrl?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -31,15 +32,15 @@ export function useNotes() {
     saveNotes(updated);
   }, []);
 
-  const addNote = useCallback((title: string, content: string) => {
+  const addNote = useCallback((title: string, content: string, audioUrl?: string) => {
     const now = new Date().toISOString();
-    const note: Note = { id: crypto.randomUUID(), title, content, createdAt: now, updatedAt: now };
+    const note: Note = { id: crypto.randomUUID(), title, content, audioUrl, createdAt: now, updatedAt: now };
     persist([note, ...loadNotes()]);
   }, [persist]);
 
-  const updateNote = useCallback((id: string, title: string, content: string) => {
+  const updateNote = useCallback((id: string, title: string, content: string, audioUrl?: string) => {
     const current = loadNotes();
-    persist(current.map(n => n.id === id ? { ...n, title, content, updatedAt: new Date().toISOString() } : n));
+    persist(current.map(n => n.id === id ? { ...n, title, content, audioUrl, updatedAt: new Date().toISOString() } : n));
   }, [persist]);
 
   const deleteNote = useCallback((id: string) => {
