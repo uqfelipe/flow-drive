@@ -12,12 +12,6 @@ import { useCustomers } from "@/hooks/use-customers";
 
 import { NotesBlock } from "@/components/NotesBlock";
 
-const statusMap: Record<string, { label: string; className: string }> = {
-  active: { label: "Ativo", className: "bg-success/10 text-success border-success/30" },
-  overdue: { label: "Vencido", className: "bg-destructive/10 text-destructive border-destructive/30" },
-  pending: { label: "Pendente", className: "bg-warning/10 text-warning border-warning/30" },
-  completed: { label: "Concluído", className: "bg-muted text-muted-foreground border-border" },
-};
 
 
 export default function Dashboard() {
