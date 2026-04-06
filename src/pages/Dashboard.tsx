@@ -49,7 +49,7 @@ export default function Dashboard() {
     { title: "Clientes Ativos", value: String(activeCustomers), icon: Users, color: "text-primary", bg: "bg-primary/10" },
   ];
 
-  const recentRentals = (rentals ?? []).slice(0, 4);
+  
 
   return (
     <AdminLayout title="Dashboard" subtitle="Visão geral da sua locadora">
