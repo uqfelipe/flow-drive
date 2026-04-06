@@ -6,7 +6,7 @@ import {
   Car, Users, CalendarCheck, DollarSign, AlertTriangle, TrendingUp, Clock, CheckCircle2,
 } from "lucide-react";
 import { useVehicles } from "@/hooks/use-vehicles";
-import { useRentals } from "@/hooks/use-rentals";
+
 import { usePayments } from "@/hooks/use-payments";
 import { useCustomers } from "@/hooks/use-customers";
 
