@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
-  Car, Users, CalendarCheck, DollarSign, TrendingUp, Clock, CheckCircle2,
+  Car, Users, CalendarCheck, DollarSign, AlertTriangle, TrendingUp, Clock, CheckCircle2,
 } from "lucide-react";
 import { useVehicles } from "@/hooks/use-vehicles";
 import { useRentals } from "@/hooks/use-rentals";
