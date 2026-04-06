@@ -10,6 +10,7 @@ import { useRentals } from "@/hooks/use-rentals";
 import { usePayments } from "@/hooks/use-payments";
 import { useCustomers } from "@/hooks/use-customers";
 import { useNotifications } from "@/hooks/use-settings";
+import { NotesBlock } from "@/components/NotesBlock";
 
 const statusMap: Record<string, { label: string; className: string }> = {
   active: { label: "Ativo", className: "bg-success/10 text-success border-success/30" },
@@ -105,7 +106,7 @@ export default function Dashboard() {
               ))}
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               <Card className="border-border/60">
                 <CardHeader className="pb-3">
                   <CardTitle className="text-sm font-display flex items-center gap-2">
@@ -153,6 +154,8 @@ export default function Dashboard() {
                   </div>
                 </CardContent>
               </Card>
+
+              <NotesBlock />
             </div>
           </>
         )}
