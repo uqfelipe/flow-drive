@@ -1,33 +1,27 @@
 import { AdminLayout } from "@/components/AdminLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Car, Users, CalendarCheck, DollarSign, AlertTriangle, TrendingUp, Clock, CheckCircle2,
 } from "lucide-react";
 import { useVehicles } from "@/hooks/use-vehicles";
-import { useRentals } from "@/hooks/use-rentals";
+
 import { usePayments } from "@/hooks/use-payments";
 import { useCustomers } from "@/hooks/use-customers";
 
 import { NotesBlock } from "@/components/NotesBlock";
 
-const statusMap: Record<string, { label: string; className: string }> = {
-  active: { label: "Ativo", className: "bg-success/10 text-success border-success/30" },
-  overdue: { label: "Vencido", className: "bg-destructive/10 text-destructive border-destructive/30" },
-  pending: { label: "Pendente", className: "bg-warning/10 text-warning border-warning/30" },
-  completed: { label: "Concluído", className: "bg-muted text-muted-foreground border-border" },
-};
 
 
 export default function Dashboard() {
   const { data: vehicles, isLoading: vLoading } = useVehicles();
-  const { data: rentals, isLoading: rLoading } = useRentals();
+  
   const { data: payments, isLoading: pLoading } = usePayments();
   const { data: customers, isLoading: cLoading } = useCustomers();
   
 
-  const isLoading = vLoading || rLoading || pLoading || cLoading;
+  const isLoading = vLoading || pLoading || cLoading;
 
   const totalVehicles = vehicles?.length ?? 0;
   const available = vehicles?.filter((v) => v.status === "available").length ?? 0;
@@ -55,7 +49,7 @@ export default function Dashboard() {
     { title: "Clientes Ativos", value: String(activeCustomers), icon: Users, color: "text-primary", bg: "bg-primary/10" },
   ];
 
-  const recentRentals = (rentals ?? []).slice(0, 4);
+  
 
   return (
     <AdminLayout title="Dashboard" subtitle="Visão geral da sua locadora">
@@ -99,35 +93,7 @@ export default function Dashboard() {
               ))}
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <Card className="border-border/60">
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-sm font-display flex items-center gap-2">
-                    <CalendarCheck className="h-4 w-4 text-primary" /> Locações Recentes
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-2">
-                    {recentRentals.map((rental) => {
-                      const vehicleName = rental.vehicles ? `${rental.vehicles.brand} ${rental.vehicles.model} ${rental.vehicles.year}` : "—";
-                      const st = statusMap[rental.payment_status] || statusMap.pending;
-                      return (
-                        <div key={rental.id} className="flex items-center justify-between p-3 rounded-lg bg-muted/40 hover:bg-muted/60 transition-colors">
-                          <div className="space-y-0.5">
-                            <p className="text-xs font-medium">{rental.customers?.name ?? "—"}</p>
-                            <p className="text-[11px] text-muted-foreground">{vehicleName}</p>
-                          </div>
-                          <div className="flex items-center gap-3">
-                            <span className="text-xs font-semibold">{fmt(Number(rental.total_value))}</span>
-                            <Badge variant="outline" className={`text-[10px] ${st.className}`}>{st.label}</Badge>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </CardContent>
-              </Card>
-
+            <div className="grid grid-cols-1 gap-6">
               <NotesBlock />
             </div>
           </>
