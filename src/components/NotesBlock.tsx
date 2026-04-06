@@ -23,7 +23,7 @@ function InlineAudioRecorder({ audioUrl, onAudioChange }: { audioUrl?: string; o
   const recorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const timerRef = useRef<ReturnType<typeof setInterval>>();
-  const MAX_SECONDS = 120;
+  const MAX_SECONDS = 1800;
 
   const start = async () => {
     try {
