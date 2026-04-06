@@ -56,7 +56,6 @@ export default function Dashboard() {
   ];
 
   const recentRentals = (rentals ?? []).slice(0, 4);
-  const alerts = (notifications ?? []).filter((n) => !n.read).slice(0, 4);
 
   return (
     <AdminLayout title="Dashboard" subtitle="Visão geral da sua locadora">
