@@ -154,6 +154,8 @@ export default function Dashboard() {
                   </div>
                 </CardContent>
               </Card>
+
+              <NotesBlock />
             </div>
           </>
         )}
