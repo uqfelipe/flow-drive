@@ -11,6 +11,7 @@ import {
   Smartphone,
   Variable,
   AlarmClock,
+  StickyNote,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
@@ -35,6 +36,7 @@ const mainItems = [
   { title: "Clientes", url: "/customers", icon: Users },
   { title: "Reservas", url: "/rentals", icon: CalendarCheck },
   { title: "Financeiro", url: "/financial", icon: DollarSign },
+  { title: "Bloco de Notas", url: "/notes", icon: StickyNote },
 ];
 
 const chatItems = [

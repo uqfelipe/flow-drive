@@ -16,6 +16,7 @@ import FlowBuilder from "./pages/FlowBuilder";
 import WhatsAppConfig from "./pages/WhatsAppConfig";
 import SettingsPage from "./pages/SettingsPage";
 import Reminders from "./pages/Reminders";
+import Notes from "./pages/Notes";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -40,6 +41,7 @@ const App = () => (
           <Route path="/whatsapp" element={<WhatsAppConfig />} />
           <Route path="/settings" element={<SettingsPage />} />
           <Route path="/reminders" element={<Reminders />} />
+          <Route path="/notes" element={<Notes />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
