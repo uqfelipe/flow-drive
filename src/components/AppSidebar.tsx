@@ -36,6 +36,7 @@ const mainItems = [
   { title: "Clientes", url: "/customers", icon: Users },
   { title: "Reservas", url: "/rentals", icon: CalendarCheck },
   { title: "Financeiro", url: "/financial", icon: DollarSign },
+  { title: "Bloco de Notas", url: "/notes", icon: StickyNote },
 ];
 
 const chatItems = [

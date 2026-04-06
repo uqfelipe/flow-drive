@@ -41,6 +41,7 @@ const App = () => (
           <Route path="/whatsapp" element={<WhatsAppConfig />} />
           <Route path="/settings" element={<SettingsPage />} />
           <Route path="/reminders" element={<Reminders />} />
+          <Route path="/notes" element={<Notes />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
