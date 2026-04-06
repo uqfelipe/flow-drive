@@ -106,7 +106,7 @@ export default function Dashboard() {
               ))}
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               <Card className="border-border/60">
                 <CardHeader className="pb-3">
                   <CardTitle className="text-sm font-display flex items-center gap-2">
