@@ -10,6 +10,7 @@ import { useRentals } from "@/hooks/use-rentals";
 import { usePayments } from "@/hooks/use-payments";
 import { useCustomers } from "@/hooks/use-customers";
 import { useNotifications } from "@/hooks/use-settings";
+import { NotesBlock } from "@/components/NotesBlock";
 
 const statusMap: Record<string, { label: string; className: string }> = {
   active: { label: "Ativo", className: "bg-success/10 text-success border-success/30" },
