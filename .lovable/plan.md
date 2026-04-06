@@ -1,40 +1,43 @@
 
 
-## Adicionar Bloco de Notas ao Dashboard
+## Redesign do Bloco de Notas + Notas de Áudio
 
 ### O que será feito
-Um bloco de notas elegante no Dashboard principal, com campo de busca, possibilidade de criar, editar e excluir anotações. As notas serão salvas no `localStorage` (funciona offline, sem precisar criar tabela no banco).
 
-### Layout
-O bloco será adicionado abaixo dos cards de estatísticas e ao lado dos alertas/locações, ocupando toda a largura em uma nova seção.
-
-```text
-┌─────────────────────────────────────────────┐
-│  🔍 Buscar anotações...     [+ Nova Nota]   │
-├─────────────────────────────────────────────┤
-│  📝 Título da nota 1           12/04/2026   │
-│     Prévia do conteúdo...                   │
-│  📝 Título da nota 2           11/04/2026   │
-│     Prévia do conteúdo...                   │
-│  ...                                        │
-└─────────────────────────────────────────────┘
-```
-
-Ao clicar numa nota, abre um dialog para editar. Inclui botão de excluir.
+1. **Visual refinado e responsivo** — redesign completo do `NotesBlock` com layout em grid de cards (estilo post-its), tamanhos responsivos, gradientes sutis, tipografia maior na página dedicada
+2. **Página `/notes` full-width** — remover limite `max-w-2xl`, usar toda a largura disponível
+3. **Gravação de áudio como nota** — integrar gravador de áudio inline no dialog de criação/edição. Notas podem ter texto, áudio, ou ambos
+4. **Player de áudio nas notas** — notas com áudio mostram um mini player inline na listagem
 
 ### Alterações
 
 | Arquivo | O que |
 |---------|-------|
-| `src/hooks/use-notes.ts` | Novo hook com CRUD de notas via localStorage + estado React |
-| `src/components/NotesBlock.tsx` | Componente do bloco de notas com busca, lista, criação e edição |
-| `src/pages/Dashboard.tsx` | Importar e renderizar o `NotesBlock` após os cards existentes |
+| `src/hooks/use-notes.ts` | Adicionar campo opcional `audioUrl` no tipo `Note` e nos métodos CRUD |
+| `src/components/NotesBlock.tsx` | Redesign completo: grid responsivo de cards, visual refinado, gravador de áudio no dialog, mini player na listagem, ícones de tipo (texto/áudio), empty state melhorado |
+| `src/pages/Notes.tsx` | Layout full-width responsivo com padding adequado |
 
-### Detalhes do componente
-- **Busca**: filtra por título e conteúdo em tempo real
-- **Criação**: dialog com título + textarea para conteúdo
-- **Edição**: clique na nota abre o mesmo dialog preenchido
-- **Exclusão**: botão dentro do dialog de edição com confirmação
-- **Visual**: card com gradiente sutil, ícone de bloco de notas, ScrollArea para lista, badges com data, cores consistentes com o tema dark do projeto
-- **Persistência**: `localStorage` key `app-notes`, serializado como JSON
+### Layout da listagem (grid responsivo)
+
+```text
+Mobile (1 col)          Tablet (2 cols)         Desktop (3 cols)
+┌──────────┐           ┌─────┐ ┌─────┐         ┌────┐ ┌────┐ ┌────┐
+│ Nota 1   │           │ N1  │ │ N2  │         │ N1 │ │ N2 │ │ N3 │
+│ 🎤 ▶     │           │     │ │ 🎤  │         │    │ │ 🎤 │ │    │
+└──────────┘           └─────┘ └─────┘         └────┘ └────┘ └────┘
+```
+
+### Detalhes do áudio
+- O gravador será embutido no dialog de nova/editar nota (abaixo do textarea)
+- Áudio salvo como blob URL no localStorage (base64 encoded)
+- Sem dependência de Supabase Storage — tudo local
+- Notas com áudio mostram badge "Áudio" e mini player com play/pause
+- Limite de ~2min por gravação para não estourar localStorage
+
+### Melhorias visuais
+- Cards com hover lift (shadow + scale sutil)
+- Barra de busca com ícone animado
+- Badge colorida por tipo (texto = azul, áudio = vermelho, ambos = roxo)
+- Empty state com ilustração maior e CTA claro
+- Transições suaves com `transition-all`
 
