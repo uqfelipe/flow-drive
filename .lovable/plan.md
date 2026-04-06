@@ -1,14 +1,12 @@
 
 
-## Aumentar limite de gravação de áudio para 30 minutos
+## Remover card "Alertas Recentes" do Dashboard
 
 ### Alteração
 
 | Arquivo | O que |
 |---------|-------|
-| `src/components/NotesBlock.tsx` | Alterar `MAX_SECONDS` de `120` para `1800` (30 min) |
+| `src/pages/Dashboard.tsx` | Remover o card de "Alertas Recentes" do grid inferior e ajustar o grid de 3 para 2 colunas (`lg:grid-cols-2`) |
 
-Linha 26: `const MAX_SECONDS = 120;` → `const MAX_SECONDS = 1800;`
-
-Aviso: com 30 minutos de áudio em base64 no localStorage, o armazenamento pode ficar pesado (~20-40MB por gravação). Se isso virar problema no futuro, migrar para Supabase Storage seria o ideal.
+O card de alertas (linhas ~107-125) será removido, mantendo apenas "Locações Recentes" e "Bloco de Notas". As importações não utilizadas (`AlertTriangle` do card, `useNotifications`, `alertTypeMap`) também serão limpas.
 
