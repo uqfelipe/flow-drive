@@ -99,27 +99,7 @@ export default function Dashboard() {
               ))}
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              <Card className="border-border/60">
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-sm font-display flex items-center gap-2">
-                    <AlertTriangle className="h-4 w-4 text-warning" /> Alertas Recentes
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-2">
-                  {alerts.length === 0 && <p className="text-xs text-muted-foreground">Nenhum alerta pendente.</p>}
-                  {alerts.map((alert) => {
-                    const style = alertTypeMap[alert.type] || alertTypeMap.info;
-                    return (
-                      <div key={alert.id} className={`flex items-center gap-3 p-3 rounded-lg text-xs border-l-2 ${style.bg}`}>
-                        <div className={`h-1.5 w-1.5 rounded-full bg-current shrink-0 ${style.text}`} />
-                        <span className="text-foreground/90">{alert.message}</span>
-                      </div>
-                    );
-                  })}
-                </CardContent>
-              </Card>
-
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <Card className="border-border/60">
                 <CardHeader className="pb-3">
                   <CardTitle className="text-sm font-display flex items-center gap-2">
