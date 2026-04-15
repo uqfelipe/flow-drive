@@ -55,7 +55,7 @@ export function useSaveFlow() {
       description?: string;
       status?: string;
     }) => {
-      const update: Record<string, unknown> = { nodes, edges, updated_at: new Date().toISOString() };
+      const update: { nodes: any; edges: any; updated_at: string; name?: string; description?: string; status?: string } = { nodes, edges, updated_at: new Date().toISOString() };
       if (name) update.name = name;
       if (description) update.description = description;
       if (status) update.status = status;

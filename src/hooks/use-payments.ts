@@ -33,7 +33,7 @@ export function useUpdatePaymentStatus() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async ({ id, status }: { id: string; status: string }) => {
-      const updates: Record<string, any> = { status };
+      const updates: { status: string; paid_at?: string } = { status };
       if (status === "paid") updates.paid_at = new Date().toISOString();
       const { data, error } = await supabase.from("payments").update(updates).eq("id", id).select().single();
       if (error) throw error;
