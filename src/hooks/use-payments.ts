@@ -32,8 +32,8 @@ export function usePayments() {
 export function useUpdatePaymentStatus() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ id, status }: { id: string; status: string }) => {
-      const updates: Record<string, any> = { status };
+    mutationFn: async ({ id, status }: { id: string; status: "pending" | "paid" | "overdue" }) => {
+      const updates: { status: "pending" | "paid" | "overdue"; paid_at?: string } = { status };
       if (status === "paid") updates.paid_at = new Date().toISOString();
       const { data, error } = await supabase.from("payments").update(updates).eq("id", id).select().single();
       if (error) throw error;

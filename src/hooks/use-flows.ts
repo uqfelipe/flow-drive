@@ -53,9 +53,9 @@ export function useSaveFlow() {
       edges: Edge[];
       name?: string;
       description?: string;
-      status?: string;
+      status?: "active" | "draft" | "inactive";
     }) => {
-      const update: Record<string, unknown> = { nodes, edges, updated_at: new Date().toISOString() };
+      const update: { nodes: any; edges: any; updated_at: string; name?: string; description?: string; status?: "active" | "draft" | "inactive" } = { nodes, edges, updated_at: new Date().toISOString() };
       if (name) update.name = name;
       if (description) update.description = description;
       if (status) update.status = status;
